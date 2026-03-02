@@ -1,0 +1,62 @@
+﻿{
+  "version": "1.0.0",
+  "description": "Rust项目自动化审查配置",
+  "tools": {
+    "required": ["cargo", "rustfmt", "clippy"],
+    "optional": ["cargo-audit", "cargo-deny"]
+  },
+  "hooks": {
+    "pre-commit": {
+      "enabled": true,
+      "description": "提交前基础检查",
+      "checks": ["git-workflow", "rustfmt", "clippy-quick"]
+    },
+    "pre-push": {
+      "enabled": true,
+      "description": "推送前严格检查",
+      "checks": ["git-workflow", "rust-review-full", "release-build", "doc-check"]
+    },
+    "commit-msg": {
+      "enabled": true,
+      "description": "提交信息格式验证",
+      "pattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\\(.+\\))?!?: .{1,100}$"
+    }
+  },
+  "rust": {
+    "fmt": {
+      "check": true,
+      "fix": false
+    },
+    "clippy": {
+      "denyWarnings": true,
+      "pedantic": true,
+      "nursery": true
+    },
+    "test": {
+      "run": true,
+      "allFeatures": true
+    },
+    "audit": {
+      "run": true,
+      "failOnWarning": true
+    }
+  },
+  "git": {
+    "protectedBranches": ["main", "master", "release/*"],
+    "branchNaming": {
+      "patterns": [
+        "^feature/",
+        "^fix/",
+        "^docs/",
+        "^refactor/",
+        "^test/",
+        "^chore/",
+        "^main$",
+        "^master$",
+        "^develop$",
+        "^release/"
+      ]
+    },
+    "commitTypes": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]
+  }
+}
