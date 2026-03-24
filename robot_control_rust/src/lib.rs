@@ -17,8 +17,11 @@ pub extern "C" fn robot_ping(port_name: *const c_char, baud_rate: u32) -> c_int 
 
     // 伪代码: 真实实现中这里应连接串口并发送 Ping，然后等待回复或返回状态
     // 此处仅验证跨语言 FFI 导出成功
-    println!("FFI Call Received: Ping port {} at {} baud", port_str, baud_rate);
-    
+    println!(
+        "FFI Call Received: Ping port {} at {} baud",
+        port_str, baud_rate
+    );
+
     // 返回 0 表示成功, 这里立刻返回给外部调用者验证
     0
 }
@@ -45,9 +48,9 @@ pub extern "C" fn robot_parse_fast(data: *const u8, len: usize) -> c_int {
     if data.is_null() || len == 0 {
         return -1;
     }
-    
+
     let slice = unsafe { slice::from_raw_parts(data, len) };
-    
+
     // 利用 nom 处理 slice...
     // 这里验证传入包长度，真实环境会对 slice 进行无分配解码
     if slice.len() > 1024 {

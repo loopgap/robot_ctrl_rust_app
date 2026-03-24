@@ -31,18 +31,24 @@ pub fn run_cli(cli: Cli) {
     match cli.command {
         Some(Commands::Connect { port, baud }) => {
             println!("{}", "🚀 启动智能设备感知模块...".cyan().bold());
-            
+
             // 智能感知端口
             let selected_port = match port {
                 Some(p) => p,
                 None => {
                     let ports = available_ports().unwrap_or_else(|_| vec![]);
                     if ports.is_empty() {
-                        println!("{}", "❌ 未检测到任何可用的串口设备，请检查是否已插入并安装驱动。".red());
-                        println!("{}", "💡 提示: 运行 `micro_tools_cli doctor` 进行深度排障。".yellow());
+                        println!(
+                            "{}",
+                            "❌ 未检测到任何可用的串口设备，请检查是否已插入并安装驱动。".red()
+                        );
+                        println!(
+                            "{}",
+                            "💡 提示: 运行 `micro_tools_cli doctor` 进行深度排障。".yellow()
+                        );
                         return;
                     }
-                    
+
                     let mut options = Vec::new();
                     for p in ports {
                         let name = p.port_name;
@@ -52,11 +58,11 @@ pub fn run_cli(cli: Cli) {
                         }
                         options.push(format!("{} - {}", name, desc));
                     }
-                    
+
                     // 交互式下拉选择
                     let ans = Select::new("📡 检测到多个设备，请选择目标设备(支持搜索):", options)
                         .prompt();
-                    
+
                     match ans {
                         Ok(choice) => choice.split(" - ").next().unwrap().to_string(),
                         Err(_) => {
@@ -77,28 +83,36 @@ pub fn run_cli(cli: Cli) {
                         Ok(choice) => {
                             let b_str = choice.split(' ').next().unwrap();
                             b_str.parse::<u32>().unwrap_or(115200)
-                        },
-                        Err(_) => 115200
+                        }
+                        Err(_) => 115200,
                     }
                 }
             };
 
-            println!("{} {} {}", "✅ 已锁定设备:".green(), selected_port.bold(), format!("@ {} baud", selected_baud).blue());
-            
+            println!(
+                "{} {} {}",
+                "✅ 已锁定设备:".green(),
+                selected_port.bold(),
+                format!("@ {} baud", selected_baud).blue()
+            );
+
             // 进度动画模拟连接
             let pb = indicatif::ProgressBar::new_spinner();
             pb.enable_steady_tick(Duration::from_millis(120));
             pb.set_message(format!("尝试握手协议并在 {} 探测响应...", selected_port));
-            
+
             std::thread::sleep(Duration::from_secs(2)); // mock connect delay
-            
+
             pb.finish_with_message("🎉 连接成功！正在启动底层零拷贝通信管道...");
         }
         Some(Commands::Doctor) => {
             println!("{}", "🩺 智能排障系统启动...".magenta().bold());
             println!("- 检查驱动权限... 行");
             println!("- 检查日志分析... 无异常崩溃记录");
-            println!("{}", "💡 如果串口仍然无法打开，请确保未被其它终端 (如 Putty/SSCOM) 占用。".yellow());
+            println!(
+                "{}",
+                "💡 如果串口仍然无法打开，请确保未被其它终端 (如 Putty/SSCOM) 占用。".yellow()
+            );
         }
         None => {
             // 如果无参数，提示进入 GUI 模式
