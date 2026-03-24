@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use colored::*;
-use inquire::{Select, Text};
+use inquire::Select;
 use serialport::available_ports;
 use std::time::Duration;
 

@@ -3,8 +3,11 @@ use std::os::raw::{c_char, c_int};
 use std::slice;
 
 // 示例：导出给 C/Python 调用的连接并测定接口
+/// # Safety
+///
+/// The caller must ensure that `port_name` points to a valid null-terminated C string.
 #[no_mangle]
-pub extern "C" fn robot_ping(port_name: *const c_char, baud_rate: u32) -> c_int {
+pub unsafe extern "C" fn robot_ping(port_name: *const c_char, baud_rate: u32) -> c_int {
     if port_name.is_null() {
         return -1;
     }
@@ -34,6 +37,9 @@ pub extern "C" fn robot_get_version() -> *mut c_char {
 }
 
 // 需要提供释放内存接口，避免内存泄漏
+/// # Safety
+///
+/// The caller must ensure that `s` was obtained from `robot_get_version`.
 #[no_mangle]
 pub unsafe extern "C" fn robot_free_string(s: *mut c_char) {
     if s.is_null() {
@@ -43,8 +49,11 @@ pub unsafe extern "C" fn robot_free_string(s: *mut c_char) {
 }
 
 // 零拷贝协议解码范例函数包装 (通过 nom 解析器等)
+/// # Safety
+///
+/// The caller must ensure that `data` points to a valid buffer of at least `len` bytes.
 #[no_mangle]
-pub extern "C" fn robot_parse_fast(data: *const u8, len: usize) -> c_int {
+pub unsafe extern "C" fn robot_parse_fast(data: *const u8, len: usize) -> c_int {
     if data.is_null() || len == 0 {
         return -1;
     }

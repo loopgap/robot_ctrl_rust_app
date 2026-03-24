@@ -1,5 +1,7 @@
 # rust_serial Workspace (Intelligent & High-Performance Edition)
 
+> ⚠️ **重要规范提示**：本工作区的所有开发、功能拓展及维护必须严格遵守根目录下的 [**`route.md`**](route.md) 开发路线与规范文档。该文档定义了目录分类、验证规则、自动化流转及各子项目的关联标准，是项目工程化的“宪法”。
+
 [![CI](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/ci.yml/badge.svg)](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/ci.yml)
 [![Security Audit](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/audit.yml/badge.svg)](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/audit.yml)
 [![Release](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/release.yml/badge.svg)](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/release.yml)
