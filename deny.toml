@@ -1,0 +1,16 @@
+[graph]
+targets = []
+
+[advisories]
+unmaintained = "workspace"
+yanked = "deny"
+ignore = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

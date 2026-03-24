@@ -1,0 +1,228 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt:
+    name: 格式检查与智能修复
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run formatting and auto-fix across workspace
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          run_fmt_fix() {
+            local project="$1"
+            local manifest="$2"
+            echo "::group::fmt $project"
+            cargo fmt --manifest-path "$manifest" || true
+            echo "::endgroup::"
+          }
+
+          run_fmt_fix "robot_control_rust" "robot_control_rust/Cargo.toml"
+          run_fmt_fix "rust_micro_tools" "rust_micro_tools/Cargo.toml"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.toml" ]; then
+              run_fmt_fix "${dir%/}" "${dir}Cargo.toml"
+            fi
+          done
+
+      - name: Auto-Commit Formatting Fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: 智能修复自动代码格式化 [skip ci]"
+
+  clippy:
+    name: Clippy 静态分析
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            robot_control_rust
+            rust_micro_tools
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+      - name: Run clippy across workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail_check() {
+            local summary="$1"
+            local suggested="$2"
+            local direction="$3"
+            local inspect="$4"
+            echo "::error::$summary"
+            echo "问题摘要: $summary"
+            echo "建议命令: $suggested"
+            echo "修改方向: $direction"
+            echo "如需继续排查先看哪里: $inspect"
+            exit 1
+          }
+
+          run_clippy_check() {
+            local project="$1"
+            local manifest="$2"
+            echo "::group::clippy $project"
+            if ! cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings; then
+              fail_check \
+                "$project 的 Clippy 检查失败" \
+                "cargo clippy --fix --manifest-path $manifest --allow-dirty --allow-no-vcs" \
+                "系统拦截到存在代码异味或不良实践，请运行以上智能修复命令自动更正大部分问题！" \
+                "Clippy 日志中首个 error 或 warning 所在文件"
+            fi
+            echo "::endgroup::"
+          }
+
+          run_clippy_check "robot_control_rust" "robot_control_rust/Cargo.toml"
+          run_clippy_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.toml" ]; then
+              run_clippy_check "${dir%/}" "${dir}Cargo.toml"
+            fi
+          done
+
+  test:
+    name: 测试
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            robot_control_rust
+            rust_micro_tools
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+      - name: Run tests across workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail_check() {
+            local summary="$1"
+            local suggested="$2"
+            local direction="$3"
+            local inspect="$4"
+            echo "::error::$summary"
+            echo "问题摘要: $summary"
+            echo "建议命令: $suggested"
+            echo "修改方向: $direction"
+            echo "如需继续排查先看哪里: $inspect"
+            exit 1
+          }
+
+          run_test_check() {
+            local project="$1"
+            local manifest="$2"
+            echo "::group::test $project"
+            if ! cargo test --manifest-path "$manifest"; then
+              fail_check \
+                "$project 的测试失败" \
+                "cargo test --manifest-path $manifest" \
+                "先复现失败用例，再区分断言失败、夹具问题或平台差异" \
+                "失败测试名称和对应模块"
+            fi
+            echo "::endgroup::"
+          }
+
+          run_test_check "robot_control_rust" "robot_control_rust/Cargo.toml"
+          run_test_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.toml" ]; then
+              run_test_check "${dir%/}" "${dir}Cargo.toml"
+            fi
+          done
+
+  doc:
+    name: 文档构建
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+      - name: Build docs across workspace
+        shell: bash
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+        run: |
+          set -euo pipefail
+
+          fail_check() {
+            local summary="$1"
+            local manifest="$2"
+            local direction="$3"
+            local inspect="$4"
+            echo "::error::$summary"
+            echo "问题摘要: $summary"
+            echo "建议命令: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --manifest-path $manifest"
+            echo "修改方向: $direction"
+            echo "如需继续排查先看哪里: $inspect"
+            exit 1
+          }
+
+          run_doc_check() {
+            local project="$1"
+            local manifest="$2"
+            echo "::group::doc $project"
+            if ! cargo doc --no-deps --manifest-path "$manifest"; then
+              fail_check \
+                "$project 的文档构建失败" \
+                "$manifest" \
+                "先修复 rustdoc warning 和失效文档注释" \
+                "rustdoc 输出中的 warning 或 error"
+            fi
+            echo "::endgroup::"
+          }
+
+          run_doc_check "robot_control_rust" "robot_control_rust/Cargo.toml"
+          run_doc_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.toml" ]; then
+              run_doc_check "${dir%/}" "${dir}Cargo.toml"
+            fi
+          done

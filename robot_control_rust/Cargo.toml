@@ -1,8 +1,12 @@
 [package]
 name = "robot_control_rust"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Robot Control System - Pure Rust Implementation"
+
+[lib]
+name = "robot_control_core"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # GUI framework
@@ -34,8 +38,9 @@ thiserror = "2"
 # HTTP client for LLM API
 ureq = { version = "2", features = ["json"] }
 
-# TCP listener for MCP server
-# (uses std::net, no extra dep needed)
+# High Performance & Intelligence
+nom = "7.1"
+crossbeam-channel = "0.5"
 
 [profile.release]
 opt-level = "z"

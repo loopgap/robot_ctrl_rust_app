@@ -221,7 +221,7 @@ fn handle_request(req: McpRequest, shared: &Arc<Mutex<McpSharedState>>) -> McpRe
         "initialize" => {
             result = Some(json!({
                 "protocolVersion": "2025-11-05",
-                "serverInfo": {"name": "robot-control-mcp", "version": "0.1.0"}
+                "serverInfo": {"name": "robot-control-mcp", "version": "0.1.1"}
             }));
         }
         _ => {

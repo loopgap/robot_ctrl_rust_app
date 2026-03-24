@@ -564,22 +564,12 @@ struct VersionTriplet {
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 struct UpdateManifest {
     latest_version: String,
     channel: String,
     notes_url: String,
     min_supported_version: String,
-}
-
-impl Default for UpdateManifest {
-    fn default() -> Self {
-        Self {
-            latest_version: String::new(),
-            channel: String::new(),
-            notes_url: String::new(),
-            min_supported_version: String::new(),
-        }
-    }
 }
 
 fn parse_version_triplet(text: &str) -> Option<VersionTriplet> {
@@ -2450,7 +2440,10 @@ mod tests {
         assert!(s2.ui.analysis_filter_info);
         assert_eq!(s2.ui.prefs_autosave_interval_sec, 9);
         assert_eq!(s2.ui.update_channel, "preview-0.1");
-        assert_eq!(s2.ui.update_manifest_url, "https://example.com/manifest.json");
+        assert_eq!(
+            s2.ui.update_manifest_url,
+            "https://example.com/manifest.json"
+        );
         assert_eq!(s2.ui.update_check_timeout_ms, 2600);
 
         let _ = fs::remove_file(path);

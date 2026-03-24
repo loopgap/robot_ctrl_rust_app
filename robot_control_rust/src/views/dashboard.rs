@@ -61,13 +61,13 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }),
         );
         ui.label(
-            RichText::new(state.update_status_summary()).size(12.0).color(
-                if state.update_available {
+            RichText::new(state.update_status_summary())
+                .size(12.0)
+                .color(if state.update_available {
                     Color32::from_rgb(255, 200, 120)
                 } else {
                     Color32::from_rgb(170, 180, 200)
-                },
-            ),
+                }),
         );
         ui.label(
             RichText::new(format!(
@@ -201,10 +201,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             } else {
                 "⬆ Check Updates"
             };
-            if ui
-                .button(RichText::new(update_text).size(14.0))
-                .clicked()
-            {
+            if ui.button(RichText::new(update_text).size(14.0)).clicked() {
                 let url = state.trigger_update_check();
                 ui.ctx().open_url(egui::OpenUrl { url, new_tab: true });
             }

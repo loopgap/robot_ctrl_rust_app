@@ -103,7 +103,7 @@ impl LqrController {
 
     /// 求解二阶系统 Riccati 方程的解析解
     ///
-    /// A = [[0, 1], [0, 0]], B = [[0], [1/m]]
+    /// A = \[\[0, 1\], \[0, 0\]\], B = \[\[0\], \[1/m\]\]
     /// 解析求解 P 矩阵后 K = R⁻¹ B^T P
     pub fn compute_gains(&mut self) {
         let b = 1.0 / self.mass;

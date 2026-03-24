@@ -1,0 +1,158 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  push:
+    branches: [main, master]
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - 'deny.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AUDIT_DB_PATH: ${{ github.workspace }}/.cargo-advisory-db
+
+jobs:
+  audit:
+    name: 安全与依赖策略检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Run security audit across workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail_check() {
+            local summary="$1"
+            local suggested="$2"
+            local direction="$3"
+            local inspect="$4"
+            echo "::error::$summary"
+            echo "问题摘要: $summary"
+            echo "建议命令: $suggested"
+            echo "修改方向: $direction"
+            echo "如需继续排查先看哪里: $inspect"
+            exit 1
+          }
+
+          classify_audit_failure() {
+            local output="$1"
+            local lockfile="$2"
+            if grep -qi "advisory" <<<"$output"; then
+              fail_check \
+                "依赖存在已知漏洞" \
+                "cargo audit -d $AUDIT_DB_PATH -f $lockfile" \
+                "优先升级受影响依赖，必要时更新锁文件" \
+                "audit 输出中的 advisory ID 和受影响依赖"
+            elif grep -qi "could not find" <<<"$output"; then
+              fail_check \
+                "安全工具缺失或环境未就绪" \
+                "cargo install cargo-audit cargo-deny" \
+                "先补齐工具链，再重新运行 audit 工作流" \
+                "工具安装日志和 Rust toolchain 配置"
+            else
+              fail_check \
+                "安全审计失败" \
+                "cargo audit -d $AUDIT_DB_PATH -f $lockfile" \
+                "检查依赖解析、网络访问和 Cargo.lock 状态" \
+                "audit 原始输出中的首个 error"
+            fi
+          }
+
+          run_audit_check() {
+            local project="$1"
+            local lockfile="$2"
+            local output
+            echo "::group::audit $project"
+            if ! output=$(cargo audit -d "$AUDIT_DB_PATH" -f "$lockfile" 2>&1); then
+              echo "$output"
+              classify_audit_failure "$output" "$lockfile"
+            fi
+            echo "$output"
+            echo "::endgroup::"
+          }
+
+          run_audit_check "robot_control_rust" "robot_control_rust/Cargo.lock"
+          run_audit_check "rust_micro_tools" "rust_micro_tools/Cargo.lock"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.lock" ]; then
+              run_audit_check "${dir%/}" "${dir}Cargo.lock"
+            fi
+          done
+
+      - name: Run dependency policy checks across workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail_check() {
+            local summary="$1"
+            local suggested="$2"
+            local direction="$3"
+            local inspect="$4"
+            echo "::error::$summary"
+            echo "问题摘要: $summary"
+            echo "建议命令: $suggested"
+            echo "修改方向: $direction"
+            echo "如需继续排查先看哪里: $inspect"
+            exit 1
+          }
+
+          classify_deny_failure() {
+            local output="$1"
+            local manifest="$2"
+            if grep -qi "unknown source" <<<"$output"; then
+              fail_check \
+                "依赖来源不被策略允许" \
+                "cargo deny check sources --config deny.toml --manifest-path $manifest" \
+                "确认 registry 或 git 源是否应加入允许列表" \
+                "deny 输出中的 source 规则与依赖来源"
+            elif grep -qi "advisories" <<<"$output" || grep -qi "bans" <<<"$output"; then
+              fail_check \
+                "依赖策略检查未通过" \
+                "cargo deny check advisories bans sources --config deny.toml --manifest-path $manifest" \
+                "升级依赖、调整白名单例外，或重新生成锁文件" \
+                "deny 输出中的 crate、规则和冲突说明"
+            else
+              fail_check \
+                "cargo-deny 执行失败" \
+                "cargo deny check advisories bans sources --config deny.toml --manifest-path $manifest" \
+                "检查 deny.toml、Cargo.lock 和工具安装状态" \
+                "deny 原始输出中的首个 error"
+            fi
+          }
+
+          run_deny_check() {
+            local project="$1"
+            local project_dir="$2"
+            local output
+            echo "::group::deny $project"
+            if ! output=$(cd "$project_dir" && cargo deny check advisories bans sources --config "$GITHUB_WORKSPACE/deny.toml" 2>&1); then
+              echo "$output"
+              classify_deny_failure "$output" "$project_dir"
+            fi
+            echo "$output"
+            echo "::endgroup::"
+          }
+
+          run_deny_check "robot_control_rust" "robot_control_rust"
+          run_deny_check "rust_micro_tools" "rust_micro_tools"
+          for dir in rust_indie_tools/*/; do
+            if [ -f "${dir}Cargo.toml" ]; then
+              run_deny_check "${dir%/}" "${dir%/}"
+            fi
+          done
