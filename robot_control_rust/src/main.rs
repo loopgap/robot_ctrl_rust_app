@@ -1,1 +1,1 @@
-﻿// Temporary main.rs - original file had encoding issues
+fn main() { println!("placeholder"); }
