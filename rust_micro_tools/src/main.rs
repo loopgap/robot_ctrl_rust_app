@@ -31,7 +31,7 @@ struct Args {
 
 fn main() -> eframe::Result<()> {
     let args = Args::parse();
-    
+
     if args.gui || (!args.port.is_some() && !args.doctor) {
         run_gui();
     } else {
