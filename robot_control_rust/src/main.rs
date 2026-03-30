@@ -1,1 +1,3 @@
-fn main() { println!("placeholder"); }
+fn main() {
+    println!("placeholder");
+}
