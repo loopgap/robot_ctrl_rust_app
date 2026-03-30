@@ -61,7 +61,7 @@ pub struct ToolSuiteApp {
 
 impl Default for ToolSuiteApp {
     fn default() -> Self {
-        let prefs = load_preferences();
+        let prefs = load_preferences().unwrap_or_default();
         Self {
             language: prefs.language,
             active: ActiveTool::Checksum,
@@ -78,7 +78,7 @@ impl Default for ToolSuiteApp {
 
 impl ToolSuiteApp {
     fn persist_preferences(&self) {
-        save_preferences(&AppPreferences {
+        let _ = save_preferences(&AppPreferences {
             language: self.language,
         });
     }

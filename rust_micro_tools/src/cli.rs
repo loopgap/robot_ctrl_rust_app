@@ -89,7 +89,7 @@ pub fn run_cli(cli: Cli) {
                 "{} {} @ {} baud",
                 "Device locked:".green(),
                 selected_port.bold(),
-                selected_baud.blue()
+                format!("{}", selected_baud).blue()
             );
 
             let pb = indicatif::ProgressBar::new_spinner();
@@ -98,7 +98,7 @@ pub fn run_cli(cli: Cli) {
 
             match serialport::new(&selected_port, selected_baud)
                 .timeout(Duration::from_secs(3))
-                .connect()
+                .open()
             {
                 Ok(_port) => {
                     pb.finish_with_message("Connection successful!");

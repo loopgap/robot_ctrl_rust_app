@@ -19,7 +19,7 @@ use theme::apply_theme;
 #[command(name = "rust_micro_tools")]
 #[command(about = "Rust Micro Tools Suite", long_about = None)]
 struct Args {
-    #[arg(long, short = "g")]
+    #[arg(long, short = 'g')]
     gui: bool,
     #[arg(short, long)]
     port: Option<String>,
@@ -32,8 +32,8 @@ struct Args {
 fn main() -> eframe::Result<()> {
     let args = Args::parse();
 
-    if args.gui || (!args.port.is_some() && !args.doctor) {
-        run_gui();
+    if args.gui || args.port.is_none() {
+        run_gui()
     } else {
         let cli = cli::Cli {
             command: if args.doctor {
