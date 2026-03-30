@@ -1,6 +1,6 @@
 [package]
 name = "jwt_inspector_gui"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [dependencies]
@@ -15,3 +15,4 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+

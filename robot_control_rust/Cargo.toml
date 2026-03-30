@@ -1,6 +1,6 @@
-﻿[package]
+[package]
 name = "robot_control_rust"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Robot Control System - Pure Rust Implementation"
 
@@ -64,3 +64,4 @@ opt-level = 1
 debug = 0
 strip = true
 incremental = false
+
