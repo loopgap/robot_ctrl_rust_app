@@ -16,6 +16,7 @@ permissions:
 
 env:
   AUDIT_DB_PATH: ${{ github.workspace }}/.cargo-advisory-db
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   audit:
@@ -26,10 +27,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        run: cargo install --locked cargo-audit
 
       - name: Install cargo-deny
-        run: cargo install cargo-deny
+        run: cargo install --locked cargo-deny
 
       - name: Run security audit across workspace
         shell: bash

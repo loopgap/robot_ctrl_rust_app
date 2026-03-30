@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eframe = { version = "0.31", features = ["default"] }
 egui = "0.31"
-rust_indie_tools_core = { path = "../rust_indie_tools_core" }
+rust_indie_tools_core = { version = "0.1.4", path = "../rust_indie_tools_core" }
 
 [profile.release]
 opt-level = "z"

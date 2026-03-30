@@ -2,7 +2,8 @@
 targets = []
 
 [advisories]
-unmaintained = "deny"
+# cargo-deny >= 0.19 expects unmaintained scope values.
+unmaintained = "workspace"
 yanked = "deny"
 ignore = [
     # Known indirect dependencies that cannot be upgraded yet
@@ -17,3 +18,4 @@ highlight = "all"
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
