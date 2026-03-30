@@ -6,7 +6,7 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "micro_tools_cli")]
-#[command(about = "Rust Micro Tools Suite - Intelligent Interactive CLI", long_about = None)]
+#[command(about = "Rust Micro Tools Suite", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -14,38 +14,33 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// 交互式探测并连接串口 (Interactive serial port connection)
     Connect {
-        /// 指定端口名 (如果不填则进入智能补全与选择)
         #[arg(short, long)]
         port: Option<String>,
-        /// 指定波特率 (如果不填则智能推荐)
         #[arg(short, long)]
         baud: Option<u32>,
     },
-    /// 排障与自检助理 (Troubleshooting assistant)
     Doctor,
 }
 
 pub fn run_cli(cli: Cli) {
     match cli.command {
         Some(Commands::Connect { port, baud }) => {
-            println!("{}", "🚀 启动智能设备感知模块...".cyan().bold());
-
-            // 智能感知端口
+            println!("{}", "Starting device discovery...".cyan().bold());
             let selected_port = match port {
                 Some(p) => p,
                 None => {
-                    let ports = available_ports().unwrap_or_else(|_| vec![]);
+                    let ports = match available_ports() {
+                        Ok(p) => p,
+                        Err(e) => {
+                            eprintln!("{}", format!("Failed to enumerate ports: {}", e).red());
+                            println!("{}", "Check driver or run doctor.".yellow());
+                            return;
+                        }
+                    };
+
                     if ports.is_empty() {
-                        println!(
-                            "{}",
-                            "❌ 未检测到任何可用的串口设备，请检查是否已插入并安装驱动。".red()
-                        );
-                        println!(
-                            "{}",
-                            "💡 提示: 运行 `micro_tools_cli doctor` 进行深度排障。".yellow()
-                        );
+                        println!("{}", "No serial ports found.".red());
                         return;
                     }
 
@@ -59,64 +54,153 @@ pub fn run_cli(cli: Cli) {
                         options.push(format!("{} - {}", name, desc));
                     }
 
-                    // 交互式下拉选择
-                    let ans = Select::new("📡 检测到多个设备，请选择目标设备(支持搜索):", options)
-                        .prompt();
+                    let ans = Select::new("Select device:", options).prompt();
 
                     match ans {
-                        Ok(choice) => choice.split(" - ").next().unwrap().to_string(),
+                        Ok(choice) => {
+                            choice.split(" - ").next()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| {
+                                    println!("{}", "Port parse failed, using default".yellow());
+                                    "COM1".to_string()
+                                })
+                        }
                         Err(_) => {
-                            println!("{}", "⚠️ 已取消选择".yellow());
+                            println!("{}", "Selection cancelled".yellow());
                             return;
                         }
                     }
                 }
             };
 
-            // 智能推荐波特率
             let selected_baud = match baud {
                 Some(b) => b,
                 None => {
-                    let default_options = vec!["115200 (常用/推荐)", "9600", "460800", "921600"];
-                    let ans = Select::new("⚙️ 请选择通信波特率:", default_options).prompt();
+                    let default_options = vec!["115200", "9600", "460800", "921600"];
+                    let ans = Select::new("Select baud rate:", default_options).prompt();
                     match ans {
-                        Ok(choice) => {
-                            let b_str = choice.split(' ').next().unwrap();
-                            b_str.parse::<u32>().unwrap_or(115200)
-                        }
+                        Ok(choice) => choice.parse::<u32>().unwrap_or(115200),
                         Err(_) => 115200,
                     }
                 }
             };
 
-            println!(
-                "{} {} {}",
-                "✅ 已锁定设备:".green(),
-                selected_port.bold(),
-                format!("@ {} baud", selected_baud).blue()
-            );
+            println!("{} {} @ {} baud", "Device locked:".green(), selected_port.bold(), selected_baud.blue());
 
-            // 进度动画模拟连接
             let pb = indicatif::ProgressBar::new_spinner();
             pb.enable_steady_tick(Duration::from_millis(120));
-            pb.set_message(format!("尝试握手协议并在 {} 探测响应...", selected_port));
+            pb.set_message(format!("Connecting to {} ...", selected_port));
 
-            std::thread::sleep(Duration::from_secs(2)); // mock connect delay
-
-            pb.finish_with_message("🎉 连接成功！正在启动底层零拷贝通信管道...");
+            match serialport::new(&selected_port, selected_baud)
+                .timeout(Duration::from_secs(3))
+                .connect() {
+                Ok(_port) => {
+                    pb.finish_with_message("Connection successful!");
+                    println!("{}", "Device connected.".green());
+                }
+                Err(e) => {
+                    pb.finish_with_message("Connection failed");
+                    eprintln!("{}", format!("Cannot connect to {}: {}", selected_port, e).red());
+                }
+            }
         }
         Some(Commands::Doctor) => {
-            println!("{}", "🩺 智能排障系统启动...".magenta().bold());
-            println!("- 检查驱动权限... 行");
-            println!("- 检查日志分析... 无异常崩溃记录");
-            println!(
-                "{}",
-                "💡 如果串口仍然无法打开，请确保未被其它终端 (如 Putty/SSCOM) 占用。".yellow()
-            );
+            println!("{}", "Troubleshooting system started...".magenta().bold());
+
+            match available_ports() {
+                Ok(ports) => {
+                    if ports.is_empty() {
+                        println!("{}", "No serial devices detected".yellow());
+                    } else {
+                        println!("{}", format!("Driver check: {} devices found", ports.len()).green());
+                        for port in &ports {
+                            println!("  - {} ({})", port.port_name,
+                                match port.port_type {
+                                    serialport::SerialPortType::UsbPort(_) => "USB",
+                                    serialport::SerialPortType::PciPort => "PCI",
+                                    serialport::SerialPortType::BluetoothPort => "Bluetooth",
+                                    serialport::SerialPortType::Unknown => "Unknown",
+                                }
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{}", format!("Driver enumeration failed: {}", e).red());
+                }
+            }
+
+            println!();
+            check_system_logs();
+
+            println!("{}", "Check if port is occupied.".yellow());
         }
         None => {
-            // 如果无参数，提示进入 GUI 模式
-            println!("{}", "ℹ️ 命令行无匹配动作，即将拉起图形化 (GUI) ...".cyan());
+            println!("{}", "No command, launching GUI...".cyan());
+        }
+    }
+}
+
+fn check_system_logs() {
+    println!("{}", "Checking system logs...".cyan());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+
+        let output = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "echo NoLogs"])
+            .output();
+
+        match output {
+            Ok(result) => {
+                let stdout = String::from_utf8_lossy(&result.stdout);
+                if stdout.trim().is_empty() || stdout.trim() == "NoLogs" {
+                    println!("{}", "No serial-related errors found".green());
+                } else {
+                    println!("{}", "Found related logs:".yellow());
+                    for line in stdout.lines().take(5) {
+                        println!("  {}", line.trim());
+                    }
+                }
+            }
+            Err(_) => {
+                println!("{}", "Cannot read system logs".yellow());
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::process::Command;
+
+        let output = Command::new("dmesg")
+            .args(["--level=err", "-t"])
+            .output();
+
+        match output {
+            Ok(result) => {
+                let stdout = String::from_utf8_lossy(&result.stdout);
+                let serial_errors: Vec<_> = stdout.lines()
+                    .filter(|line| {
+                        let lower = line.to_lowercase();
+                        lower.contains("usb") || lower.contains("serial") || lower.contains("tty")
+                    })
+                    .take(5)
+                    .collect();
+
+                if serial_errors.is_empty() {
+                    println!("{}", "No serial errors in kernel log".green());
+                } else {
+                    println!("{}", "Found kernel logs:".yellow());
+                    for line in serial_errors {
+                        println!("  {}", line);
+                    }
+                }
+            }
+            Err(_) => {
+                println!("{}", "Cannot read kernel log".yellow());
+            }
         }
     }
 }

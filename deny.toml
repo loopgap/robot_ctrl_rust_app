@@ -2,13 +2,16 @@
 targets = []
 
 [advisories]
-unmaintained = "workspace"
+unmaintained = "deny"
 yanked = "deny"
-ignore = []
+ignore = [
+    # Known indirect dependencies that cannot be upgraded yet
+    # Add specific advisory IDs as needed: { id = "RUSTSEC-XXXX-XXXX" }
+]
 
 [bans]
 multiple-versions = "warn"
-wildcards = "allow"
+wildcards = "deny"
 highlight = "all"
 
 [sources]

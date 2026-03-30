@@ -60,3 +60,18 @@ __pycache__/
 # Keep installer outputs only if explicitly needed
 *.7z
 *.zip
+
+
+# Swap files (vim, others)
+*.swp
+*.swo
+*~*
+
+# Local environment overrides
+.env.local
+
+# Code coverage
+coverage/
+
+# Profiling data
+*.profraw

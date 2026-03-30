@@ -18,24 +18,32 @@ impl Default for AppPreferences {
     }
 }
 
-pub fn load_preferences() -> AppPreferences {
+pub fn load_preferences() -> Result<AppPreferences, String> {
     let path = prefs_path();
-    let content = match fs::read_to_string(path) {
-        Ok(v) => v,
-        Err(_) => return AppPreferences::default(),
-    };
-
-    serde_json::from_str(&content).unwrap_or_default()
+    
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read preferences file {}: {}", path.display(), e))?;
+    
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse preferences: {}", e))
+        .or_else(|_| {
+            eprintln!("Warning: Preferences file corrupted, using defaults");
+            Ok(AppPreferences::default())
+        })
 }
-
-pub fn save_preferences(prefs: &AppPreferences) {
+pub fn save_preferences(prefs: &AppPreferences) -> Result<(), String> {
     let path = prefs_path();
+    
     if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
-    if let Ok(json) = serde_json::to_string_pretty(prefs) {
-        let _ = fs::write(path, json);
-    }
+    
+    let json = serde_json::to_string_pretty(prefs)
+        .map_err(|e| format!("Failed to serialize preferences: {}", e))?;
+    
+    fs::write(&path, json)
+        .map_err(|e| format!("Failed to write preferences file {}: {}", path.display(), e))
 }
 
 fn prefs_path() -> PathBuf {

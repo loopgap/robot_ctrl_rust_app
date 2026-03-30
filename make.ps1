@@ -6,7 +6,7 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("check", "fmt", "fmt-check", "clippy", "test", "test-release",
+    [ValidateSet("all", "check", "fmt", "fmt-check", "clippy", "test", "test-release",
                  "build", "release", "doc", "audit", "clean", "preflight", "help")]
     [string]$Target = "help"
 )
@@ -55,6 +55,15 @@ function Invoke-ForEachProject {
 }
 
 switch ($Target) {
+		"all" {
+		Write-Header "Run all checks (fmt-check + clippy + test + build)"
+		& $PSCommandPath fmt-check
+		& $PSCommandPath clippy
+		& $PSCommandPath test
+		& $PSCommandPath build
+		Write-Host "`nAll checks passed." -ForegroundColor Green
+		}
+
     "fmt" {
         Write-Header "Format code"
         Invoke-ForEachProject -Action { param($Project)
@@ -221,6 +230,7 @@ switch ($Target) {
   Usage: .\make.ps1 <target>
 
   Targets:
+    all          fmt-check + clippy + test + build
     check        format + clippy + test
     fmt          format all Rust projects
     fmt-check    verify formatting without rewriting files
