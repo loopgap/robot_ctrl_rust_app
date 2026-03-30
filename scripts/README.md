@@ -34,6 +34,18 @@
 .\scripts\review.ps1 -Project robot_control_rust
 ```
 
+### 3. 版本与发布
+
+```powershell
+# 仅创建版本提交与 tag（不推送）
+.\scripts\smart-bump.ps1 -Part patch
+
+# 创建后立即推送分支和 tag
+.\scripts\smart-bump.ps1 -Part patch -Push
+```
+
+`smart-bump.ps1` 默认只允许在 `main/master` 上执行，并会阻止重复 tag。
+
 ## Git Hooks说明
 
 ### Pre-commit（提交前）

@@ -13,153 +13,131 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: 构建 ${{ matrix.project }} / ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - project: robot_control_rust
-            binary: robot_control_rust
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
-          - project: rust_micro_tools
-            binary: rust_micro_tools
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
-          - project: robot_control_rust
-            binary: robot_control_rust
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - project: rust_micro_tools
-            binary: rust_micro_tools
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - project: robot_control_rust
-            binary: robot_control_rust
-            os: macos-latest
-            target: aarch64-apple-darwin
-            ext: ""
-          - project: rust_micro_tools
-            binary: rust_micro_tools
-            os: macos-latest
-            target: aarch64-apple-darwin
-            ext: ""
-          - project: robot_control_rust
-            binary: robot_control_rust
-            os: macos-latest
-            target: x86_64-apple-darwin
-            ext: ""
-          - project: rust_micro_tools
-            binary: rust_micro_tools
-            os: macos-latest
-            target: x86_64-apple-darwin
-            ext: ""
+  verify-tag:
+    name: Verify Tag Policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate tag format and branch ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Invalid tag format: $TAG"
+            exit 1
+          fi
 
+          git fetch origin main master --quiet || true
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            git merge-base --is-ancestor HEAD origin/main && exit 0
+          fi
+          if git show-ref --verify --quiet refs/remotes/origin/master; then
+            git merge-base --is-ancestor HEAD origin/master && exit 0
+          fi
+
+          echo "::error::Tag commit is not on main/master history"
+          exit 1
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: verify-tag
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            robot_control_rust
-            rust_micro_tools
-
+          components: clippy
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-
-      - name: Build release binary
-        shell: bash
-        run: |
-          set -euo pipefail
-          manifest="${{ matrix.project }}/Cargo.toml"
-          if ! cargo build --release --manifest-path "$manifest" --target "${{ matrix.target }}"; then
-            echo "::error::${{ matrix.project }} 在 ${{ matrix.target }} 上构建失败"
-            echo "问题摘要: ${{ matrix.project }} 在 ${{ matrix.target }} 上的 Release 构建失败"
-            echo "建议命令: cargo build --release --manifest-path $manifest --target ${{ matrix.target }}"
-            echo "修改方向: 优先检查系统依赖、目标三元组安装状态和 release-only 代码路径"
-            echo "如需继续排查先看哪里: 构建日志中首个 error，尤其是缺失系统库或 target 配置"
-            exit 1
-          fi
-
-      - name: Package artifacts (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          source_path="${{ matrix.project }}/target/${{ matrix.target }}/release/${{ matrix.binary }}${{ matrix.ext }}"
-          if [ ! -f "$source_path" ]; then
-            echo "::error::未找到构建产物 $source_path"
-            echo "问题摘要: 打包前未找到 ${{ matrix.project }} 的产物"
-            echo "建议命令: ls -R ${{ matrix.project }}/target/${{ matrix.target }}/release"
-            echo "修改方向: 先确认 binary 名称、target 路径和构建步骤是否一致"
-            echo "如需继续排查先看哪里: Cargo.toml 的包名与 release 目录"
-            exit 1
-          fi
-          cp "$source_path" "dist/${{ matrix.binary }}${{ matrix.ext }}"
-          cd dist
-          tar czf "../${{ matrix.binary }}-${{ github.ref_name }}-${{ matrix.target }}.tar.gz" "${{ matrix.binary }}${{ matrix.ext }}"
-
-      - name: Package artifacts (Windows)
-        if: runner.os == 'Windows'
+      - name: Run preflight checks
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist
-          $sourcePath = "${{ matrix.project }}\target\${{ matrix.target }}\release\${{ matrix.binary }}${{ matrix.ext }}"
-          if (-not (Test-Path $sourcePath)) {
-            Write-Host "::error::未找到构建产物 $sourcePath"
-            Write-Host "问题摘要: 打包前未找到 ${{ matrix.project }} 的产物"
-            Write-Host "建议命令: Get-ChildItem ${{ matrix.project }}\target\${{ matrix.target }}\release"
-            Write-Host "修改方向: 先确认 binary 名称、target 路径和构建步骤是否一致"
-            Write-Host "如需继续排查先看哪里: Cargo.toml 的包名与 release 目录"
-            exit 1
-          }
-          Copy-Item $sourcePath dist\
-          Compress-Archive -Path "dist\${{ matrix.binary }}${{ matrix.ext }}" -DestinationPath "${{ matrix.binary }}-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          ./make.ps1 preflight
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.binary }}-${{ matrix.target }}
-          path: |
-            *.tar.gz
-            *.zip
-
-  release:
-    name: 发布 Release
-    needs: build
-    runs-on: ubuntu-latest
+  build-windows-assets:
+    name: Build Windows Release Assets
+    runs-on: windows-latest
+    needs: quality-gate
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Generate checksums
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build robot_control_rust.exe
+        shell: pwsh
         run: |
-          cd artifacts
-          sha256sum *.tar.gz *.zip 2>/dev/null > checksums-sha256.txt || true
-          cat checksums-sha256.txt
+          cargo build --release --manifest-path robot_control_rust/Cargo.toml
+      - name: Smoke test executable launch
+        shell: pwsh
+        run: |
+          $exe = 'robot_control_rust\target\release\robot_control_rust.exe'
+          if (-not (Test-Path $exe)) {
+            throw "Missing executable: $exe"
+          }
 
+          $proc = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 3
+          if (-not $proc.HasExited) {
+            Stop-Process -Id $proc.Id -Force
+          }
+
+          if ((Get-Item $exe).Length -lt 3MB) {
+            throw "Executable size check failed: too small to be a valid release binary"
+          }
+      - name: Build installer (Setup.exe)
+        shell: pwsh
+        run: |
+          ./robot_control_rust/scripts/package_windows_x64_iexpress_installer.ps1 -SkipBuild
+      - name: Collect release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release_artifacts | Out-Null
+          $exe = 'robot_control_rust\target\release\robot_control_rust.exe'
+          $setup = Get-ChildItem 'robot_control_rust\dist\windows-x64\installer\*_Setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) {
+            throw 'Setup.exe not found under robot_control_rust/dist/windows-x64/installer'
+          }
+
+          Copy-Item $exe 'release_artifacts\robot_control_rust.exe'
+          Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
+
+          Push-Location release_artifacts
+          Get-FileHash -Algorithm SHA256 robot_control_rust.exe, RobotControlSuite_Setup.exe |
+            ForEach-Object { "$($_.Hash.ToLower())  $($_.Path | Split-Path -Leaf)" } |
+            Set-Content -Path checksums-sha256.txt -Encoding utf8
+          Pop-Location
+      - name: Upload Windows release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets
+          path: release_artifacts/*
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-windows-assets
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release-assets
+          path: artifacts
+      - name: Verify required assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifacts/robot_control_rust.exe
+          test -f artifacts/RobotControlSuite_Setup.exe
+          test -f artifacts/checksums-sha256.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
-          files: |
-            artifacts/*
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            artifacts/robot_control_rust.exe
+            artifacts/RobotControlSuite_Setup.exe
+            artifacts/checksums-sha256.txt

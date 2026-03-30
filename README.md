@@ -12,7 +12,7 @@
 
 ## 🌟 最新核心特性 (Features)
 
-- **智能 Git 工作流**：新增 `smart-bump.ps1` 支持 Semantic Versioning 自动升号与全量生成 Changelog，CI 携带自动修复 (Auto-fix) 和自动推回功能。
+- **智能 Git 工作流**：`smart-bump.ps1` 支持 SemVer 升号、annotated tag 和发布说明草稿生成。
 - **极致性能 UI**：弃用冗余的 Web GUI，使用纯原生的 `egui` (即时模式渲染硬件加速) 提供高达 144Hz 的无损实时波形渲染，极大减少内存占用。
 - **智能排障与设备感知 CLI**：
   - 微型工具新增“交互式 TUI 命令接口 (`rust_micro_tools`)”，用户无需记忆繁杂命令即可一键补全、智能查找设备接口，体验炫酷的渐变彩色动画。
@@ -44,9 +44,9 @@
 
 | 工作流 | 触发条件 | 智能特性概览 |
 |--------|----------|------|
-| **CI** | PR / push 到 `main`/`develop` | 格式检查、Clippy 分析并具备**全自动修改 (Auto-fix) 并重定向推回**的能力 |
+| **CI** | PR / push 到 `main`/`develop` | 格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | `cargo-audit` 与 `cargo-deny` 严格门禁 |
-| **Release** | push tag `v*` | 全自动化跨平台打包为多个压缩文件并打入自动提取的 Changelog 信息 |
+| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust.exe`、`Setup.exe`、`checksums-sha256.txt`） |
 
 ### 本地终端与交互测试
 
@@ -55,7 +55,10 @@
 ```powershell
 # Windows PowerShell
 .\make.ps1 check
-.\scripts\smart-bump.ps1 -Project All # 智能跨越版本并撰写 README
+.\scripts\smart-bump.ps1 -Part patch
+
+# 在确认无误后推送分支和 tag（将触发 Release 工作流）
+.\scripts\smart-bump.ps1 -Part patch -Push
 
 # 直接调用交互式终端：
 cd rust_micro_tools
@@ -76,3 +79,10 @@ cargo run -- connect
 ## Git Hooks
 
 运行 `.\scripts\install-hooks.ps1` 安装本地钩子。钩子会在提交或推送前执行工作流校验和性能退化拦截，让你不再“瞎猜”哪行代码引发了卡顿。
+
+## 发布流程
+
+1. 在 `main/master` 分支完成并通过 `.\make.ps1 preflight`。
+2. 执行 `.\scripts\smart-bump.ps1 -Part patch` 生成版本提交与 tag。
+3. 推送分支与 tag，触发 Release 工作流。
+4. 在 Release 页面验证三个必需资产：`robot_control_rust.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。

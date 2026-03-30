@@ -65,3 +65,16 @@
 ## 5. 持续改进
 
 本项目鼓励“文档即代码”。如果发现 `route.md` 或自动化脚本有不完善之处，应优先发起针对规范本身的优化 PR。
+
+---
+
+## 6. 发布治理规范 (Tag & Release Governance)
+
+- **Tag 规范**：仅允许在 `main/master` 产生 `vMAJOR.MINOR.PATCH`（可扩展 `-rc.N` 预发布后缀）。
+- **本地前置**：打 tag 前必须通过 `.\make.ps1 preflight`。
+- **发布入口**：使用 `.\scripts\smart-bump.ps1` 完成升号、annotated tag 和发布说明草稿。
+- **Release 必需资产**：
+  - `robot_control_rust.exe`
+  - `RobotControlSuite_Setup.exe`
+  - `checksums-sha256.txt`
+- **质量门禁**：Release 流水线必须包含 tag 策略校验、Windows 可执行文件 smoke test、哈希清单生成。
