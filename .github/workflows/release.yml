@@ -142,7 +142,11 @@ jobs:
             $stdoutPath = Join-Path $logDir ("$Name.stdout.log")
             $stderrPath = Join-Path $logDir ("$Name.stderr.log")
 
-            $proc = Start-Process -FilePath $exe -ArgumentList $Arguments -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+            if ($null -eq $Arguments -or $Arguments.Count -eq 0) {
+              $proc = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+            } else {
+              $proc = Start-Process -FilePath $exe -ArgumentList $Arguments -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+            }
             $exited = $proc.WaitForExit($TimeoutSeconds * 1000)
 
             if ($exited) {
@@ -160,7 +164,7 @@ jobs:
 
           Invoke-SmokeCase -Name 'version_arg' -Arguments @('--version') -TimeoutSeconds 8
           Invoke-SmokeCase -Name 'help_arg' -Arguments @('--help') -TimeoutSeconds 8
-          Invoke-SmokeCase -Name 'plain_start' -Arguments @() -TimeoutSeconds 10
+          Invoke-SmokeCase -Name 'plain_start' -TimeoutSeconds 10
 
           if ((Get-Item $exe).Length -lt 3MB) {
             throw "Executable size check failed: too small to be a valid release binary"
