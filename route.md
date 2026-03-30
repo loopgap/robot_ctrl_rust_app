@@ -78,3 +78,4 @@
   - `RobotControlSuite_Setup.exe`
   - `checksums-sha256.txt`
 - **质量门禁**：Release 流水线必须包含 tag 策略校验、Windows 可执行文件 smoke test、哈希清单生成。
+- **回滚机制**：发布失败时优先使用 `scripts/smart-rollback.ps1` 进行 tag/release/版本提交回滚。

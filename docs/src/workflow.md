@@ -132,14 +132,20 @@ chmod +x ./scripts/preflight.sh && ./scripts/preflight.sh
 ### 版本智能升级
 
 ```powershell
-# 智能跨越版本并生成 Changelog
-.\scripts\smart-bump.ps1 -Project All
+# 生成版本提交和 tag
+.\scripts\smart-bump.ps1 -Part patch
+
+# 推送分支和 tag（按需跳过本地 pre-push）
+.\scripts\smart-bump.ps1 -Part patch -Push -NoVerify
+
+# 失败回滚
+.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
 ```
 
 支持：
 - Semantic Versioning 自动升号
-- 全量 Changelog 生成
-- 自动推送到远程
+- Release notes 草稿生成
+- Annotated tag 生成
 
 ## CI/CD 流水线
 
@@ -147,9 +153,9 @@ chmod +x ./scripts/preflight.sh && ./scripts/preflight.sh
 
 | 工作流 | 触发条件 | 核心能力 |
 |--------|----------|----------|
-| **CI** | PR / push 到 main/develop | 格式检查、Clippy 分析、Auto-fix 并推回 |
+| **CI** | PR / push 到 main/develop | 格式检查、Clippy、测试、文档阻断 |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | cargo-audit 与 cargo-deny 门禁 |
-| **Release** | push tag v* | 全自动化跨平台打包与 Changelog 生成 |
+| **Release** | push tag v* | Tag 校验、质量门禁、Windows 资产发布（exe/setup/checksums） |
 
 ### CI 工作流详情
 

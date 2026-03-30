@@ -36,6 +36,10 @@
 
 - [开发与工作流说明](workflow.md)
 
+- [发布操作手册](operations-release.md)
+
+- [回滚操作手册](operations-rollback.md)
+
 - [贡献指南](contributing.md)
 
 - [智能排障百科 (Troubleshooting)](troubleshooting.md)

@@ -86,3 +86,9 @@ cargo run -- connect
 2. 执行 `.\scripts\smart-bump.ps1 -Part patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
 4. 在 Release 页面验证三个必需资产：`robot_control_rust.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
+
+发布失败可用以下命令回滚：
+
+```powershell
+.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
+```

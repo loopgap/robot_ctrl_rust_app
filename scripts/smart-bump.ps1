@@ -13,6 +13,7 @@ param(
 	[ValidateSet("patch", "minor", "major")]
 	[string]$Part = "patch",
 	[switch]$Push,
+	[switch]$NoVerify,
 	[switch]$AllowDirty,
 	[switch]$NoTag
 )
@@ -109,6 +110,18 @@ function Ensure-TagNotExists([string]$tagName) {
 	}
 }
 
+function Invoke-Git {
+	param(
+		[Parameter(Mandatory = $true)][string]$Command,
+		[string]$ErrorMessage = "Git command failed"
+	)
+
+	Invoke-Expression $Command
+	if ($LASTEXITCODE -ne 0) {
+		throw "$ErrorMessage (exit=$LASTEXITCODE): $Command"
+	}
+}
+
 Ensure-CleanWorktree -AllowDirty:$AllowDirty
 Ensure-ReleaseBranch
 
@@ -147,18 +160,19 @@ $notes = @"
 "@
 Set-Content -Path $releaseNotesPath -Value $notes -Encoding UTF8
 
-git add $manifests $releaseNotesPath
-git commit -m "chore(release): bump version to $tagName"
+Invoke-Git -Command ("git add " + (($manifests + $releaseNotesPath) -join " ")) -ErrorMessage "Failed to stage bump changes"
+Invoke-Git -Command "git commit -m 'chore(release): bump version to $tagName'" -ErrorMessage "Failed to create bump commit"
 
 if (-not $NoTag) {
-	git tag -a $tagName -m "Release $tagName"
+	Invoke-Git -Command "git tag -a $tagName -m 'Release $tagName'" -ErrorMessage "Failed to create release tag"
 	Write-Host "Created tag: $tagName" -ForegroundColor Green
 }
 
 if ($Push) {
-	git push origin HEAD
+	$verifyFlag = if ($NoVerify) { " --no-verify" } else { "" }
+	Invoke-Git -Command ("git push$verifyFlag origin HEAD") -ErrorMessage "Failed to push branch"
 	if (-not $NoTag) {
-		git push origin $tagName
+		Invoke-Git -Command ("git push$verifyFlag origin $tagName") -ErrorMessage "Failed to push tag"
 	}
 	Write-Host "Pushed branch and tag to origin" -ForegroundColor Green
 }

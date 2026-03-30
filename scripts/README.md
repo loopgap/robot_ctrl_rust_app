@@ -41,7 +41,10 @@
 .\scripts\smart-bump.ps1 -Part patch
 
 # 创建后立即推送分支和 tag
-.\scripts\smart-bump.ps1 -Part patch -Push
+.\scripts\smart-bump.ps1 -Part patch -Push -NoVerify
+
+# 失败回滚（删除 tag + 回退版本提交）
+.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
 ```
 
 `smart-bump.ps1` 默认只允许在 `main/master` 上执行，并会阻止重复 tag。
