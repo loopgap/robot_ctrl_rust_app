@@ -12,5 +12,6 @@
 | 0.1.5 | v0.1.5 | release_notes/RELEASE_NOTES_v0.1.5.md | not-archived | - |
 | 0.1.6 | v0.1.6 | release_notes/RELEASE_NOTES_v0.1.6.md | not-archived | - |
 | 0.1.7 | v0.1.7 | release_notes/RELEASE_NOTES_v0.1.7.md | not-archived | - |
+| 0.1.8 | v0.1.8 | release_notes/RELEASE_NOTES_v0.1.8.md | not-archived | - |
 
-更新时间(UTC): 2026-03-31 17:43:22
+更新时间(UTC): 2026-03-31 17:48:32

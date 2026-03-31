@@ -1,11 +1,12 @@
 [package]
 name = "rust_indie_tools_core"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 
 [dependencies]
 eframe = { version = "0.31", features = ["default"] }
 egui = "0.31"
+
 
 
 
