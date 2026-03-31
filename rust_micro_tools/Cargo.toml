@@ -1,6 +1,6 @@
 [package]
 name = "rust_micro_tools"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "Rust Micro Tools Suite with closed-loop workflow"
 
@@ -31,6 +31,7 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
 
 
 
