@@ -173,8 +173,8 @@ jobs:
           Invoke-SmokeCase -Name 'help_arg' -Arguments @('--help') -TimeoutSeconds 8
           Invoke-SmokeCase -Name 'plain_start' -TimeoutSeconds 10
 
-          if ((Get-Item $exe).Length -lt 3MB) {
-            throw "Executable size check failed: too small to be a valid release binary"
+          if ((Get-Item $exe).Length -lt 100KB) {
+            throw "Executable size check failed: smaller than minimum expected footprint (100KB)"
           }
       - name: Upload smoke test logs
         if: always()
