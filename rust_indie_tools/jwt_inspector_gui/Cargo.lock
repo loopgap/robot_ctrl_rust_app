@@ -1632,7 +1632,7 @@ dependencies = [
 
 [[package]]
 name = "jwt_inspector_gui"
-version = "0.1.4"
+version = "0.1.7"
 dependencies = [
  "base64",
  "eframe",

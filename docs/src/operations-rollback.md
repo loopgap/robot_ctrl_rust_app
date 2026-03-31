@@ -41,6 +41,17 @@ $env:GITHUB_TOKEN = "<token>"
 3. main/master 分支版本号恢复到预期。
 4. 重新执行 .\make.ps1 check 后再发版。
 
+## 目录与审计说明
+
+1. 回滚不自动删除 `release_notes/RELEASE_NOTES_vX.Y.Z.md`，以保留审计线索。
+2. 发布索引维护在 `release_notes/RELEASE_INDEX.md`，回滚后建议执行一次重建保持审计一致。
+3. 历史已发布二进制资产统一归档在 `release_notes/archive_assets/`，建议按版本目录保留。
+4. `release_artifacts/` 与 `smoke_logs/` 为流程临时产物，失败后可直接清理。
+
+```powershell
+.\scripts\update-release-index.ps1
+```
+
 ## 注意事项
 
 1. 回滚脚本不会强制改写历史，不使用 reset --hard。

@@ -1,18 +1,39 @@
 param(
     [string]$Owner = "loopgap",
     [string]$Repo = "robot_ctrl_rust_app",
-    [string]$Tag = "v0.1.0",
-    [string]$ReleaseName = "v0.1.0",
-    [string]$BodyFile = "release_artifacts/v0.1.0/RELEASE_NOTES_v0.1.0.md",
-    [string[]]$Assets = @(
-        "release_artifacts/v0.1.0/robot_control_rust.exe",
-        "release_artifacts/v0.1.0/robot_control_rust-v0.1.0-src.zip"
-    ),
+    [string]$Tag = "",
+    [string]$ReleaseName = "",
+    [string]$BodyFile = "",
+    [string[]]$Assets = @(),
     [switch]$Prerelease,
     [switch]$Draft
 )
 
 $ErrorActionPreference = "Stop"
+
+$ScriptDir = Split-Path -Parent $PSCommandPath
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
+Set-Location $RepoRoot
+
+if ([string]::IsNullOrWhiteSpace($Tag)) {
+    throw "Missing -Tag (example: v0.1.7)."
+}
+
+if ([string]::IsNullOrWhiteSpace($ReleaseName)) {
+    $ReleaseName = $Tag
+}
+
+if ([string]::IsNullOrWhiteSpace($BodyFile)) {
+    $BodyFile = "release_notes/RELEASE_NOTES_$Tag.md"
+}
+
+if ($null -eq $Assets -or $Assets.Count -eq 0) {
+    $Assets = @(
+        "release_artifacts/robot_control_rust.exe",
+        "release_artifacts/RobotControlSuite_Setup.exe",
+        "release_artifacts/checksums-sha256.txt"
+    )
+}
 
 if (-not $env:GITHUB_TOKEN) {
     throw "Missing GITHUB_TOKEN environment variable."

@@ -1,7 +1,7 @@
 # 发布操作手册
 
 ## 目标
-
+ 
 确保每次发布均通过同一条受控路径：版本推进、Tag、CI/CD 构建、资产校验。
 
 ## 前置条件
@@ -32,6 +32,38 @@
 - robot_control_rust.exe
 - RobotControlSuite_Setup.exe
 - checksums-sha256.txt
+
+## 目录约定
+
+1. 发布说明统一维护在 `release_notes/RELEASE_NOTES_vX.Y.Z.md`。
+2. 发布索引统一维护在 `release_notes/RELEASE_INDEX.md`（记录版本、Tag、本地归档状态）。
+3. 历史已发布二进制资产归档在 `release_notes/archive_assets/vX.Y.Z/`。
+4. 根目录 `release_artifacts/` 与 `smoke_logs/` 属于发布流程临时产物目录，不入库。
+
+## 索引维护
+
+标准升版脚本会自动更新发布索引；也可手动重建：
+
+```powershell
+.\scripts\update-release-index.ps1
+```
+
+## 手动发布（可选）
+
+默认会从统一目录读取发布说明和资产：
+
+```powershell
+pwsh ./robot_control_rust/scripts/create_github_release.ps1 -Tag vX.Y.Z
+```
+
+如需覆盖路径：
+
+```powershell
+pwsh ./robot_control_rust/scripts/create_github_release.ps1 \
+	-Tag vX.Y.Z \
+	-BodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
+	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
+```
 
 ## 质量门禁说明
 

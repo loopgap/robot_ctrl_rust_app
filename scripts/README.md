@@ -48,6 +48,12 @@
 ```
 
 `smart-bump.ps1` 默认只允许在 `main/master` 上执行，并会阻止重复 tag。
+每次执行 `smart-bump.ps1` 会自动更新 `release_notes/RELEASE_INDEX.md`。
+
+```powershell
+# 手动重建发布索引（版本、tag、本地归档状态）
+.\scripts\update-release-index.ps1
+```
 
 ## Git Hooks说明
 

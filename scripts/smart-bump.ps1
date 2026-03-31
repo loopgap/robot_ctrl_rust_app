@@ -24,6 +24,18 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Split-Path -Parent $ScriptDir
 Set-Location $RepoRoot
 
+function Update-ReleaseIndex {
+	$indexScript = Join-Path $ScriptDir "update-release-index.ps1"
+	if (-not (Test-Path $indexScript)) {
+		throw "Missing release index updater: $indexScript"
+	}
+
+	& $indexScript -RepoRoot $RepoRoot
+	if ($LASTEXITCODE -ne 0) {
+		throw "Failed to update release index"
+	}
+}
+
 function Get-CurrentBranch {
 	return (git rev-parse --abbrev-ref HEAD).Trim()
 }
@@ -160,7 +172,10 @@ $notes = @"
 "@
 Set-Content -Path $releaseNotesPath -Value $notes -Encoding UTF8
 
-Invoke-Git -Command ("git add " + (($manifests + $releaseNotesPath) -join " ")) -ErrorMessage "Failed to stage bump changes"
+Update-ReleaseIndex
+$releaseIndexPath = Join-Path $releaseNotesDir "RELEASE_INDEX.md"
+
+Invoke-Git -Command ("git add " + (($manifests + $releaseNotesPath + $releaseIndexPath) -join " ")) -ErrorMessage "Failed to stage bump changes"
 Invoke-Git -Command "git commit -m 'chore(release): bump version to $tagName'" -ErrorMessage "Failed to create bump commit"
 
 if (-not $NoTag) {
