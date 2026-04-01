@@ -21,9 +21,9 @@ INDIE_DIRS := $(wildcard rust_indie_tools/*/Cargo.toml)
 INDIE_PROJECTS := $(dir $(INDIE_DIRS))
 ALL_PROJECTS := $(CORE_PROJECTS) $(INDIE_PROJECTS)
 
-.PHONY: all check fmt fmt-check clippy test test-release build release clean doc audit preflight help
+.PHONY: all check fmt fmt-check clippy test test-release build release clean doc audit preflight release-sync release-sync-apply workflow-seal workflow-seal-apply workspace-guard workspace-cleanup help
 
-all: check build
+all: workspace-cleanup workspace-guard check build
 
 fmt:
 	@echo "══ 格式化代码 ══"
@@ -162,13 +162,42 @@ clean:
 		cargo clean --manifest-path $${p}Cargo.toml; \
 	done
 
-check: fmt-check clippy test
+check: workspace-cleanup workspace-guard fmt-check clippy test
 	@echo ""
 	@echo "✓ 全部检查通过"
 
-preflight: fmt-check clippy test test-release release doc
+preflight: workspace-cleanup workspace-guard fmt-check clippy test test-release release doc
 	@echo ""
 	@echo "🚀 Preflight 全部通过，可以发布！"
+
+release-sync:
+	@echo "══ Release 状态审计 ══"
+	@pwsh -NoProfile -File scripts/cleanup-process-files.ps1 -Mode apply
+	@pwsh -NoProfile -File scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+	@pwsh -NoProfile -File scripts/sync-release-state.ps1 -Mode audit
+
+release-sync-apply:
+	@echo "══ Release 状态归一化 ══"
+	@pwsh -NoProfile -File scripts/cleanup-process-files.ps1 -Mode apply
+	@pwsh -NoProfile -File scripts/sync-release-state.ps1 -Mode apply -PruneLocalTagsNotOnRemote -CleanOrphanNotes
+	@pwsh -NoProfile -File scripts/cleanup-process-files.ps1 -Mode apply
+	@pwsh -NoProfile -File scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+
+workflow-seal:
+	@echo "══ Workflow 固化审计 ══"
+	@pwsh -NoProfile -File scripts/workflow-seal.ps1 -Mode audit
+
+workflow-seal-apply:
+	@echo "══ Workflow 固化归一化 ══"
+	@pwsh -NoProfile -File scripts/workflow-seal.ps1 -Mode apply -PruneLocalTagsNotOnRemote -CleanOrphanNotes
+
+workspace-guard:
+	@echo "══ Workspace 结构守卫 ══"
+	@pwsh -NoProfile -File scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+
+workspace-cleanup:
+	@echo "══ Workspace 过程文件清理 ══"
+	@pwsh -NoProfile -File scripts/cleanup-process-files.ps1 -Mode apply
 
 help:
 	@echo "可用目标:"
@@ -183,5 +212,11 @@ help:
 	@echo "  make doc        生成文档"
 	@echo "  make audit      安全审计"
 	@echo "  make preflight  发布前完整校验"
+	@echo "  make release-sync  审计本地 release 状态一致性"
+	@echo "  make release-sync-apply  自动归一化本地 release 状态"
+	@echo "  make workflow-seal  一键执行清理+结构守卫+发布状态审计"
+	@echo "  make workflow-seal-apply  自动归一化并固化工作区状态"
+	@echo "  make workspace-guard  校验目录结构与路径策略"
+	@echo "  make workspace-cleanup  清理过程产物目录"
 	@echo "  make clean      清理所有 target/"
 	@echo "  make help       显示此帮助"

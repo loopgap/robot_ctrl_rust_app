@@ -48,6 +48,14 @@ jobs:
     needs: verify-tag
     steps:
       - uses: actions/checkout@v4
+      - name: Process file residue audit
+        shell: pwsh
+        run: |
+          ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
+      - name: Workspace structure guard
+        shell: pwsh
+        run: |
+          ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt

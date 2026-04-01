@@ -45,12 +45,21 @@ $env:GITHUB_TOKEN = "<token>"
 
 1. 回滚不自动删除 `release_notes/RELEASE_NOTES_vX.Y.Z.md`，以保留审计线索。
 2. 发布索引维护在 `release_notes/RELEASE_INDEX.md`，回滚后建议执行一次重建保持审计一致。
-3. 历史已发布二进制资产统一归档在 `release_notes/archive_assets/`，建议按版本目录保留。
-4. `release_artifacts/` 与 `smoke_logs/` 为流程临时产物，失败后可直接清理。
+3. 建议执行发布状态归一化，自动清理无效本地 tag/release 说明残留。
+4. 历史已发布二进制资产统一归档在 `release_notes/archive_assets/`，建议按版本目录保留。
+5. `release_artifacts/` 与 `smoke_logs/` 为流程临时产物，失败后可直接清理。
 
 ```powershell
-.\scripts\update-release-index.ps1
+.\make.ps1 release-sync-apply
 ```
+
+失败回滚后建议立即执行：
+
+```powershell
+.\make.ps1 workflow-seal
+```
+
+`smart-rollback.ps1` 默认会在执行前后运行过程文件清理与目录守卫，并刷新 `release_notes/RELEASE_INDEX.md`。
 
 ## 注意事项
 

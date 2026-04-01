@@ -17,9 +17,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workspace-governance:
+    name: Workspace Governance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Process file residue audit
+        shell: pwsh
+        run: |
+          ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
+      - name: Workspace structure guard
+        shell: pwsh
+        run: |
+          ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
+    needs: workspace-governance
     permissions:
       contents: read
     steps:
@@ -51,6 +68,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ${{ matrix.os }}
+    needs: workspace-governance
     strategy:
       fail-fast: false
       matrix:
@@ -90,6 +108,7 @@ jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
+    needs: workspace-governance
     strategy:
       fail-fast: false
       matrix:
@@ -127,6 +146,7 @@ jobs:
   doc:
     name: Docs
     runs-on: ubuntu-latest
+    needs: workspace-governance
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

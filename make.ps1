@@ -7,7 +7,8 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("all", "check", "fmt", "fmt-check", "clippy", "test", "test-release",
-                 "build", "release", "doc", "audit", "clean", "preflight", "help")]
+                 "build", "release", "doc", "audit", "clean", "preflight",
+                 "release-sync", "release-sync-apply", "workflow-seal", "workflow-seal-apply", "workspace-guard", "workspace-cleanup", "help")]
     [string]$Target = "help"
 )
 
@@ -54,9 +55,37 @@ function Invoke-ForEachProject {
     }
 }
 
+function Invoke-PwshScript {
+    param(
+        [string]$ScriptRelativePath,
+        [string[]]$Arguments = @()
+    )
+
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if (-not $pwsh) {
+        throw "pwsh (PowerShell 7+) is required to run $ScriptRelativePath"
+    }
+
+    $scriptPath = Join-Path $RepoRoot $ScriptRelativePath
+    & $pwsh.Source -NoProfile -File $scriptPath @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+function Invoke-WorkspaceGuard {
+    Invoke-PwshScript -ScriptRelativePath "scripts\enforce-workspace-structure.ps1" -Arguments @("-Mode", "audit", "-Strict")
+}
+
+function Invoke-WorkspaceCleanup {
+    Invoke-PwshScript -ScriptRelativePath "scripts\cleanup-process-files.ps1" -Arguments @("-Mode", "apply")
+}
+
 switch ($Target) {
 		"all" {
 		Write-Header "Run all checks (fmt-check + clippy + test + build)"
+        & $PSCommandPath workspace-cleanup
+        & $PSCommandPath workspace-guard
 		& $PSCommandPath fmt-check
 		& $PSCommandPath clippy
 		& $PSCommandPath test
@@ -206,6 +235,8 @@ switch ($Target) {
     }
     "check" {
         Write-Header "Fast validation"
+        & $PSCommandPath workspace-cleanup
+        & $PSCommandPath workspace-guard
         & $PSCommandPath fmt-check
         & $PSCommandPath clippy
         & $PSCommandPath test
@@ -213,6 +244,8 @@ switch ($Target) {
     }
     "preflight" {
         Write-Header "Preflight validation"
+        & $PSCommandPath workspace-cleanup
+        & $PSCommandPath workspace-guard
         & $PSCommandPath fmt-check
         & $PSCommandPath clippy
         & $PSCommandPath test
@@ -220,6 +253,35 @@ switch ($Target) {
         & $PSCommandPath release
         & $PSCommandPath doc
         Write-Host "`nPreflight passed. Ready to release." -ForegroundColor Green
+    }
+    "release-sync" {
+        Write-Header "Release state audit"
+        & $PSCommandPath workspace-cleanup
+        & $PSCommandPath workspace-guard
+        Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "audit")
+    }
+    "release-sync-apply" {
+        Write-Header "Release state normalize"
+        & $PSCommandPath workspace-cleanup
+        Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "apply", "-PruneLocalTagsNotOnRemote", "-CleanOrphanNotes")
+        & $PSCommandPath workspace-cleanup
+        & $PSCommandPath workspace-guard
+    }
+    "workflow-seal" {
+        Write-Header "Workflow seal (audit)"
+        Invoke-PwshScript -ScriptRelativePath "scripts\workflow-seal.ps1" -Arguments @("-Mode", "audit")
+    }
+    "workflow-seal-apply" {
+        Write-Header "Workflow seal (apply)"
+        Invoke-PwshScript -ScriptRelativePath "scripts\workflow-seal.ps1" -Arguments @("-Mode", "apply", "-PruneLocalTagsNotOnRemote", "-CleanOrphanNotes")
+    }
+    "workspace-guard" {
+        Write-Header "Workspace structure guard"
+        Invoke-WorkspaceGuard
+    }
+    "workspace-cleanup" {
+        Write-Header "Workspace process-file cleanup"
+        Invoke-WorkspaceCleanup
     }
     "help" {
         Write-Host @"
@@ -242,6 +304,12 @@ switch ($Target) {
     doc          build docs with rustdoc warnings denied
     audit        run cargo-audit for all Rust projects
     preflight    full validation before release
+    release-sync audit release tags/notes/archive consistency
+    release-sync-apply normalize local release tags/notes state
+    workflow-seal run cleanup + structure + release-state seal (audit)
+    workflow-seal-apply normalize release-state and reseal workspace
+    workspace-guard enforce workspace layout and path policy
+    workspace-cleanup remove transient process files
     clean        clean all target directories
     help         show this help
 

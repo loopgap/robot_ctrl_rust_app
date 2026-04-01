@@ -45,15 +45,48 @@
 
 # 失败回滚（删除 tag + 回退版本提交）
 .\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
+
+# 审计本地发布状态（tag/release notes/归档）
+.\scripts\sync-release-state.ps1 -Mode audit
+
+# 自动归一化本地失败/无效迭代残留
+.\scripts\sync-release-state.ps1 -Mode apply -PruneLocalTagsNotOnRemote -CleanOrphanNotes
+
+# 审计工作区目录规范（阻断乱放文件）
+.\scripts\enforce-workspace-structure.ps1 -Mode audit -Strict
+
+# 清理执行过程产物（smoke logs / 临时目录）
+.\scripts\cleanup-process-files.ps1 -Mode apply
+
+# 一键固化工作区（清理 + 结构守卫 + 发布状态审计）
+.\scripts\workflow-seal.ps1 -Mode audit
+
+# 一键归一化并固化（可清理无效本地 tag/release 说明）
+.\scripts\workflow-seal.ps1 -Mode apply -PruneLocalTagsNotOnRemote -CleanOrphanNotes
 ```
 
 `smart-bump.ps1` 默认只允许在 `main/master` 上执行，并会阻止重复 tag。
+`smart-bump.ps1` 在升版前会自动执行发布状态一致性审计（可用 `-SkipReleaseStateAudit` 跳过）。
 每次执行 `smart-bump.ps1` 会自动更新 `release_notes/RELEASE_INDEX.md`。
+`smart-bump.ps1` 默认会在升版前后自动执行过程文件清理（可用 `-SkipProcessCleanup` 跳过）。
+
+也可以通过统一入口执行：
+
+```powershell
+.\make.ps1 workspace-cleanup
+.\make.ps1 workspace-guard
+.\make.ps1 workflow-seal
+```
 
 ```powershell
 # 手动重建发布索引（版本、tag、本地归档状态）
 .\scripts\update-release-index.ps1
 ```
+
+发布索引会记录 `Local Tag Status` 与 `Remote Tag Status`，用于快速识别无效迭代残留。
+
+目录与过程文件治理策略统一配置在 `scripts/workspace-governance.json`，
+`cleanup-process-files.ps1` 与 `enforce-workspace-structure.ps1` 会共享这份配置。
 
 ## Git Hooks说明
 
@@ -64,10 +97,11 @@
 1. **Git工作流验证**
    - 检查分支命名规范
    - 检查暂存区文件（大文件、敏感信息）
+   - 校验本地工作流策略
 
-2. **Rust代码快速检查**
-   - 代码格式检查 (rustfmt)
-   - 静态分析 (clippy)
+2. **工作区治理检查**
+   - 过程文件残留审计（严格）
+   - 暂存路径结构策略校验（严格）
 
 **执行时间**: 约5-15秒
 
@@ -80,17 +114,21 @@
    - 检查远程同步状态
    - 阻止直接推送到main/master分支
 
-2. **完整Rust代码审查**
+2. **工作区治理检查**
+   - 过程文件残留审计（严格）
+   - 暂存路径结构策略校验（严格）
+
+3. **完整Rust代码审查**
    - 代码格式检查
    - Clippy静态分析（包含pedantic和nursery规则）
    - 单元测试和集成测试
    - 构建检查
    - 安全审计 (cargo-audit)
 
-3. **发布构建测试**
+4. **发布构建测试**
    - 验证release模式构建
 
-4. **文档检查**
+5. **文档检查**
    - 验证文档构建
 
 **执行时间**: 约30秒-2分钟（取决于项目大小）

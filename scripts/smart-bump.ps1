@@ -15,7 +15,10 @@ param(
 	[switch]$Push,
 	[switch]$NoVerify,
 	[switch]$AllowDirty,
-	[switch]$NoTag
+	[switch]$NoTag,
+	[switch]$SkipReleaseStateAudit,
+	[switch]$SkipProcessCleanup,
+	[switch]$SkipWorkspaceGuard
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,16 +27,76 @@ $ScriptDir = $PSScriptRoot
 $RepoRoot = Split-Path -Parent $ScriptDir
 Set-Location $RepoRoot
 
+$Pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+if (-not $Pwsh) {
+	throw "pwsh (PowerShell 7+) is required"
+}
+
+function Invoke-ChildPwshScript {
+	param(
+		[Parameter(Mandatory = $true)][string]$ScriptPath,
+		[string[]]$Arguments = @(),
+		[Parameter(Mandatory = $true)][string]$ErrorMessage
+	)
+
+	& $Pwsh.Source -NoProfile -File $ScriptPath @Arguments
+	if ($LASTEXITCODE -ne 0) {
+		throw $ErrorMessage
+	}
+}
+
 function Update-ReleaseIndex {
 	$indexScript = Join-Path $ScriptDir "update-release-index.ps1"
 	if (-not (Test-Path $indexScript)) {
 		throw "Missing release index updater: $indexScript"
 	}
 
-	& $indexScript -RepoRoot $RepoRoot
-	if ($LASTEXITCODE -ne 0) {
-		throw "Failed to update release index"
+	Invoke-ChildPwshScript -ScriptPath $indexScript -Arguments @("-RepoRoot", $RepoRoot) -ErrorMessage "Failed to update release index"
+}
+
+function Invoke-ReleaseStateAudit {
+	param([switch]$Skip)
+
+	if ($Skip) {
+		return
 	}
+
+	$auditScript = Join-Path $ScriptDir "sync-release-state.ps1"
+	if (-not (Test-Path $auditScript)) {
+		throw "Missing release state audit script: $auditScript"
+	}
+
+	Invoke-ChildPwshScript -ScriptPath $auditScript -Arguments @("-Mode", "audit", "-Strict") -ErrorMessage "Release state audit failed. Run ./scripts/sync-release-state.ps1 -Mode apply -PruneLocalTagsNotOnRemote -CleanOrphanNotes"
+}
+
+function Invoke-ProcessCleanup {
+	param([switch]$Skip)
+
+	if ($Skip) {
+		return
+	}
+
+	$cleanupScript = Join-Path $ScriptDir "cleanup-process-files.ps1"
+	if (-not (Test-Path $cleanupScript)) {
+		throw "Missing process cleanup script: $cleanupScript"
+	}
+
+	Invoke-ChildPwshScript -ScriptPath $cleanupScript -Arguments @("-Mode", "apply", "-RepoRoot", $RepoRoot) -ErrorMessage "Process cleanup failed"
+}
+
+function Invoke-WorkspaceGuard {
+	param([switch]$Skip)
+
+	if ($Skip) {
+		return
+	}
+
+	$guardScript = Join-Path $ScriptDir "enforce-workspace-structure.ps1"
+	if (-not (Test-Path $guardScript)) {
+		throw "Missing workspace guard script: $guardScript"
+	}
+
+	Invoke-ChildPwshScript -ScriptPath $guardScript -Arguments @("-Mode", "audit", "-RepoRoot", $RepoRoot, "-Strict") -ErrorMessage "Workspace structure guard failed"
 }
 
 function Get-CurrentBranch {
@@ -134,29 +197,33 @@ function Invoke-Git {
 	}
 }
 
-Ensure-CleanWorktree -AllowDirty:$AllowDirty
-Ensure-ReleaseBranch
+try {
+	Invoke-ProcessCleanup -Skip:$SkipProcessCleanup
+	Invoke-WorkspaceGuard -Skip:$SkipWorkspaceGuard
+	Ensure-CleanWorktree -AllowDirty:$AllowDirty
+	Ensure-ReleaseBranch
+	Invoke-ReleaseStateAudit -Skip:$SkipReleaseStateAudit
 
-$anchorManifest = "robot_control_rust/Cargo.toml"
-$currentVersion = Get-VersionFromManifest -manifestPath $anchorManifest
-$nextVersion = Get-NextVersion -current $currentVersion -part $Part
-$tagName = "v$nextVersion"
+	$anchorManifest = "robot_control_rust/Cargo.toml"
+	$currentVersion = Get-VersionFromManifest -manifestPath $anchorManifest
+	$nextVersion = Get-NextVersion -current $currentVersion -part $Part
+	$tagName = "v$nextVersion"
 
-Ensure-TagNotExists -tagName $tagName
+	Ensure-TagNotExists -tagName $tagName
 
-$manifests = Get-ProjectManifests
-foreach ($manifest in $manifests) {
-	if (Test-Path $manifest) {
-		Update-ManifestVersion -manifestPath $manifest -newVersion $nextVersion
-		Write-Host "Updated $manifest -> $nextVersion" -ForegroundColor Cyan
+	$manifests = Get-ProjectManifests
+	foreach ($manifest in $manifests) {
+		if (Test-Path $manifest) {
+			Update-ManifestVersion -manifestPath $manifest -newVersion $nextVersion
+			Write-Host "Updated $manifest -> $nextVersion" -ForegroundColor Cyan
+		}
 	}
-}
 
-$releaseNotesDir = Join-Path $RepoRoot "release_notes"
-New-Item -ItemType Directory -Path $releaseNotesDir -Force | Out-Null
-$releaseNotesPath = Join-Path $releaseNotesDir "RELEASE_NOTES_$tagName.md"
+	$releaseNotesDir = Join-Path $RepoRoot "release_notes"
+	New-Item -ItemType Directory -Path $releaseNotesDir -Force | Out-Null
+	$releaseNotesPath = Join-Path $releaseNotesDir "RELEASE_NOTES_$tagName.md"
 
-$notes = @"
+	$notes = @"
 # $tagName
 
 ## Highlights
@@ -170,26 +237,31 @@ $notes = @"
 - [ ] CI passed
 - [ ] Release assets verified (exe/setup/checksums)
 "@
-Set-Content -Path $releaseNotesPath -Value $notes -Encoding UTF8
+	Set-Content -Path $releaseNotesPath -Value $notes -Encoding UTF8
 
-Update-ReleaseIndex
-$releaseIndexPath = Join-Path $releaseNotesDir "RELEASE_INDEX.md"
+	Update-ReleaseIndex
+	$releaseIndexPath = Join-Path $releaseNotesDir "RELEASE_INDEX.md"
 
-Invoke-Git -Command ("git add " + (($manifests + $releaseNotesPath + $releaseIndexPath) -join " ")) -ErrorMessage "Failed to stage bump changes"
-Invoke-Git -Command "git commit -m 'chore(release): bump version to $tagName'" -ErrorMessage "Failed to create bump commit"
+	Invoke-Git -Command ("git add " + (($manifests + $releaseNotesPath + $releaseIndexPath) -join " ")) -ErrorMessage "Failed to stage bump changes"
+	Invoke-Git -Command "git commit -m 'chore(release): bump version to $tagName'" -ErrorMessage "Failed to create bump commit"
 
-if (-not $NoTag) {
-	Invoke-Git -Command "git tag -a $tagName -m 'Release $tagName'" -ErrorMessage "Failed to create release tag"
-	Write-Host "Created tag: $tagName" -ForegroundColor Green
-}
-
-if ($Push) {
-	$verifyFlag = if ($NoVerify) { " --no-verify" } else { "" }
-	Invoke-Git -Command ("git push$verifyFlag origin HEAD") -ErrorMessage "Failed to push branch"
 	if (-not $NoTag) {
-		Invoke-Git -Command ("git push$verifyFlag origin $tagName") -ErrorMessage "Failed to push tag"
+		Invoke-Git -Command "git tag -a $tagName -m 'Release $tagName'" -ErrorMessage "Failed to create release tag"
+		Write-Host "Created tag: $tagName" -ForegroundColor Green
 	}
-	Write-Host "Pushed branch and tag to origin" -ForegroundColor Green
-}
 
-Write-Host "Release bump completed: $currentVersion -> $nextVersion" -ForegroundColor Green
+	if ($Push) {
+		$verifyFlag = if ($NoVerify) { " --no-verify" } else { "" }
+		Invoke-Git -Command ("git push$verifyFlag origin HEAD") -ErrorMessage "Failed to push branch"
+		if (-not $NoTag) {
+			Invoke-Git -Command ("git push$verifyFlag origin $tagName") -ErrorMessage "Failed to push tag"
+		}
+		Write-Host "Pushed branch and tag to origin" -ForegroundColor Green
+	}
+
+	Write-Host "Release bump completed: $currentVersion -> $nextVersion" -ForegroundColor Green
+}
+finally {
+	Invoke-ProcessCleanup -Skip:$SkipProcessCleanup
+	Invoke-WorkspaceGuard -Skip:$SkipWorkspaceGuard
+}

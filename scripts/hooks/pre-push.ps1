@@ -20,6 +20,19 @@ Import-Module "$ScriptsDir\common.psm1" -Force
 
 Write-Header "Pre-push Check"
 
+# 0) 工作区过程文件与路径策略检查
+& "$ScriptsDir\cleanup-process-files.ps1" -Mode audit -Strict
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "发现过程文件残留，已阻止 push。请先执行: ./make.ps1 workspace-cleanup"
+    exit $LASTEXITCODE
+}
+
+& "$ScriptsDir\enforce-workspace-structure.ps1" -Mode audit -Strict -UseStagedPaths
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "发现不合规目录或暂存路径，已阻止 push。"
+    exit $LASTEXITCODE
+}
+
 # 1) Git 工作流校验（包含远程同步状态）
 & "$ScriptsDir\git-check.ps1" -PrePush
 if ($LASTEXITCODE -ne 0) {

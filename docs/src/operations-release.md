@@ -11,7 +11,14 @@
 3. 本地质量门禁通过：
 
 ```powershell
+.\make.ps1 workflow-seal
 .\make.ps1 check
+```
+
+4. 发布状态一致性审计通过（tag/发布说明/归档）：
+
+```powershell
+.\make.ps1 release-sync
 ```
 
 ## 标准发布流程
@@ -36,7 +43,7 @@
 ## 目录约定
 
 1. 发布说明统一维护在 `release_notes/RELEASE_NOTES_vX.Y.Z.md`。
-2. 发布索引统一维护在 `release_notes/RELEASE_INDEX.md`（记录版本、Tag、本地归档状态）。
+2. 发布索引统一维护在 `release_notes/RELEASE_INDEX.md`（记录版本、Tag、本地/远端 Tag 状态、本地归档状态）。
 3. 历史已发布二进制资产归档在 `release_notes/archive_assets/vX.Y.Z/`。
 4. 根目录 `release_artifacts/` 与 `smoke_logs/` 属于发布流程临时产物目录，不入库。
 
@@ -47,6 +54,20 @@
 ```powershell
 .\scripts\update-release-index.ps1
 ```
+
+如需批量清理无效本地迭代残留并归一化：
+
+```powershell
+.\make.ps1 release-sync-apply
+```
+
+每次发布前后建议执行一次过程文件清理与目录守卫：
+
+```powershell
+.\make.ps1 workflow-seal
+```
+
+治理策略来源：`scripts/workspace-governance.json`，用于统一约束目录结构与过程文件路径。
 
 ## 手动发布（可选）
 
