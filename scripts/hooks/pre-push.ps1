@@ -18,33 +18,51 @@ $ScriptsDir = Split-Path -Parent $HookDir
 # 导入通用模块
 Import-Module "$ScriptsDir\common.psm1" -Force
 
+function Get-ScriptExitCode {
+    if ($null -eq $LASTEXITCODE) {
+        if ($?) {
+            return 0
+        }
+        return 1
+    }
+    return [int]$LASTEXITCODE
+}
+
 Write-Header "Pre-push Check"
 
 # 0) 工作区过程文件与路径策略检查
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\cleanup-process-files.ps1" -Mode audit -Strict
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
     Write-Error "发现过程文件残留，已阻止 push。请先执行: ./make.ps1 workspace-cleanup"
-    exit $LASTEXITCODE
+    exit $exitCode
 }
 
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\enforce-workspace-structure.ps1" -Mode audit -Strict -UseStagedPaths
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
     Write-Error "发现不合规目录或暂存路径，已阻止 push。"
-    exit $LASTEXITCODE
+    exit $exitCode
 }
 
 # 1) Git 工作流校验（包含远程同步状态）
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\git-check.ps1" -PrePush
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
     Write-Error "Git 工作流检查失败，已阻止 push"
-    exit $LASTEXITCODE
+    exit $exitCode
 }
 
 # 2) 完整 Rust 审查（推送前模式）
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\review.ps1" -BeforePush
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
     Write-Error "Rust 推送前检查失败，已阻止 push"
-    exit $LASTEXITCODE
+    exit $exitCode
 }
 
 Write-Success "Pre-push checks passed"

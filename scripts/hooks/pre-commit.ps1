@@ -15,27 +15,43 @@ $ModulePath = Join-Path $ScriptsDir 'common.psm1'
 # Import common module
 Import-Module $ModulePath -Force -Global
 
+function Get-ScriptExitCode {
+	if ($null -eq $LASTEXITCODE) {
+		if ($?) {
+			return 0
+		}
+		return 1
+	}
+	return [int]$LASTEXITCODE
+}
+
 Write-Header "Pre-commit Check"
 Write-Step "Git workflow validation"
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\git-check.ps1"
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
 	Write-Error "Git workflow check failed"
-	exit $LASTEXITCODE
+	exit $exitCode
 }
 Write-Success "Git workflow validation passed"
 
 Write-Step "Workspace process-file residue audit"
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\cleanup-process-files.ps1" -Mode audit -Strict
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
 	Write-Error "Found transient process files in workspace. Run: ./make.ps1 workspace-cleanup"
-	exit 1
+	exit $exitCode
 }
 
 Write-Step "Workspace path policy (staged files)"
+$global:LASTEXITCODE = 0
 & "$ScriptsDir\enforce-workspace-structure.ps1" -Mode audit -Strict -UseStagedPaths
-if ($LASTEXITCODE -ne 0) {
+$exitCode = Get-ScriptExitCode
+if ($exitCode -ne 0) {
 	Write-Error "Found misplaced or blocked staged paths. Move files into standard directories first."
-	exit 1
+	exit $exitCode
 }
 
 Write-Success "Workspace structure checks passed"
