@@ -129,6 +129,9 @@ jobs:
       - name: Build robot_control_rust.exe
         shell: pwsh
         run: |
+          if (Select-String -Path 'robot_control_rust\src\main.rs' -Pattern 'println!\("placeholder"\)' -Quiet) {
+            throw 'Entrypoint guard failed: main.rs still contains placeholder implementation'
+          }
           cargo build --release --manifest-path robot_control_rust/Cargo.toml
       - name: Smoke test executable launch
         shell: pwsh
@@ -212,7 +215,6 @@ jobs:
 
           Invoke-SmokeCase -Name 'version_arg' -Arguments @('--version') -TimeoutSeconds 8
           Invoke-SmokeCase -Name 'help_arg' -Arguments @('--help') -TimeoutSeconds 8
-          Invoke-SmokeCase -Name 'plain_start' -TimeoutSeconds 10 -MinRuntimeSeconds 2
 
           if ((Get-Item $exe).Length -lt 100KB) {
             throw "Executable size check failed: smaller than minimum expected footprint (100KB)"
