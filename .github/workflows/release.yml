@@ -182,20 +182,31 @@ jobs:
               return
             }
 
-            $output = & $exe @Arguments 2>&1
-            $outputText = ($output | Out-String).Trim()
-            $outputText | Set-Content -Path $stdoutPath -Encoding utf8
-            '' | Set-Content -Path $stderrPath -Encoding utf8
-            if ($LASTEXITCODE -ne 0) {
-              throw "Smoke case '$Name' failed with exit code $LASTEXITCODE"
+            $proc = Start-Process -FilePath $exe -ArgumentList $Arguments -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+            $finished = $proc.WaitForExit($TimeoutSeconds * 1000)
+            if (-not $finished) {
+              try {
+                Stop-Process -Id $proc.Id -Force -ErrorAction Stop
+              } catch {
+                throw "Smoke case '$Name' timed out and process could not be stopped"
+              }
+              throw "Smoke case '$Name' timed out"
+            }
+
+            $outputText = if (Test-Path $stdoutPath) { (Get-Content -Raw -Path $stdoutPath).Trim() } else { '' }
+            $stderrText = if (Test-Path $stderrPath) { (Get-Content -Raw -Path $stderrPath).Trim() } else { '' }
+            $exitCode = if ($null -ne $proc.ExitCode) { [int]$proc.ExitCode } else { 0 }
+            if ($exitCode -ne 0) {
+              throw "Smoke case '$Name' failed with exit code $exitCode. Stderr=$stderrText"
             }
 
             if (-not [string]::IsNullOrWhiteSpace($RequireOutputPattern) -and $outputText -notmatch $RequireOutputPattern) {
               throw "Smoke case '$Name' output did not match required pattern '$RequireOutputPattern'. Output: $outputText"
             }
 
-            if (-not [string]::IsNullOrWhiteSpace($RejectOutputPattern) -and $outputText -match $RejectOutputPattern) {
-              throw "Smoke case '$Name' output matched rejected pattern '$RejectOutputPattern'. Output: $outputText"
+            $combined = ($outputText + "`n" + $stderrText)
+            if (-not [string]::IsNullOrWhiteSpace($RejectOutputPattern) -and $combined -match $RejectOutputPattern) {
+              throw "Smoke case '$Name' output matched rejected pattern '$RejectOutputPattern'. Output: $combined"
             }
           }
 
