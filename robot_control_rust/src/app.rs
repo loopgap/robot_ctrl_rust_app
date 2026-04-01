@@ -1,4 +1,4 @@
-﻿use crate::i18n::Language;
+use crate::i18n::Language;
 use crate::models::*;
 use crate::services::*;
 use std::fs::{metadata, OpenOptions};
@@ -10,8 +10,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
-// ══════════════════════════════════════════════════════════════�?// 导航标签
-// ══════════════════════════════════════════════════════════════�?
+// ═══════════════════════════════════════════════════════════════
+// 导航标签
+// ═══════════════════════════════════════════════════════════════
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
     Dashboard,
@@ -92,8 +94,10 @@ impl ActiveTab {
     }
 }
 
-// ══════════════════════════════════════════════════════════════�?// 日志条目
-// ══════════════════════════════════════════════════════════════�?
+// ═══════════════════════════════════════════════════════════════
+// 日志条目
+// ═══════════════════════════════════════════════════════════════
+
 #[derive(Debug, Clone)]
 pub struct LogEntry {
     pub timestamp: String,
@@ -151,9 +155,13 @@ impl LogEntry {
     }
 }
 
-// ══════════════════════════════════════════════════════════════�?// UI 状�?// ══════════════════════════════════════════════════════════════�?
+// ═══════════════════════════════════════════════════════════════
+// UI 状态
+// ═══════════════════════════════════════════════════════════════
+
 pub struct UiState {
-    // PID 文本�?    pub kp_text: String,
+    // PID 文本框
+    pub kp_text: String,
     pub ki_text: String,
     pub kd_text: String,
     pub setpoint_text: String,
@@ -257,7 +265,8 @@ pub struct UiState {
     pub usb_vid_text: String,
     pub usb_pid_text: String,
 
-    // 数据包解�?    pub parser_enabled: bool,
+    // 数据包解析
+    pub parser_enabled: bool,
     pub parser_template_idx: usize,
     pub parser_auto_parse: bool,
     pub parser_hex_input: String,
@@ -265,14 +274,16 @@ pub struct UiState {
     pub parser_last_auto_template_idx: usize,
     pub packet_builder_tab: usize, // 0=Builder, 1=Parser
 
-    // 协议分析�?    pub analysis_protocol_idx: usize,
+    // 协议分析页
+    pub analysis_protocol_idx: usize,
     pub analysis_filter_tx: bool,
     pub analysis_filter_rx: bool,
     pub analysis_filter_info: bool,
     pub analysis_query: String,
     pub analysis_hex_input: String,
 
-    // 数据可视�?    pub viz_add_channel_name: String,
+    // 数据可视化
+    pub viz_add_channel_name: String,
     pub viz_add_source_idx: usize,
     pub viz_add_type_idx: usize,
     pub viz_source_type: usize, // 0=RobotState, 1=PacketField
@@ -287,18 +298,22 @@ pub struct UiState {
     pub llm_last_response: String,
     pub llm_loading: bool,
 
-    // MCP 服务�?    pub mcp_port_text: String,
+    // MCP 服务器
+    pub mcp_port_text: String,
     pub mcp_token_text: String,
     pub mcp_running: bool,
 
-    // 侧边�?    pub sidebar_expanded: bool,
+    // 侧边栏
+    pub sidebar_expanded: bool,
 
-    // 动效层级�?=极致, 1=标准, 2=原生, 3=优化
+    // 动效层级：0=极致, 1=标准, 2=原生, 3=优化
     pub motion_level_idx: usize,
 
-    // 偏好自动保存周期（秒�?    pub prefs_autosave_interval_sec: u32,
+    // 偏好自动保存周期（秒）
+    pub prefs_autosave_interval_sec: u32,
 
-    // 更新检�?    pub update_channel: String,
+    // 更新检查
+    pub update_channel: String,
     pub update_manifest_url: String,
     pub update_check_timeout_ms: u32,
 }
@@ -421,7 +436,10 @@ impl Default for UiState {
     }
 }
 
-// ══════════════════════════════════════════════════════════════�?// 主应用状�?// ══════════════════════════════════════════════════════════════�?
+// ═══════════════════════════════════════════════════════════════
+// 主应用状态
+// ═══════════════════════════════════════════════════════════════
+
 pub struct AppState {
     pub active_tab: ActiveTab,
 
@@ -493,7 +511,8 @@ pub struct AppState {
     // USB 配置
     pub usb_config: UsbConfig,
 
-    // MCP server 状�?    pub mcp_server_handle: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    // MCP server 状态
+    pub mcp_server_handle: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     pub mcp_shared_state:
         std::sync::Arc<std::sync::Mutex<crate::services::mcp_server::McpSharedState>>,
 
@@ -924,7 +943,7 @@ impl AppState {
         let message = message.into();
         self.last_error_time = chrono::Local::now().format("%H:%M:%S").to_string();
         self.status_message = message.clone();
-        self.add_info_log(&format!("�?{}", message));
+        self.add_info_log(&format!("❌ {}", message));
         error!(target: "app", message = %self.status_message, "ui_error");
     }
 
@@ -1043,11 +1062,15 @@ impl AppState {
 
     fn fetch_update_manifest(&self, manifest_url: &str) -> Result<UpdateManifest, String> {
         let timeout = self.ui.update_check_timeout_ms.clamp(500, 10_000) as u64;
-        let response = ureq::get(manifest_url)
-            .timeout_connect(Duration::from_millis(timeout))
-            .call()
+        let config = ureq::Agent::config_builder()
+            .timeout_global(Some(Duration::from_millis(timeout)))
+            .build();
+        let agent: ureq::Agent = config.into();
+        let mut response = agent.get(manifest_url).call().map_err(|e| e.to_string())?;
+        let text = response
+            .body_mut()
+            .read_to_string()
             .map_err(|e| e.to_string())?;
-        let text = response.into_string().map_err(|e| e.to_string())?;
         serde_json::from_str::<UpdateManifest>(&text).map_err(|e| e.to_string())
     }
 
@@ -1141,7 +1164,7 @@ impl AppState {
                     self.update_status_detail = detail.clone();
                     self.update_notes_url = target_url.clone();
                     self.status_message = detail.clone();
-                    self.add_info_log(&format!("�?{}", detail));
+                    self.add_info_log(&format!("ℹ {}", detail));
                     info!(
                         target: "app",
                         url = %target_url,
@@ -1156,7 +1179,7 @@ impl AppState {
                     self.update_available = false;
                     self.update_status_detail = format!("Update check failed to evaluate: {}", e);
                     self.status_message = self.update_status_detail.clone();
-                    self.add_info_log(&format!("�?{}", self.update_status_detail));
+                    self.add_info_log(&format!("⚠ {}", self.update_status_detail));
                     warn!(target: "app", error = %e, "update_check_evaluate_failed");
                     fallback_url
                 }
@@ -1168,7 +1191,7 @@ impl AppState {
                     e
                 );
                 self.status_message = self.update_status_detail.clone();
-                self.add_info_log(&format!("�?{}", self.update_status_detail));
+                self.add_info_log(&format!("⚠ {}", self.update_status_detail));
                 warn!(target: "app", error = %e, url = %manifest_url, "update_manifest_fetch_failed");
                 fallback_url
             }
@@ -1710,7 +1733,7 @@ impl AppState {
         }
     }
 
-    // ─── 发送数�?────────────────────────────────────────
+    // ─── 发送数据 ────────────────────────────────────────
 
     pub fn send_data(&mut self, data: &[u8]) -> Result<(), String> {
         let result = match self.active_conn {
@@ -1850,7 +1873,8 @@ impl AppState {
         }
     }
 
-    /// 获取当前算法的设定�?    pub fn get_active_setpoint(&self) -> f64 {
+    /// 获取当前算法的设定值
+    pub fn get_active_setpoint(&self) -> f64 {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.setpoint,
             ControlAlgorithmType::IncrementalPid => self.incremental_pid.setpoint,
@@ -1881,7 +1905,8 @@ impl AppState {
         }
     }
 
-    /// 获取当前算法的输出�?    pub fn get_active_output(&self) -> f64 {
+    /// 获取当前算法的输出值
+    pub fn get_active_output(&self) -> f64 {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.output,
             ControlAlgorithmType::IncrementalPid => self.incremental_pid.output,
@@ -1940,9 +1965,10 @@ impl AppState {
         self.status_message = "Applied NN suggested parameters".into();
     }
 
-    // ─── 解析数据联动可视�?──────────────────────────────
+    // ─── 解析数据联动可视化 ──────────────────────────────
 
-    /// 将解析出的数据包字段推送到对应的可视化通道缓冲�?    pub fn feed_parsed_to_channels(&mut self, parsed: &ParsedPacket) {
+    /// 将解析出的数据包字段推送到对应的可视化通道缓冲区
+    pub fn feed_parsed_to_channels(&mut self, parsed: &ParsedPacket) {
         let mut dropped_total = 0usize;
         for (i, ch) in self.data_channels.iter().enumerate() {
             if !ch.enabled {
@@ -2021,7 +2047,8 @@ impl AppState {
         self.data_channels.push(ch);
         self.channel_buffers.push(TimeSeriesBuffer::default());
 
-        // 回填已有的解析结�?        let buf_idx = self.channel_buffers.len() - 1;
+        // 回填已有的解析结果
+        let buf_idx = self.channel_buffers.len() - 1;
         let mut dropped_total = 0usize;
         for pkt in &self.parsed_packets {
             if pkt.template_name == template_name {
@@ -2038,7 +2065,8 @@ impl AppState {
         }
     }
 
-    /// 获取已解析数据包中所有可用的 (template_name, field_name) �?    pub fn available_packet_fields(&self) -> Vec<(String, String)> {
+    /// 获取已解析数据包中所有可用的 (template_name, field_name) 对
+    pub fn available_packet_fields(&self) -> Vec<(String, String)> {
         let mut fields = Vec::new();
         for pkt in &self.parsed_packets {
             for f in &pkt.fields {
@@ -2192,7 +2220,7 @@ impl AppState {
         }
     }
 
-    // ─── MCP 服务�?─────────────────────────────────────
+    // ─── MCP 服务器 ─────────────────────────────────────
 
     pub fn start_mcp_server(&mut self) -> Result<(), String> {
         if self.ui.mcp_running {
@@ -2581,5 +2609,3 @@ mod tests {
         let _ = fs::remove_file(backup);
     }
 }
-
-

@@ -5,10 +5,10 @@ use std::path::PathBuf;
 #[derive(Default)]
 pub struct ProtocolAnalyzer {}
 
-pub fn show(ui: &mut Ui, state: &mut AppState) {
+pub fn show(ui: &mut Ui, _state: &mut AppState) {
     ui.heading("Protocol Analyzer");
 }
 
-pub fn export_analysis_csv(state: &AppState) -> Result<PathBuf, String> {
+pub fn export_analysis_csv(_state: &AppState) -> Result<PathBuf, String> {
     Ok(PathBuf::from("export.csv"))
 }
