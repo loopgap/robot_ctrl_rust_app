@@ -1851,6 +1851,18 @@ impl Tr {
             Language::Chinese => "动效等级",
         }
     }
+    pub fn menu_ui_scale(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "UI Scale",
+            Language::Chinese => "界面缩放",
+        }
+    }
+    pub fn menu_ui_scale_reset(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Reset UI Scale",
+            Language::Chinese => "重置界面缩放",
+        }
+    }
     pub fn menu_language(lang: Language) -> &'static str {
         match lang {
             Language::English => "Language",
@@ -1921,6 +1933,13 @@ impl Tr {
         match lang {
             Language::English => "Motion level",
             Language::Chinese => "动效等级",
+        }
+    }
+
+    pub fn prefs_ui_scale(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "UI scale (%)",
+            Language::Chinese => "界面缩放 (%)",
         }
     }
 
@@ -2000,6 +2019,13 @@ impl Tr {
         match lang {
             Language::English => format!("Log export failed: {}", err),
             Language::Chinese => format!("日志导出失败: {}", err),
+        }
+    }
+
+    pub fn ui_scale_set(percent: u32, lang: Language) -> String {
+        match lang {
+            Language::English => format!("UI scale set to {}%", percent),
+            Language::Chinese => format!("界面缩放已设置为 {}%", percent),
         }
     }
 

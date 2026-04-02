@@ -2,7 +2,7 @@
 
 一个面向实际交付场景的 Rust 小工具合集，UI 风格与 `robot_control_rust` 保持一致（深色工业风、蓝色强调色、统一控件密度）。
 
-当前版本提供 **7 款工具**，并且全部支持：
+当前版本提供 **10 款工具**，并且全部支持：
 
 - 双语界面（中文 / English）
 - App 内置使用引导文档（Guide）
@@ -16,7 +16,7 @@
 - `src/workflow.rs`：闭环流程状态面板
 - `src/i18n.rs`：语言定义（中文 / English）
 - `src/settings.rs`：语言偏好持久化
-- `src/tools/`：各工具实现（`checksum` / `json_workshop` / `log_inspector` / `url_codec` / `time_converter` / `base64_workshop` / `uuid_batch`）
+- `src/tools/`：各工具实现（`checksum` / `json_workshop` / `log_inspector` / `url_codec` / `time_converter` / `base64_workshop` / `uuid_batch` / `csv_cleaner` / `jwt_inspector` / `regex_workbench`）
 
 ## 工具清单（市场高频场景）
 
@@ -48,6 +48,18 @@
    - 功能：批量生成 UUID（支持大写与去连字符）
    - 场景：测试数据准备、批量主键生成、链路追踪 ID 预置
 
+8. **CSV 清洗工坊**
+   - 功能：列宽一致性检查、可选去重、结果复制
+   - 场景：批量导入前数据清洗、日志/报表数据预处理
+
+9. **JWT 解析工坊**
+   - 功能：解析 Header/Payload（不验签）、结果格式化展示
+   - 场景：联调排查 Token 内容、快速核验字段
+
+10. **Regex 巡检工坊**
+   - 功能：正则匹配、命中统计、结果导出
+   - 场景：日志筛选、文本巡检、规则回归验证
+
 ## 闭环流程（与主应用一致）
 
 每个工具都实现统一流程面板：
@@ -67,4 +79,4 @@ cargo run --release
 
 ## 相关目录
 
-- 独立工具集合：[`../rust_indie_tools/README.md`](../rust_indie_tools/README.md)
+- 历史独立工具来源：[`../rust_indie_tools/README.md`](../rust_indie_tools/README.md)

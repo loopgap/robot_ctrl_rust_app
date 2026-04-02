@@ -11,8 +11,8 @@
 Rust Serial 工作区是一个统一的、**极致性能与高度智能化**的 Rust 串行设备工作区，包含：
 
 - **机器人控制主应用** (`robot_control_rust`) - 工业控制、协议调试、可视化与联调能力
-- **微型工具集** (`rust_micro_tools`) - 智能 TUI/CLI 与硬件互动的统一入口
-- **独立图形工具** (`rust_indie_tools`) - 可独立交付的 GUI 小工具
+- **微型工具集** (`rust_micro_tools`) - 统一 GUI 聚合入口（含 10 款高频工具）
+- **独立图形工具** (`rust_indie_tools`) - 保留独立工程，便于单工具开发与独立构建
 
 ## 核心特性
 
@@ -60,8 +60,8 @@ rust_serial/
 │   │   ├── services/       # 串口/TCP/UDP/CAN/LLM/MCP 服务
 │   │   └── views/          # UI 页面组件
 │   └── scripts/            # 打包与预检脚本
-├── rust_micro_tools/       # 微型工具集 (TUI/CLI)
-│   └── src/tools/          # 7 款工具实现
+├── rust_micro_tools/       # 微型工具集 (统一 GUI 聚合入口)
+│   └── src/tools/          # 10 款工具实现
 ├── rust_indie_tools/       # 独立图形工具
 │   ├── csv_cleaner_gui/    # CSV 清洗工坊
 │   ├── jwt_inspector_gui/  # JWT 解析工坊
@@ -87,7 +87,7 @@ rust_serial/
 |--------|----------|----------|
 | **CI** | PR / push 到 main/develop | 格式检查、Clippy 分析、Auto-fix 并推回 |
 | **Security Audit** | 每周一 / 依赖变更 | cargo-audit 与 cargo-deny 门禁 |
-| **Release** | push tag v* | 全自动化跨平台打包与 Changelog 生成 |
+| **Release** | push tag v* | 自动发布 `robot_control_rust.exe`、`rust_micro_tools.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
 
 ### 本地开发
 

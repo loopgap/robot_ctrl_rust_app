@@ -4,9 +4,10 @@ use crate::i18n::Language;
 use crate::settings::{load_preferences, save_preferences, AppPreferences};
 use crate::theme::ACCENT_COLOR;
 use crate::tools::{
-    base64_workshop::Base64Tool, checksum::ChecksumTool, json_workshop::JsonTool,
-    log_inspector::LogTool, time_converter::TimeConverterTool, url_codec::UrlCodecTool,
-    uuid_batch::UuidBatchTool,
+    base64_workshop::Base64Tool, checksum::ChecksumTool, csv_cleaner::CsvCleanerTool,
+    json_workshop::JsonTool, jwt_inspector::JwtInspectorTool, log_inspector::LogTool,
+    regex_workbench::RegexWorkbenchTool, time_converter::TimeConverterTool,
+    url_codec::UrlCodecTool, uuid_batch::UuidBatchTool,
 };
 use crate::workflow::render_loop_panel;
 
@@ -19,10 +20,13 @@ enum ActiveTool {
     TimeConverter,
     Base64,
     UuidBatch,
+    CsvCleaner,
+    JwtInspector,
+    RegexWorkbench,
 }
 
 impl ActiveTool {
-    fn all() -> [Self; 7] {
+    fn all() -> [Self; 10] {
         [
             Self::Checksum,
             Self::Json,
@@ -31,6 +35,9 @@ impl ActiveTool {
             Self::TimeConverter,
             Self::Base64,
             Self::UuidBatch,
+            Self::CsvCleaner,
+            Self::JwtInspector,
+            Self::RegexWorkbench,
         ]
     }
 
@@ -43,6 +50,9 @@ impl ActiveTool {
             Self::TimeConverter => language.tr("时间戳转换", "Timestamp Converter"),
             Self::Base64 => language.tr("Base64 工坊", "Base64 Workshop"),
             Self::UuidBatch => language.tr("UUID 批量生成", "UUID Batch Generator"),
+            Self::CsvCleaner => language.tr("CSV 清洗", "CSV Cleaner"),
+            Self::JwtInspector => language.tr("JWT 解析", "JWT Inspector"),
+            Self::RegexWorkbench => language.tr("Regex 巡检", "Regex Workbench"),
         }
     }
 }
@@ -57,6 +67,9 @@ pub struct ToolSuiteApp {
     time_converter: TimeConverterTool,
     base64_tool: Base64Tool,
     uuid_batch: UuidBatchTool,
+    csv_cleaner: CsvCleanerTool,
+    jwt_inspector: JwtInspectorTool,
+    regex_workbench: RegexWorkbenchTool,
 }
 
 impl Default for ToolSuiteApp {
@@ -72,6 +85,9 @@ impl Default for ToolSuiteApp {
             time_converter: TimeConverterTool::default(),
             base64_tool: Base64Tool::default(),
             uuid_batch: UuidBatchTool::default(),
+            csv_cleaner: CsvCleanerTool::default(),
+            jwt_inspector: JwtInspectorTool::default(),
+            regex_workbench: RegexWorkbenchTool::default(),
         }
     }
 }
@@ -102,8 +118,8 @@ impl eframe::App for ToolSuiteApp {
                 ui.colored_label(
                     ACCENT_COLOR,
                     self.language.tr(
-                        "市场高频小工具 · 闭环流程",
-                        "Practical tools with closed-loop workflow",
+                        "10 款工具统一管理 · 闭环流程",
+                        "Unified management for 10 tools · closed-loop workflow",
                     ),
                 );
                 egui::ComboBox::from_label(self.language.tr("语言", "Language"))
@@ -140,6 +156,13 @@ impl eframe::App for ToolSuiteApp {
                     }
                     ActiveTool::Base64 => self.base64_tool.ui(&mut cols[0], ctx, self.language),
                     ActiveTool::UuidBatch => self.uuid_batch.ui(&mut cols[0], ctx, self.language),
+                    ActiveTool::CsvCleaner => self.csv_cleaner.ui(&mut cols[0], ctx, self.language),
+                    ActiveTool::JwtInspector => {
+                        self.jwt_inspector.ui(&mut cols[0], ctx, self.language)
+                    }
+                    ActiveTool::RegexWorkbench => {
+                        self.regex_workbench.ui(&mut cols[0], ctx, self.language)
+                    }
                 }
 
                 let steps = match self.active {
@@ -150,6 +173,9 @@ impl eframe::App for ToolSuiteApp {
                     ActiveTool::TimeConverter => self.time_converter.loop_steps(self.language),
                     ActiveTool::Base64 => self.base64_tool.loop_steps(self.language),
                     ActiveTool::UuidBatch => self.uuid_batch.loop_steps(self.language),
+                    ActiveTool::CsvCleaner => self.csv_cleaner.loop_steps(self.language),
+                    ActiveTool::JwtInspector => self.jwt_inspector.loop_steps(self.language),
+                    ActiveTool::RegexWorkbench => self.regex_workbench.loop_steps(self.language),
                 };
                 render_loop_panel(&mut cols[1], &steps, self.language);
             });

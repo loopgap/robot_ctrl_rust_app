@@ -7,7 +7,7 @@ mod models;
 mod services;
 mod views;
 
-use app::{ActiveTab, AppState, LogDirection};
+use app::{ActiveTab, AppState, DisplayMode, LogDirection};
 use eframe::egui;
 use i18n::{Language, Tr};
 use std::time::{Duration, Instant};
@@ -57,6 +57,11 @@ impl RobotControlApp {
         } else {
             ctx.set_visuals(egui::Visuals::light());
         }
+    }
+
+    fn apply_ui_scale(&self, ctx: &egui::Context) {
+        let scale = self.state.ui.ui_scale_percent.clamp(80, 160) as f32 / 100.0;
+        ctx.set_pixels_per_point(scale);
     }
 
     fn render_active_tab(&mut self, ui: &mut egui::Ui) {
@@ -204,6 +209,31 @@ impl RobotControlApp {
             }
 
             ui.separator();
+            ui.checkbox(&mut self.state.ui.auto_scroll, Tr::auto_scroll(lang));
+            ui.horizontal(|ui| {
+                ui.label(Tr::display(lang));
+                ui.selectable_value(&mut self.state.ui.display_mode, DisplayMode::Hex, "HEX");
+                ui.selectable_value(&mut self.state.ui.display_mode, DisplayMode::Ascii, "ASCII");
+                ui.selectable_value(&mut self.state.ui.display_mode, DisplayMode::Mixed, "MIXED");
+            });
+
+            ui.separator();
+            let before_scale = self.state.ui.ui_scale_percent;
+            ui.add(
+                egui::Slider::new(&mut self.state.ui.ui_scale_percent, 80..=160)
+                    .text(Tr::menu_ui_scale(lang))
+                    .suffix("%"),
+            );
+            if self.state.ui.ui_scale_percent != before_scale {
+                self.state.status_message = Tr::ui_scale_set(self.state.ui.ui_scale_percent, lang);
+            }
+            if ui.button(Tr::menu_ui_scale_reset(lang)).clicked() {
+                self.state.ui.ui_scale_percent = 100;
+                self.state.status_message = Tr::ui_scale_set(100, lang);
+                ui.close_menu();
+            }
+
+            ui.separator();
             let theme_button = if self.state.dark_mode {
                 Tr::light_mode(lang)
             } else {
@@ -299,6 +329,34 @@ impl RobotControlApp {
                     ui.separator();
                     ui.checkbox(&mut self.state.dark_mode, Tr::dark_mode(lang));
                     ui.checkbox(&mut self.state.ui.sidebar_expanded, Tr::prefs_sidebar(lang));
+                    ui.checkbox(&mut self.state.ui.auto_scroll, Tr::auto_scroll(lang));
+
+                    ui.horizontal(|ui| {
+                        ui.label(Tr::display(lang));
+                        egui::ComboBox::from_id_salt("prefs_display_mode")
+                            .selected_text(match self.state.ui.display_mode {
+                                DisplayMode::Hex => "HEX",
+                                DisplayMode::Ascii => "ASCII",
+                                DisplayMode::Mixed => "MIXED",
+                            })
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut self.state.ui.display_mode,
+                                    DisplayMode::Hex,
+                                    "HEX",
+                                );
+                                ui.selectable_value(
+                                    &mut self.state.ui.display_mode,
+                                    DisplayMode::Ascii,
+                                    "ASCII",
+                                );
+                                ui.selectable_value(
+                                    &mut self.state.ui.display_mode,
+                                    DisplayMode::Mixed,
+                                    "MIXED",
+                                );
+                            });
+                    });
 
                     ui.horizontal(|ui| {
                         ui.label(Tr::prefs_motion_level(lang));
@@ -317,6 +375,17 @@ impl RobotControlApp {
                                 }
                             });
                     });
+
+                    let before_scale = self.state.ui.ui_scale_percent;
+                    ui.add(
+                        egui::Slider::new(&mut self.state.ui.ui_scale_percent, 80..=160)
+                            .text(Tr::prefs_ui_scale(lang))
+                            .suffix("%"),
+                    );
+                    if self.state.ui.ui_scale_percent != before_scale {
+                        self.state.status_message =
+                            Tr::ui_scale_set(self.state.ui.ui_scale_percent, lang);
+                    }
 
                     ui.add(
                         egui::Slider::new(&mut self.state.ui.prefs_autosave_interval_sec, 1..=300)
@@ -400,6 +469,7 @@ impl RobotControlApp {
 impl eframe::App for RobotControlApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.apply_theme(ctx);
+        self.apply_ui_scale(ctx);
         self.handle_shortcuts(ctx);
         self.state.poll_background_tasks();
         self.state.poll_data();

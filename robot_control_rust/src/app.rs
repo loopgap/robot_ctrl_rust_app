@@ -309,6 +309,9 @@ pub struct UiState {
     // 动效层级：0=极致, 1=标准, 2=原生, 3=优化
     pub motion_level_idx: usize,
 
+    // UI 缩放百分比（80-160）
+    pub ui_scale_percent: u32,
+
     // 偏好自动保存周期（秒）
     pub prefs_autosave_interval_sec: u32,
 
@@ -428,6 +431,7 @@ impl Default for UiState {
             mcp_running: false,
             sidebar_expanded: true,
             motion_level_idx: 2,
+            ui_scale_percent: 100,
             prefs_autosave_interval_sec: 3,
             update_channel: "stable-0.1".into(),
             update_manifest_url: String::new(),
@@ -676,6 +680,7 @@ struct UserPreferences {
     analysis_filter_rx: bool,
     analysis_filter_info: bool,
     llm_temperature_text: String,
+    ui_scale_percent: u32,
     prefs_autosave_interval_sec: u32,
     update_channel: String,
     update_manifest_url: String,
@@ -740,6 +745,7 @@ impl Default for UserPreferences {
             analysis_filter_rx: true,
             analysis_filter_info: false,
             llm_temperature_text: "0.7".into(),
+            ui_scale_percent: 100,
             prefs_autosave_interval_sec: 3,
             update_channel: "stable-0.1".into(),
             update_manifest_url: String::new(),
@@ -1273,6 +1279,7 @@ impl AppState {
             analysis_filter_rx: self.ui.analysis_filter_rx,
             analysis_filter_info: self.ui.analysis_filter_info,
             llm_temperature_text: self.ui.llm_temperature_text.clone(),
+            ui_scale_percent: self.ui.ui_scale_percent.clamp(80, 160),
             prefs_autosave_interval_sec: self.ui.prefs_autosave_interval_sec,
             update_channel: self.ui.update_channel.clone(),
             update_manifest_url: self.ui.update_manifest_url.clone(),
@@ -1341,6 +1348,7 @@ impl AppState {
         self.ui.analysis_filter_rx = prefs.analysis_filter_rx;
         self.ui.analysis_filter_info = prefs.analysis_filter_info;
         self.ui.llm_temperature_text = prefs.llm_temperature_text;
+        self.ui.ui_scale_percent = prefs.ui_scale_percent.clamp(80, 160);
         self.ui.prefs_autosave_interval_sec = prefs.prefs_autosave_interval_sec.clamp(1, 300);
         self.ui.update_channel = prefs.update_channel;
         self.ui.update_manifest_url = prefs.update_manifest_url;
@@ -2468,6 +2476,7 @@ mod tests {
         s1.ui.parser_auto_parse = false;
         s1.ui.analysis_protocol_idx = 7;
         s1.ui.analysis_filter_info = true;
+        s1.ui.ui_scale_percent = 125;
         s1.ui.prefs_autosave_interval_sec = 9;
         s1.ui.update_channel = "preview-0.1".into();
         s1.ui.update_manifest_url = "https://example.com/manifest.json".into();
@@ -2484,6 +2493,7 @@ mod tests {
         assert!(!s2.ui.parser_auto_parse);
         assert_eq!(s2.ui.analysis_protocol_idx, 7);
         assert!(s2.ui.analysis_filter_info);
+        assert_eq!(s2.ui.ui_scale_percent, 125);
         assert_eq!(s2.ui.prefs_autosave_interval_sec, 9);
         assert_eq!(s2.ui.update_channel, "preview-0.1");
         assert_eq!(
@@ -2508,6 +2518,7 @@ mod tests {
         assert!(s.dark_mode);
         assert!(s.ui.sidebar_expanded);
         assert_eq!(s.ui.motion_level_idx, 2);
+        assert_eq!(s.ui.ui_scale_percent, 100);
         assert_eq!(s.ui.tcp_host, "127.0.0.1");
     }
 

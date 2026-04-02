@@ -46,7 +46,7 @@
 |--------|----------|------|
 | **CI** | PR / push 到 `main`/`develop` | 格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | `cargo-audit` 与 `cargo-deny` 严格门禁 |
-| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust.exe`、`Setup.exe`、`checksums-sha256.txt`） |
+| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust.exe`、`rust_micro_tools.exe`、`Setup.exe`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
 
 ### 本地终端与交互测试
 
@@ -85,7 +85,7 @@ cargo run -- connect
 1. 在 `main/master` 分支完成并通过 `.\make.ps1 preflight`。
 2. 执行 `.\scripts\smart-bump.ps1 -Part patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
-4. 在 Release 页面验证三个必需资产：`robot_control_rust.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
+4. 在 Release 页面验证四个必需资产：`robot_control_rust.exe`、`rust_micro_tools.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
 
 发布失败可用以下命令回滚：
 

@@ -133,6 +133,10 @@ jobs:
             throw 'Entrypoint guard failed: main.rs still contains placeholder implementation'
           }
           cargo build --release --manifest-path robot_control_rust/Cargo.toml
+      - name: Build rust_micro_tools.exe
+        shell: pwsh
+        run: |
+          cargo build --release --manifest-path rust_micro_tools/Cargo.toml
       - name: Smoke test executable launch
         shell: pwsh
         run: |
@@ -236,16 +240,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release_artifacts | Out-Null
           $exe = 'robot_control_rust\target\release\robot_control_rust.exe'
+          $microExe = 'rust_micro_tools\target\release\rust_micro_tools.exe'
           $setup = Get-ChildItem 'robot_control_rust\dist\windows-x64\installer\*_Setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $setup) {
             throw 'Setup.exe not found under robot_control_rust/dist/windows-x64/installer'
           }
+          if (-not (Test-Path $microExe)) {
+            throw 'rust_micro_tools.exe not found under rust_micro_tools/target/release'
+          }
 
           Copy-Item $exe 'release_artifacts\robot_control_rust.exe'
+          Copy-Item $microExe 'release_artifacts\rust_micro_tools.exe'
           Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
 
           Push-Location release_artifacts
-          Get-FileHash -Algorithm SHA256 robot_control_rust.exe, RobotControlSuite_Setup.exe |
+          Get-FileHash -Algorithm SHA256 robot_control_rust.exe, rust_micro_tools.exe, RobotControlSuite_Setup.exe |
             ForEach-Object { "$($_.Hash.ToLower())  $($_.Path | Split-Path -Leaf)" } |
             Set-Content -Path checksums-sha256.txt -Encoding utf8
           Pop-Location
@@ -260,6 +269,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-windows-assets
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: windows-release-assets
@@ -269,16 +279,20 @@ jobs:
         run: |
           set -euo pipefail
           test -f artifacts/robot_control_rust.exe
+          test -f artifacts/rust_micro_tools.exe
           test -f artifacts/RobotControlSuite_Setup.exe
           test -f artifacts/checksums-sha256.txt
+          test -f release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md
+          test -s release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
+          body_path: release_notes/RELEASE_NOTES_${{ github.ref_name }}.md
           files: |
             artifacts/robot_control_rust.exe
+            artifacts/rust_micro_tools.exe
             artifacts/RobotControlSuite_Setup.exe
             artifacts/checksums-sha256.txt
 

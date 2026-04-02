@@ -102,16 +102,16 @@ cargo run --release
 
 | 特性 | rust_indie_tools | rust_micro_tools |
 |------|-------------------|------------------|
-| 入口方式 | 独立应用 | 统一 TUI 入口 |
+| 入口方式 | 独立 GUI 应用 | 统一 GUI 聚合入口 |
 | 双语支持 | ❌ | ✅ |
 | 语言持久化 | ❌ | ✅ |
 | 构建方式 | 每个工具独立 | 统一 |
-| 发布方式 | 独立 Matrix 构建 | 统一发布 |
-| 复杂度 | 较复杂 GUI | 较简单 TUI |
+| 发布方式 | 独立 Matrix 构建 | 统一发布（`rust_micro_tools.exe`） |
+| 复杂度 | 较复杂 GUI | 轻量聚合 GUI |
 
 两者互补：
-- `rust_micro_tools` 提供统一入口、双语支持与语言持久化
-- `rust_indie_tools` 提供更复杂功能的独立 GUI 应用
+- `rust_micro_tools` 提供统一入口、双语支持与语言持久化，并聚合 CSV/JWT/Regex 能力
+- `rust_indie_tools` 保留独立 GUI 工程，便于单工具开发、调试与独立交付
 
 ## 相关文档
 

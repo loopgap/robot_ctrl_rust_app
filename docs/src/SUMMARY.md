@@ -31,6 +31,9 @@
   - [时间戳转换](micro-tools/time-converter.md)
   - [Base64 工坊](micro-tools/base64.md)
   - [UUID 生成器](micro-tools/uuid.md)
+  - [CSV 清洗工坊](micro-tools/csv.md)
+  - [JWT 解析工坊](micro-tools/jwt.md)
+  - [Regex 巡检工坊](micro-tools/regex.md)
 
 - [独立图形工具 (Indie Tools)](indie-tools/README.md)
 

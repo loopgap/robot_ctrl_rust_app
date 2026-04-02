@@ -81,15 +81,27 @@ function Invoke-WorkspaceCleanup {
     Invoke-PwshScript -ScriptRelativePath "scripts\cleanup-process-files.ps1" -Arguments @("-Mode", "apply")
 }
 
+function Invoke-MakeSubTarget {
+    param([string]$TargetName)
+
+    & $PSCommandPath $TargetName
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    if (-not $?) {
+        exit 1
+    }
+}
+
 switch ($Target) {
 		"all" {
 		Write-Header "Run all checks (fmt-check + clippy + test + build)"
-        & $PSCommandPath workspace-cleanup
-        & $PSCommandPath workspace-guard
-		& $PSCommandPath fmt-check
-		& $PSCommandPath clippy
-		& $PSCommandPath test
-		& $PSCommandPath build
+        Invoke-MakeSubTarget "workspace-cleanup"
+        Invoke-MakeSubTarget "workspace-guard"
+		Invoke-MakeSubTarget "fmt-check"
+		Invoke-MakeSubTarget "clippy"
+		Invoke-MakeSubTarget "test"
+		Invoke-MakeSubTarget "build"
 		Write-Host "`nAll checks passed." -ForegroundColor Green
 		}
 
@@ -235,37 +247,37 @@ switch ($Target) {
     }
     "check" {
         Write-Header "Fast validation"
-        & $PSCommandPath workspace-cleanup
-        & $PSCommandPath workspace-guard
-        & $PSCommandPath fmt-check
-        & $PSCommandPath clippy
-        & $PSCommandPath test
+        Invoke-MakeSubTarget "workspace-cleanup"
+        Invoke-MakeSubTarget "workspace-guard"
+        Invoke-MakeSubTarget "fmt-check"
+        Invoke-MakeSubTarget "clippy"
+        Invoke-MakeSubTarget "test"
         Write-Host "`nAll checks passed." -ForegroundColor Green
     }
     "preflight" {
         Write-Header "Preflight validation"
-        & $PSCommandPath workspace-cleanup
-        & $PSCommandPath workspace-guard
-        & $PSCommandPath fmt-check
-        & $PSCommandPath clippy
-        & $PSCommandPath test
-        & $PSCommandPath test-release
-        & $PSCommandPath release
-        & $PSCommandPath doc
+        Invoke-MakeSubTarget "workspace-cleanup"
+        Invoke-MakeSubTarget "workspace-guard"
+        Invoke-MakeSubTarget "fmt-check"
+        Invoke-MakeSubTarget "clippy"
+        Invoke-MakeSubTarget "test"
+        Invoke-MakeSubTarget "test-release"
+        Invoke-MakeSubTarget "release"
+        Invoke-MakeSubTarget "doc"
         Write-Host "`nPreflight passed. Ready to release." -ForegroundColor Green
     }
     "release-sync" {
         Write-Header "Release state audit"
-        & $PSCommandPath workspace-cleanup
-        & $PSCommandPath workspace-guard
+        Invoke-MakeSubTarget "workspace-cleanup"
+        Invoke-MakeSubTarget "workspace-guard"
         Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "audit")
     }
     "release-sync-apply" {
         Write-Header "Release state normalize"
-        & $PSCommandPath workspace-cleanup
+        Invoke-MakeSubTarget "workspace-cleanup"
         Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "apply", "-PruneLocalTagsNotOnRemote", "-CleanOrphanNotes")
-        & $PSCommandPath workspace-cleanup
-        & $PSCommandPath workspace-guard
+        Invoke-MakeSubTarget "workspace-cleanup"
+        Invoke-MakeSubTarget "workspace-guard"
     }
     "workflow-seal" {
         Write-Header "Workflow seal (audit)"

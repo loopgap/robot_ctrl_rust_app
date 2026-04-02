@@ -37,8 +37,11 @@
 
 3. 等待 Release 工作流完成，确认资产：
 - robot_control_rust.exe
+- rust_micro_tools.exe
 - RobotControlSuite_Setup.exe
 - checksums-sha256.txt
+
+4. 确认远端 Release 正文与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 一致（正文以该文件为准）。
 
 ## 目录约定
 
@@ -83,7 +86,7 @@ pwsh ./robot_control_rust/scripts/create_github_release.ps1 -Tag vX.Y.Z
 pwsh ./robot_control_rust/scripts/create_github_release.ps1 \
 	-Tag vX.Y.Z \
 	-BodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
-	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
+	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/rust_micro_tools.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
 ```
 
 ## 质量门禁说明
@@ -94,9 +97,10 @@ Release 工作流会在发布前执行：
 2. fmt、clippy、test、doc 全量检查。
 3. Windows 构建 + smoke test（参数启动、超时、退出码）。
 4. 资产存在性校验。
+5. Release 正文文件存在性与非空校验。
 
 ## 发布后验收
 
-1. 校验 Release 页面包含 3 个必需资产。
+1. 校验 Release 页面包含 4 个必需资产。
 2. 下载 checksums-sha256.txt 对 exe 与 setup 做 SHA256 校验。
 3. 记录发布链接和版本号到变更日志。

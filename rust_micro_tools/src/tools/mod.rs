@@ -1,7 +1,10 @@
 pub mod base64_workshop;
 pub mod checksum;
+pub mod csv_cleaner;
 pub mod json_workshop;
+pub mod jwt_inspector;
 pub mod log_inspector;
+pub mod regex_workbench;
 pub mod time_converter;
 pub mod url_codec;
 pub mod uuid_batch;

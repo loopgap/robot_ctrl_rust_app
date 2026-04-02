@@ -13,22 +13,30 @@
 - Added system CJK font fallback loading to improve Chinese text rendering consistency in [robot_control_rust/src/main.rs](robot_control_rust/src/main.rs).
 - Replaced placeholder protocol analysis page with a functional filtered analyzer and CSV export in [robot_control_rust/src/views/protocol_analysis.rs](robot_control_rust/src/views/protocol_analysis.rs).
 - Added reusable log CSV export API in [robot_control_rust/src/app.rs](robot_control_rust/src/app.rs) and connected it to menu actions.
+- Integrated former indie tools (CSV Cleaner / JWT Inspector / Regex Workbench) into unified tool management in [rust_micro_tools/src/app.rs](rust_micro_tools/src/app.rs) and [rust_micro_tools/src/tools/mod.rs](rust_micro_tools/src/tools/mod.rs).
+- Added persistent UI scale and terminal display preferences in [robot_control_rust/src/main.rs](robot_control_rust/src/main.rs), [robot_control_rust/src/app.rs](robot_control_rust/src/app.rs), and [robot_control_rust/src/i18n.rs](robot_control_rust/src/i18n.rs).
+- Extended release asset pipeline to include `rust_micro_tools.exe` in [.github/workflows/release.yml](.github/workflows/release.yml).
+- Switched remote Release body source to [release_notes/RELEASE_NOTES_v0.1.7.md](release_notes/RELEASE_NOTES_v0.1.7.md) via workflow `body_path`.
 - Cleaned mojibake comments in [robot_control_rust/src/services/llm_service.rs](robot_control_rust/src/services/llm_service.rs) and removed orphan non-UTF8 file [robot_control_rust/src/views/protocol_analysis_utf8.rs](robot_control_rust/src/views/protocol_analysis_utf8.rs).
 - Hardened release smoke checks in [ .github/workflows/release.yml ](.github/workflows/release.yml):
 - `plain_start` now requires process survival for a minimum runtime window.
 - Arg-based smoke checks still run, and placeholder output is rejected.
 
-## Local Asset Verification
-- Local archive path: [release_notes/archive_assets/v0.1.7](release_notes/archive_assets/v0.1.7)
-- SHA256:
-- `9f896ff7670ecc24536e802c79b6b74b3833715f85d2927df11d6a5679d1d44e  robot_control_rust.exe`
-- `ebdace9c168fd41f86e74904f56a384ef00e2e031254fd0a452e4434aceaf3c2  RobotControlSuite_Setup.exe`
+## Release Asset Baseline
+- Expected remote assets for this reroll:
+- `robot_control_rust.exe`
+- `rust_micro_tools.exe`
+- `RobotControlSuite_Setup.exe`
+- `checksums-sha256.txt`
 
 ## Verification
 - [x] `cargo build --release --manifest-path robot_control_rust/Cargo.toml`
 - [x] `cargo test --manifest-path robot_control_rust/Cargo.toml`
 - [x] `cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings`
+- [x] `cargo clippy --manifest-path rust_micro_tools/Cargo.toml --all-targets -- -D warnings`
+- [x] `cargo test --manifest-path rust_micro_tools/Cargo.toml`
 - [x] `./make.ps1 check`
 - [x] Local smoke equivalent passed (`--version`, `--help`, `plain_start >= 2s`)
 - [ ] Remote release workflow passed for reissued `v0.1.7`
-- [ ] Remote assets verified (exe/setup/checksums)
+- [ ] Remote assets verified (robot/micro/setup/checksums)
+- [ ] Remote release body verified (matches this release note)

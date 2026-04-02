@@ -30,6 +30,7 @@ if ([string]::IsNullOrWhiteSpace($BodyFile)) {
 if ($null -eq $Assets -or $Assets.Count -eq 0) {
     $Assets = @(
         "release_artifacts/robot_control_rust.exe",
+        "release_artifacts/rust_micro_tools.exe",
         "release_artifacts/RobotControlSuite_Setup.exe",
         "release_artifacts/checksums-sha256.txt"
     )
