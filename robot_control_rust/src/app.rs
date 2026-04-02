@@ -1429,6 +1429,48 @@ impl AppState {
         self.language
     }
 
+    fn csv_escape(value: &str) -> String {
+        let escaped = value.replace('"', "\"\"");
+        format!("\"{}\"", escaped)
+    }
+
+    pub fn export_logs_csv(&self) -> Result<std::path::PathBuf, String> {
+        let mut export_dir = Self::user_prefs_path();
+        export_dir.pop();
+        export_dir.push("exports");
+        std::fs::create_dir_all(&export_dir)
+            .map_err(|e| format!("create export dir failed: {}", e))?;
+
+        let file_name = format!("logs_{}.csv", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+        let file_path = export_dir.join(file_name);
+
+        let mut csv = String::from("timestamp,channel,direction,display_mode,data\n");
+        for entry in &self.log_entries {
+            let direction = match entry.direction {
+                LogDirection::Tx => "TX",
+                LogDirection::Rx => "RX",
+                LogDirection::Info => "INFO",
+            };
+            let display_mode = match entry.display_mode {
+                DisplayMode::Hex => "HEX",
+                DisplayMode::Ascii => "ASCII",
+                DisplayMode::Mixed => "MIXED",
+            };
+
+            csv.push_str(&format!(
+                "{},{},{},{},{}\n",
+                Self::csv_escape(&entry.timestamp),
+                Self::csv_escape(&entry.channel),
+                Self::csv_escape(direction),
+                Self::csv_escape(display_mode),
+                Self::csv_escape(&entry.format_data())
+            ));
+        }
+
+        std::fs::write(&file_path, csv).map_err(|e| format!("write export file failed: {}", e))?;
+        Ok(file_path)
+    }
+
     pub fn refresh_ports(&mut self) {
         if self.port_scan_in_progress {
             return;

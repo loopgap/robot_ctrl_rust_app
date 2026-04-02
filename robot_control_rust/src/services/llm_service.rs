@@ -1,11 +1,9 @@
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// LLM API 璋冨弬鏈嶅姟 - 閫氳繃澶栭儴澶фā鍨?API 鑾峰彇 PID 璋冨弬寤鸿
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// LLM tuning service for PID parameter recommendations.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-/// 褰撳墠 PID 鍙傛暟
+/// Current PID parameters.
 #[derive(Debug, Clone, Serialize)]
 pub struct PidParams {
     pub kp: f64,
@@ -14,7 +12,7 @@ pub struct PidParams {
     pub setpoint: f64,
 }
 
-/// LLM 杩斿洖鐨勫缓璁弬鏁?
+/// Suggested parameters returned by the LLM provider.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SuggestedParams {
     pub kp: f64,
@@ -24,7 +22,7 @@ pub struct SuggestedParams {
     pub reasoning: String,
 }
 
-/// LLM API 鏈嶅姟
+/// LLM client wrapper.
 #[derive(Debug, Clone)]
 pub struct LlmService {
     pub api_url: String,
@@ -66,7 +64,7 @@ impl LlmService {
         }
     }
 
-    /// 鏋勫缓 PID 璋冨弬 prompt
+    /// Build the prompt from current controller state and error history.
     fn build_prompt(current: &PidParams, errors: &[f64]) -> String {
         let n = errors.len();
         let mean_err = errors.iter().map(|e| e.abs()).sum::<f64>() / n as f64;
@@ -78,7 +76,7 @@ impl LlmService {
             .map(|e| format!("{:.4}", e))
             .collect();
 
-        // 璁＄畻鎸崱鎸囨爣
+        // Oscillation indicator: sign changes in consecutive errors.
         let mut sign_changes = 0;
         for i in 1..errors.len() {
             if errors[i] * errors[i - 1] < 0.0 {
@@ -87,7 +85,7 @@ impl LlmService {
         }
         let oscillation_rate = sign_changes as f64 / n as f64;
 
-        // 绋虫€佽宸?(鏈€鍚?20% 鐨勫钩鍧?
+        // Steady-state error estimated from the final 20% samples.
         let tail_start = (n as f64 * 0.8) as usize;
         let steady_state_err = if tail_start < n {
             errors[tail_start..].iter().map(|e| e.abs()).sum::<f64>() / (n - tail_start) as f64
@@ -126,7 +124,7 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
         )
     }
 
-    /// 璋冪敤 LLM API 鑾峰彇璋冨弬寤鸿
+    /// Request PID suggestions from LLM API.
     pub fn suggest_pid_params(
         &self,
         current: &PidParams,
@@ -141,7 +139,7 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
 
         let prompt = Self::build_prompt(current, errors);
 
-        // 鏋勫缓 OpenAI-compatible request body
+        // Build an OpenAI-compatible request body.
         let body = serde_json::json!({
             "model": self.model,
             "messages": [
@@ -176,7 +174,7 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
             return Err(format!("API returned status {}: {}", status, body_str));
         }
 
-        // 瑙ｆ瀽 OpenAI-compatible response
+        // Parse OpenAI-compatible response body.
         let resp_json: serde_json::Value =
             serde_json::from_str(&body_str).map_err(|e| format!("JSON parse error: {}", e))?;
 
@@ -184,12 +182,12 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
             .as_str()
             .ok_or("No content in response")?;
 
-        // 灏濊瘯浠?content 鎻愬彇 JSON
+        // Extract JSON payload from content.
         let json_str = extract_json(content);
         let suggested: SuggestedParams = serde_json::from_str(&json_str)
             .map_err(|e| format!("Failed to parse suggestion: {} from: {}", e, json_str))?;
 
-        // 鍩烘湰鍚堢悊鎬ф鏌?
+        // Basic sanity check.
         if suggested.kp < 0.0 || suggested.ki < 0.0 || suggested.kd < 0.0 {
             return Err("LLM suggested negative parameters".into());
         }
@@ -197,7 +195,7 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
         Ok(suggested)
     }
 
-    /// 鑾峰彇 LLM 瀵圭郴缁熺姸鎬佺殑鍒嗘瀽
+    /// Request a short system analysis from LLM.
     pub fn analyze_system(&self, current: &PidParams, errors: &[f64]) -> Result<String, String> {
         if self.api_key.is_empty() {
             return Err("API key is empty".into());
@@ -248,9 +246,9 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
     }
 }
 
-/// 浠庡彲鑳藉寘鍚?markdown 浠ｇ爜鍧楃殑鏂囨湰涓彁鍙?JSON 瀵硅薄
+/// Extract a JSON object from plain text or markdown snippets.
 fn extract_json(text: &str) -> String {
-    // 灏濊瘯鎵惧埌 JSON 瀵硅薄
+    // Find the outermost JSON object if present.
     if let Some(start) = text.find('{') {
         if let Some(end) = text.rfind('}') {
             return text[start..=end].to_string();
@@ -259,7 +257,7 @@ fn extract_json(text: &str) -> String {
     text.to_string()
 }
 
-/// 鏀寔鐨?LLM 鎻愪緵鍟嗛璁?
+/// Built-in LLM provider presets.
 #[derive(Debug, Clone)]
 pub struct LlmPreset {
     pub name: &'static str,
@@ -299,9 +297,7 @@ impl LlmPreset {
     }
 }
 
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// 娴嬭瘯
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// Tests
 
 #[cfg(test)]
 mod tests {

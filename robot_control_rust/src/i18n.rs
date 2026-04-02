@@ -1881,6 +1881,155 @@ impl Tr {
             Language::Chinese => "文档",
         }
     }
+
+    pub fn top_health(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Health",
+            Language::Chinese => "链路健康",
+        }
+    }
+
+    pub fn top_status(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Status",
+            Language::Chinese => "状态",
+        }
+    }
+
+    pub fn menu_check_updates(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Check Updates",
+            Language::Chinese => "检查更新",
+        }
+    }
+
+    pub fn prefs_title(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Preferences",
+            Language::Chinese => "偏好设置",
+        }
+    }
+
+    pub fn prefs_sidebar(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Enable tab strip",
+            Language::Chinese => "显示标签栏",
+        }
+    }
+
+    pub fn prefs_motion_level(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Motion level",
+            Language::Chinese => "动效等级",
+        }
+    }
+
+    pub fn prefs_autosave_seconds(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Auto-save interval (s)",
+            Language::Chinese => "自动保存间隔 (秒)",
+        }
+    }
+
+    pub fn prefs_saved(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Preferences saved",
+            Language::Chinese => "偏好设置已保存",
+        }
+    }
+
+    pub fn about_summary(lang: Language) -> &'static str {
+        match lang {
+            Language::English => {
+                "Integrated workspace for robot connection, protocol diagnostics, and control tuning."
+            }
+            Language::Chinese => "用于机器人连接、协议诊断与控制调参的一体化工作台。",
+        }
+    }
+
+    pub fn shortcuts_title(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Keyboard Shortcuts",
+            Language::Chinese => "键盘快捷键",
+        }
+    }
+
+    pub fn docs_opened(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Documentation opened in browser",
+            Language::Chinese => "已在浏览器中打开文档",
+        }
+    }
+
+    pub fn logs_cleared(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "All logs cleared",
+            Language::Chinese => "已清除所有日志",
+        }
+    }
+
+    pub fn counters_reset_done(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Counters reset",
+            Language::Chinese => "计数器已重置",
+        }
+    }
+
+    pub fn no_logs_to_copy(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "No log frame to copy",
+            Language::Chinese => "暂无可复制的日志帧",
+        }
+    }
+
+    pub fn copied_last_frame(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Copied latest frame",
+            Language::Chinese => "已复制最近一帧",
+        }
+    }
+
+    pub fn logs_exported(path: &str, lang: Language) -> String {
+        match lang {
+            Language::English => format!("Logs exported: {}", path),
+            Language::Chinese => format!("日志已导出: {}", path),
+        }
+    }
+
+    pub fn logs_export_failed(err: &str, lang: Language) -> String {
+        match lang {
+            Language::English => format!("Log export failed: {}", err),
+            Language::Chinese => format!("日志导出失败: {}", err),
+        }
+    }
+
+    pub fn motion_level_extreme(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Extreme",
+            Language::Chinese => "极致",
+        }
+    }
+
+    pub fn motion_level_standard(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Standard",
+            Language::Chinese => "标准",
+        }
+    }
+
+    pub fn motion_level_native(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Native",
+            Language::Chinese => "原生",
+        }
+    }
+
+    pub fn motion_level_optimized(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Optimized",
+            Language::Chinese => "优化",
+        }
+    }
 }
 
 #[cfg(test)]
