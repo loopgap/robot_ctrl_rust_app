@@ -13,12 +13,19 @@ use app::{
 };
 use eframe::egui;
 use i18n::{Language, Tr};
+use std::path::PathBuf;
+use std::sync::mpsc::{self, Sender};
+use std::thread;
 use std::time::{Duration, Instant};
 
 struct RobotControlApp {
     state: AppState,
     pending_ui_scale_percent: u32,
     last_prefs_save: Instant,
+    last_saved_prefs_snapshot: Option<String>,
+    prefs_save_tx: Sender<(PathBuf, String)>,
+    applied_dark_mode: Option<bool>,
+    applied_ui_scale_percent: Option<u32>,
     show_preferences: bool,
     show_about: bool,
     show_shortcuts: bool,
@@ -28,10 +35,24 @@ impl RobotControlApp {
     fn new() -> Self {
         let state = AppState::new();
         let pending_ui_scale_percent = state.ui.ui_scale_percent;
+        let last_saved_prefs_snapshot = state.preferences_snapshot().ok().map(|(_, text)| text);
+        let (prefs_save_tx, prefs_save_rx) = mpsc::channel::<(PathBuf, String)>();
+        thread::Builder::new()
+            .name("prefs-save-worker".into())
+            .spawn(move || {
+                while let Ok((path, text)) = prefs_save_rx.recv() {
+                    let _ = AppState::write_preferences_snapshot(&path, &text);
+                }
+            })
+            .expect("spawn prefs-save-worker");
         Self {
             state,
             pending_ui_scale_percent,
             last_prefs_save: Instant::now(),
+            last_saved_prefs_snapshot,
+            prefs_save_tx,
+            applied_dark_mode: None,
+            applied_ui_scale_percent: None,
             show_preferences: false,
             show_about: false,
             show_shortcuts: false,
@@ -40,6 +61,19 @@ impl RobotControlApp {
 
     fn repaint_interval_ms(&self) -> u64 {
         self.state.repaint_interval_ms()
+    }
+
+    fn effective_repaint_interval_ms(&self, ctx: &egui::Context) -> u64 {
+        let (minimized, focused) = ctx.input(|i| (i.viewport().minimized, i.viewport().focused));
+        let mut interval = self.repaint_interval_ms();
+
+        if minimized.unwrap_or(false) {
+            interval = interval.max(500);
+        } else if !focused.unwrap_or(true) {
+            interval = interval.max(125);
+        }
+
+        interval
     }
 
     fn motion_level_label(lang: Language, idx: usize) -> &'static str {
@@ -103,10 +137,32 @@ impl RobotControlApp {
         ctx.set_pixels_per_point(scale);
     }
 
+    fn ensure_theme(&mut self, ctx: &egui::Context) {
+        if self.applied_dark_mode == Some(self.state.dark_mode) {
+            return;
+        }
+        self.apply_theme(ctx);
+        self.applied_dark_mode = Some(self.state.dark_mode);
+    }
+
+    fn ensure_ui_scale(&mut self, ctx: &egui::Context) {
+        let current = self
+            .state
+            .ui
+            .ui_scale_percent
+            .clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT);
+        if self.applied_ui_scale_percent == Some(current) {
+            return;
+        }
+        self.apply_ui_scale(ctx);
+        self.applied_ui_scale_percent = Some(current);
+    }
+
     fn set_ui_scale(&mut self, percent: u32) {
         let clamped = percent.clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT);
         self.state.ui.ui_scale_percent = clamped;
         self.pending_ui_scale_percent = clamped;
+        self.applied_ui_scale_percent = None;
         self.state.status_message = Tr::ui_scale_set(clamped, self.state.lang());
     }
 
@@ -116,6 +172,39 @@ impl RobotControlApp {
 
     fn reset_ui_scale(&mut self) {
         self.set_ui_scale(DEFAULT_UI_SCALE_PERCENT);
+    }
+
+    fn queue_preferences_save(&mut self, force: bool) {
+        let snapshot = match self.state.preferences_snapshot() {
+            Ok(snapshot) => snapshot,
+            Err(err) => {
+                self.state.report_error(err);
+                return;
+            }
+        };
+
+        if !force
+            && self
+                .last_saved_prefs_snapshot
+                .as_ref()
+                .is_some_and(|saved| saved == &snapshot.1)
+        {
+            return;
+        }
+
+        if let Err(err) = self.prefs_save_tx.send((snapshot.0, snapshot.1.clone())) {
+            self.state
+                .report_error(format!("Preferences save queue failed: {}", err));
+            return;
+        }
+
+        self.last_saved_prefs_snapshot = Some(snapshot.1);
+        self.last_prefs_save = Instant::now();
+    }
+
+    fn apply_motion_level_change(&mut self) {
+        self.state.apply_performance_profile();
+        self.state.refresh_resource_status();
     }
 
     fn render_tab_selector(&mut self, ui: &mut egui::Ui, lang: Language, available_width: f32) {
@@ -164,15 +253,14 @@ impl RobotControlApp {
     fn maybe_auto_save_preferences(&mut self) {
         let interval = Duration::from_secs(self.state.ui.prefs_autosave_interval_sec.max(1) as u64);
         if self.last_prefs_save.elapsed() >= interval {
-            self.state.save_user_preferences();
-            self.last_prefs_save = Instant::now();
+            self.queue_preferences_save(false);
         }
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         let save_shortcut = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::S);
         if ctx.input_mut(|i| i.consume_shortcut(&save_shortcut)) {
-            self.state.save_user_preferences();
+            self.queue_preferences_save(true);
             self.state.status_message = Tr::prefs_saved(self.state.lang()).into();
         }
 
@@ -308,6 +396,7 @@ impl RobotControlApp {
                 );
             }
             if self.state.ui.motion_level_idx != before {
+                self.apply_motion_level_change();
                 ui.close_menu();
             }
 
@@ -497,6 +586,7 @@ impl RobotControlApp {
 
                     ui.horizontal_wrapped(|ui| {
                         ui.label(Tr::prefs_motion_level(lang));
+                        let before_motion_level = self.state.ui.motion_level_idx;
                         egui::ComboBox::from_id_salt("prefs_motion_level")
                             .width(220.0)
                             .selected_text(Self::motion_level_label(
@@ -512,6 +602,9 @@ impl RobotControlApp {
                                     );
                                 }
                             });
+                        if self.state.ui.motion_level_idx != before_motion_level {
+                            self.apply_motion_level_change();
+                        }
                     });
 
                     ui.label(format!(
@@ -560,12 +653,15 @@ impl RobotControlApp {
                     ui.separator();
                     ui.horizontal_wrapped(|ui| {
                         if ui.button(Tr::save(lang)).clicked() {
-                            self.state.save_user_preferences();
+                            self.queue_preferences_save(true);
                             self.state.status_message = Tr::prefs_saved(lang).into();
                         }
                         if ui.button(Tr::reset(lang)).clicked() {
                             self.state.reset_user_preferences();
                             self.pending_ui_scale_percent = self.state.ui.ui_scale_percent;
+                            self.applied_dark_mode = None;
+                            self.applied_ui_scale_percent = None;
+                            self.apply_motion_level_change();
                         }
                     });
                 });
@@ -648,8 +744,8 @@ impl RobotControlApp {
 
 impl eframe::App for RobotControlApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.apply_theme(ctx);
-        self.apply_ui_scale(ctx);
+        self.ensure_theme(ctx);
+        self.ensure_ui_scale(ctx);
         self.handle_shortcuts(ctx);
         self.state.poll_background_tasks();
         self.state.poll_data();
@@ -738,7 +834,9 @@ impl eframe::App for RobotControlApp {
 
         self.render_dialogs(ctx);
 
-        ctx.request_repaint_after(Duration::from_millis(self.repaint_interval_ms()));
+        ctx.request_repaint_after(Duration::from_millis(
+            self.effective_repaint_interval_ms(ctx),
+        ));
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

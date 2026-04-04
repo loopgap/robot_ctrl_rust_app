@@ -1682,6 +1682,35 @@ impl AppState {
         self.save_user_preferences_to_path(&path);
     }
 
+    pub fn preferences_snapshot(&self) -> Result<(PathBuf, String), String> {
+        let text = serde_json::to_string_pretty(&self.to_user_preferences())
+            .map_err(|e| format!("Preferences serialize failed: {}", e))?;
+        Ok((Self::user_prefs_path(), text))
+    }
+
+    pub fn write_preferences_snapshot(path: &Path, text: &str) -> Result<(), String> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Preferences create dir failed: {}", e))?;
+        }
+
+        let mut tmp_path = path.to_path_buf();
+        tmp_path.set_extension("json.tmp");
+        std::fs::write(&tmp_path, text).map_err(|e| format!("Preferences save failed: {}", e))?;
+
+        if path.exists() {
+            let mut bak_path = path.to_path_buf();
+            bak_path.set_extension("json.bak");
+            let _ = std::fs::copy(path, &bak_path);
+            let _ = std::fs::remove_file(path);
+        }
+
+        std::fs::rename(&tmp_path, path).map_err(|e| {
+            let _ = std::fs::remove_file(&tmp_path);
+            format!("Preferences commit failed: {}", e)
+        })
+    }
+
     pub fn save_user_preferences_as<P: AsRef<std::path::Path>>(&mut self, path: P) {
         self.save_user_preferences_to_path(path.as_ref());
     }
