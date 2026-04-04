@@ -24,6 +24,10 @@
     .callout { border-left: 4px solid var(--ok); background: #eefaf2; padding: 12px 14px; border-radius: 12px; margin-top: 16px; }
     .section { margin-top: 24px; }
     .footer { margin-top: 28px; color: var(--muted); font-size: 0.95rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+    .action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border-radius: 14px; text-decoration: none; font-weight: 700; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+    .action.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .action:hover { filter: brightness(0.98); }
   </style>
 </head>
 <body>
@@ -34,6 +38,11 @@
       <p>这份帮助页会由默认浏览器直接渲染，适合查看较长说明、快捷键、缩放规则、安装结构和常见排查项。</p>
       <p class="muted">This page is the local HTML help entry used by <code>robot_control_rust</code> and <code>rust_tools_suite</code>.</p>
       <div class="callout">默认界面缩放基线为 <strong>150%</strong>。推荐使用 <code>Ctrl + 鼠标滚轮</code> 快速缩放；设置中的滑块只调整待应用值，点击“应用缩放”后才真正生效。</div>
+      <div class="actions">
+        <a class="action primary" data-book-target="index.html" href="#">打开完整手册</a>
+        <a class="action" data-book-target="local-help.html" href="#">查看入口说明</a>
+        <a class="action" data-book-target="troubleshooting.html" href="#">打开排障章节</a>
+      </div>
     </section>
     <div class="grid section">
       <nav class="card toc">
@@ -109,5 +118,25 @@
     </section>
     <p class="footer">Workspace help page for version 0.1.7 reissue preparation.</p>
   </div>
+  <script>
+    (function () {
+      var path = (window.location && window.location.pathname) || "";
+      var normalized = path.replace(/\\/g, "/").toLowerCase();
+      var bookBase = "./book/";
+
+      if (normalized.endsWith("/help_index.html")) {
+        bookBase = "./docs/book/";
+      } else if (normalized.endsWith("/docs/index.html")) {
+        bookBase = "./book/";
+      } else if (normalized.endsWith("/docs/help/index.html")) {
+        bookBase = "../book/";
+      }
+
+      document.querySelectorAll("[data-book-target]").forEach(function (link) {
+        var target = link.getAttribute("data-book-target") || "index.html";
+        link.setAttribute("href", bookBase + target);
+      });
+    })();
+  </script>
 </body>
 </html>

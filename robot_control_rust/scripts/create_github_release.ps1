@@ -6,7 +6,8 @@ param(
     [string]$BodyFile = "",
     [string[]]$Assets = @(),
     [switch]$Prerelease,
-    [switch]$Draft
+    [switch]$Draft,
+    [switch]$PruneExtraAssets
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +32,7 @@ if ($null -eq $Assets -or $Assets.Count -eq 0) {
     $Assets = @(
         "release_artifacts/robot_control_rust_windows_x64_portable.zip",
         "release_artifacts/rust_tools_suite_windows_x64_portable.zip",
+        "release_artifacts/rust_tools_suite_linux_amd64.deb",
         "release_artifacts/RobotControlSuite_Setup.exe",
         "release_artifacts/checksums-sha256.txt"
     )
@@ -93,6 +95,15 @@ catch {
 }
 
 $baseUploadUrl = ([string]$release.upload_url).Replace('{?name,label}', '')
+$desiredAssetNames = @($Assets | ForEach-Object { [System.IO.Path]::GetFileName($_) })
+
+if ($PruneExtraAssets) {
+    foreach ($item in @($release.assets)) {
+        if ($desiredAssetNames -notcontains $item.name) {
+            Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$Owner/$Repo/releases/assets/$($item.id)" -Headers $headers
+        }
+    }
+}
 
 foreach ($asset in $Assets) {
     $assetName = [System.IO.Path]::GetFileName($asset)

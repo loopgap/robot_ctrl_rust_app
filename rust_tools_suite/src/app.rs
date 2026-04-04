@@ -43,6 +43,9 @@ fn responsive_mode(width: f32) -> ResponsiveMode {
 fn path_to_file_url(path: &Path) -> String {
     let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let mut raw = canonical.to_string_lossy().replace('\\', "/");
+    if let Some(stripped) = raw.strip_prefix("//?/") {
+        raw = stripped.to_string();
+    }
     if !raw.starts_with('/') {
         raw = format!("/{raw}");
     }
@@ -59,21 +62,34 @@ fn resolve_docs_url() -> String {
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
-            candidates.push(exe_dir.join("docs").join("index.html"));
             candidates.push(exe_dir.join("help_index.html"));
             candidates.push(exe_dir.join("help").join("index.html"));
+            candidates.push(exe_dir.join("docs").join("index.html"));
             for ancestor in exe_dir.ancestors().take(4) {
+                candidates.push(ancestor.join("help_index.html"));
+                candidates.push(ancestor.join("docs").join("help").join("index.html"));
+                candidates.push(ancestor.join("docs").join("index.html"));
                 candidates.push(ancestor.join("docs").join("book").join("index.html"));
                 candidates.push(ancestor.join("docs").join("site").join("index.html"));
-                candidates.push(ancestor.join("docs").join("help").join("index.html"));
             }
         }
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/help_index.html"));
+        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/docs/index.html"));
+        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/docs/book/index.html"));
+        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/help_index.html"));
+        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/docs/index.html"));
+        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/docs/book/index.html"));
+    }
+
+    candidates.push(PathBuf::from("help_index.html"));
+    candidates.push(PathBuf::from("docs").join("help").join("index.html"));
+    candidates.push(PathBuf::from("docs").join("index.html"));
     candidates.push(PathBuf::from("docs").join("book").join("index.html"));
     candidates.push(PathBuf::from("docs").join("site").join("index.html"));
-    candidates.push(PathBuf::from("docs").join("help").join("index.html"));
-    candidates.push(PathBuf::from("help_index.html"));
 
     candidates
         .into_iter()
