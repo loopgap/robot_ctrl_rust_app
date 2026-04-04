@@ -923,6 +923,7 @@ fn main() -> eframe::Result<()> {
     env_logger::init();
 
     let options = eframe::NativeOptions {
+        renderer: eframe::Renderer::Glow,
         viewport: egui::ViewportBuilder::default()
             .with_title("Robot Control Suite")
             .with_inner_size([1600.0, 960.0])

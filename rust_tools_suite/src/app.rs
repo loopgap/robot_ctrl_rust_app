@@ -163,6 +163,8 @@ pub struct ToolSuiteApp {
     dark_mode: bool,
     ui_scale_percent: u32,
     pending_ui_scale_percent: u32,
+    applied_dark_mode: Option<bool>,
+    applied_ui_scale_percent: Option<u32>,
     workflow_drawer_open: bool,
     active: ActiveTool,
     show_preferences: bool,
@@ -193,6 +195,8 @@ impl Default for ToolSuiteApp {
             pending_ui_scale_percent: prefs
                 .ui_scale_percent
                 .clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT),
+            applied_dark_mode: None,
+            applied_ui_scale_percent: None,
             workflow_drawer_open: prefs.workflow_drawer_open,
             active: ActiveTool::from_storage_key(&prefs.active_tool_key),
             show_preferences: false,
@@ -234,6 +238,38 @@ impl ToolSuiteApp {
         ctx.set_pixels_per_point(scale);
     }
 
+    fn ensure_theme(&mut self, ctx: &egui::Context) {
+        if self.applied_dark_mode == Some(self.dark_mode) {
+            return;
+        }
+        apply_theme(ctx, self.dark_mode);
+        self.applied_dark_mode = Some(self.dark_mode);
+    }
+
+    fn ensure_ui_scale(&mut self, ctx: &egui::Context) {
+        let current = self
+            .ui_scale_percent
+            .clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT);
+        if self.applied_ui_scale_percent == Some(current) {
+            return;
+        }
+        self.apply_ui_scale(ctx);
+        self.applied_ui_scale_percent = Some(current);
+    }
+
+    fn effective_repaint_interval_ms(&self, ctx: &egui::Context) -> u64 {
+        let (minimized, focused) = ctx.input(|i| (i.viewport().minimized, i.viewport().focused));
+        let mut interval = 16_u64;
+
+        if minimized.unwrap_or(false) {
+            interval = 500;
+        } else if !focused.unwrap_or(true) {
+            interval = 125;
+        }
+
+        interval
+    }
+
     fn ui_scale_status(&self, percent: u32) -> String {
         match self.language {
             Language::Zh => format!("界面缩放已调整为 {}%", percent),
@@ -247,6 +283,7 @@ impl ToolSuiteApp {
             .clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT);
         self.ui_scale_percent = scale;
         self.pending_ui_scale_percent = scale;
+        self.applied_ui_scale_percent = None;
         self.set_status(self.ui_scale_status(scale));
     }
 
@@ -263,6 +300,7 @@ impl ToolSuiteApp {
         if next != self.ui_scale_percent {
             self.ui_scale_percent = next;
             self.pending_ui_scale_percent = next;
+            self.applied_ui_scale_percent = None;
             self.set_status(self.ui_scale_status(next));
         }
     }
@@ -812,8 +850,8 @@ impl Drop for ToolSuiteApp {
 
 impl eframe::App for ToolSuiteApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        apply_theme(ctx, self.dark_mode);
-        self.apply_ui_scale(ctx);
+        self.ensure_theme(ctx);
+        self.ensure_ui_scale(ctx);
         self.handle_shortcuts(ctx);
         let width = ctx.available_rect().width();
         let mode = responsive_mode(width);
@@ -890,6 +928,9 @@ impl eframe::App for ToolSuiteApp {
         });
 
         self.render_dialogs(ctx);
+        ctx.request_repaint_after(std::time::Duration::from_millis(
+            self.effective_repaint_interval_ms(ctx),
+        ));
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
