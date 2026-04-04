@@ -49,6 +49,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#StageDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\rust_tools_suite.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StageDir}\help_index.html"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ProjectRoot}\ARCHITECTURE_AND_USAGE.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

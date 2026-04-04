@@ -59,14 +59,19 @@ fn resolve_docs_url() -> String {
 
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
+            candidates.push(exe_dir.join("docs").join("index.html"));
             candidates.push(exe_dir.join("help_index.html"));
             candidates.push(exe_dir.join("help").join("index.html"));
             for ancestor in exe_dir.ancestors().take(4) {
+                candidates.push(ancestor.join("docs").join("book").join("index.html"));
+                candidates.push(ancestor.join("docs").join("site").join("index.html"));
                 candidates.push(ancestor.join("docs").join("help").join("index.html"));
             }
         }
     }
 
+    candidates.push(PathBuf::from("docs").join("book").join("index.html"));
+    candidates.push(PathBuf::from("docs").join("site").join("index.html"));
     candidates.push(PathBuf::from("docs").join("help").join("index.html"));
     candidates.push(PathBuf::from("help_index.html"));
 

@@ -12,7 +12,7 @@ $manifestPath = Join-Path $projectRoot 'Cargo.toml'
 $toolSuiteManifestPath = Join-Path $repoRoot 'rust_tools_suite\Cargo.toml'
 $releaseExe = Join-Path $projectRoot 'target\release\robot_control_rust.exe'
 $toolSuiteReleaseExe = Join-Path $repoRoot 'rust_tools_suite\target\release\rust_tools_suite.exe'
-$helpHtml = Join-Path $repoRoot 'docs\help\index.html'
+$docsBundleScript = Join-Path $PSScriptRoot 'build-docs-bundle.ps1'
 
 $distRoot = Join-Path $projectRoot 'dist\windows-x64'
 $stageDir = Join-Path $distRoot 'stage'
@@ -51,7 +51,7 @@ if (-not $SkipBuild) {
     }
 }
 
-foreach ($required in @($releaseExe, $toolSuiteReleaseExe, $helpHtml)) {
+foreach ($required in @($releaseExe, $toolSuiteReleaseExe, $docsBundleScript)) {
     if (-not (Test-Path $required)) {
         throw "Required file not found: $required"
     }
@@ -70,8 +70,11 @@ New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
 Copy-Item -Force $releaseExe (Join-Path $stageDir 'robot_control_rust.exe')
 Copy-Item -Force $toolSuiteReleaseExe (Join-Path $stageDir 'rust_tools_suite.exe')
-Copy-Item -Force $helpHtml (Join-Path $stageDir 'help_index.html')
 Copy-Item -Force (Join-Path $projectRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path $stageDir 'ARCHITECTURE_AND_USAGE.md')
+& $docsBundleScript -OutputRoot $stageDir -CreateZip
+if ($LASTEXITCODE -ne 0) {
+    throw "Documentation bundle build failed (exit=$LASTEXITCODE)"
+}
 
 $installCmd = Join-Path $stageDir 'install.cmd'
 @"
@@ -109,9 +112,10 @@ function Remove-ShortcutSafe([string]__DOLLAR__Path) {
 function Remove-OldInstall([string]__DOLLAR__DirPath) {
     if ([string]::IsNullOrWhiteSpace(__DOLLAR__DirPath)) { return }
     if (-not (Test-Path __DOLLAR__DirPath)) { return }
-    foreach (__DOLLAR__Name in @('robot_control_rust.exe','rust_tools_suite.exe','help_index.html','ARCHITECTURE_AND_USAGE.md','install.ps1','install.cmd')) {
+    foreach (__DOLLAR__Name in @('robot_control_rust.exe','rust_tools_suite.exe','help_index.html','docs_bundle.zip','ARCHITECTURE_AND_USAGE.md','install.ps1','install.cmd')) {
         Remove-Item (Join-Path __DOLLAR__DirPath __DOLLAR__Name) -Force -ErrorAction SilentlyContinue
     }
+    Remove-Item (Join-Path __DOLLAR__DirPath 'docs') -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item __DOLLAR__DirPath -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -153,7 +157,10 @@ New-Item -ItemType Directory -Force -Path __DOLLAR__InstallDir | Out-Null
 Copy-Item -Force (Join-Path __DOLLAR__PSScriptRoot 'robot_control_rust.exe') (Join-Path __DOLLAR__InstallDir 'robot_control_rust.exe')
 Copy-Item -Force (Join-Path __DOLLAR__PSScriptRoot 'rust_tools_suite.exe') (Join-Path __DOLLAR__InstallDir 'rust_tools_suite.exe')
 Copy-Item -Force (Join-Path __DOLLAR__PSScriptRoot 'help_index.html') (Join-Path __DOLLAR__InstallDir 'help_index.html')
+Copy-Item -Force (Join-Path __DOLLAR__PSScriptRoot 'docs_bundle.zip') (Join-Path __DOLLAR__InstallDir 'docs_bundle.zip')
 Copy-Item -Force (Join-Path __DOLLAR__PSScriptRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path __DOLLAR__InstallDir 'ARCHITECTURE_AND_USAGE.md')
+Expand-Archive -LiteralPath (Join-Path __DOLLAR__InstallDir 'docs_bundle.zip') -DestinationPath (Join-Path __DOLLAR__InstallDir 'docs') -Force
+Remove-Item (Join-Path __DOLLAR__InstallDir 'docs_bundle.zip') -Force -ErrorAction SilentlyContinue
 
 __DOLLAR__desktopDir = if (__DOLLAR__Scope -eq 'machine') { [Environment]::GetFolderPath('CommonDesktopDirectory') } else { [Environment]::GetFolderPath('Desktop') }
 __DOLLAR__programsDir = if (__DOLLAR__Scope -eq 'machine') { [Environment]::GetFolderPath('CommonPrograms') } else { [Environment]::GetFolderPath('Programs') }
@@ -220,8 +227,9 @@ FILE0=install.cmd
 FILE1=robot_control_rust.exe
 FILE2=rust_tools_suite.exe
 FILE3=help_index.html
-FILE4=ARCHITECTURE_AND_USAGE.md
-FILE5=install.ps1
+FILE4=docs_bundle.zip
+FILE5=ARCHITECTURE_AND_USAGE.md
+FILE6=install.ps1
 [SourceFiles]
 SourceFiles0=$stageDir
 [SourceFiles0]
@@ -231,6 +239,7 @@ SourceFiles0=$stageDir
 %FILE3%=
 %FILE4%=
 %FILE5%=
+%FILE6%=
 "@ | Set-Content -Path $sedPath -Encoding ASCII
 
 if (Test-Path $outputExe) {
@@ -253,4 +262,3 @@ $installer = Get-Item $outputExe
 Write-Host '[IExpressPackage] Success' -ForegroundColor Green
 Write-Host "[IExpressPackage] Installer: $($installer.FullName)" -ForegroundColor Green
 Write-Host "[IExpressPackage] Size MB: $([math]::Round($installer.Length / 1MB, 2))" -ForegroundColor Green
-

@@ -96,12 +96,12 @@ rust_tools_suite/
 ## 8. 打包与发布
 
 - Windows：
-  发布 `rust_tools_suite.exe`。
+  发布 `rust_tools_suite_windows_x64_portable.zip`。
 - Debian：
   通过 `packaging/package_deb.sh` 构建单个 `.deb`，同时安装 `robot_control_rust` 与 `rust_tools_suite` 两个桌面应用。
 - Release 资产：
-  - `robot_control_rust.exe`
-  - `rust_tools_suite.exe`
+  - `robot_control_rust_windows_x64_portable.zip`
+  - `rust_tools_suite_windows_x64_portable.zip`
   - `rust-tools-suite_<version>_amd64.deb`
   - `RobotControlSuite_Setup.exe`
   - `checksums-sha256.txt`

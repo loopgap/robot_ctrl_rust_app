@@ -36,8 +36,8 @@
 ```
 
 3. 等待 Release 工作流完成，确认资产：
-- robot_control_rust.exe
-- rust_tools_suite.exe
+- robot_control_rust_windows_x64_portable.zip
+- rust_tools_suite_windows_x64_portable.zip
 - RobotControlSuite_Setup.exe
 - checksums-sha256.txt
 
@@ -86,7 +86,7 @@ pwsh ./robot_control_rust/scripts/create_github_release.ps1 -Tag vX.Y.Z
 pwsh ./robot_control_rust/scripts/create_github_release.ps1 \
 	-Tag vX.Y.Z \
 	-BodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
-	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/rust_tools_suite.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
+	-Assets release_artifacts/robot_control_rust_windows_x64_portable.zip,release_artifacts/rust_tools_suite_windows_x64_portable.zip,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
 ```
 
 ## 质量门禁说明
@@ -102,5 +102,5 @@ Release 工作流会在发布前执行：
 ## 发布后验收
 
 1. 校验 Release 页面包含 4 个必需资产。
-2. 下载 checksums-sha256.txt 对 exe 与 setup 做 SHA256 校验。
+2. 下载 checksums-sha256.txt 对 portable zip 与 setup 做 SHA256 校验。
 3. 记录发布链接和版本号到变更日志。

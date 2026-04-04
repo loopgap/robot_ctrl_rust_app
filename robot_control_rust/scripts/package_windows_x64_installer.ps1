@@ -11,7 +11,7 @@ $manifestPath = Join-Path $projectRoot 'Cargo.toml'
 $toolSuiteManifestPath = Join-Path $repoRoot 'rust_tools_suite\Cargo.toml'
 $releaseExe = Join-Path $projectRoot 'target\release\robot_control_rust.exe'
 $toolSuiteReleaseExe = Join-Path $repoRoot 'rust_tools_suite\target\release\rust_tools_suite.exe'
-$helpHtml = Join-Path $repoRoot 'docs\help\index.html'
+$docsBundleScript = Join-Path $PSScriptRoot 'build-docs-bundle.ps1'
 $issPath = Join-Path $projectRoot 'installer\robot_control_rust_x64.iss'
 
 $distRoot = Join-Path $projectRoot 'dist\windows-x64'
@@ -45,7 +45,7 @@ if (-not $SkipBuild) {
     }
 }
 
-foreach ($required in @($releaseExe, $toolSuiteReleaseExe, $helpHtml, $issPath)) {
+foreach ($required in @($releaseExe, $toolSuiteReleaseExe, $docsBundleScript, $issPath)) {
     if (-not (Test-Path $required)) {
         throw "Required file not found: $required"
     }
@@ -59,8 +59,11 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Copy-Item -Force $releaseExe (Join-Path $stageDir 'robot_control_rust.exe')
 Copy-Item -Force $toolSuiteReleaseExe (Join-Path $stageDir 'rust_tools_suite.exe')
-Copy-Item -Force $helpHtml (Join-Path $stageDir 'help_index.html')
 Copy-Item -Force (Join-Path $projectRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path $stageDir 'ARCHITECTURE_AND_USAGE.md')
+& $docsBundleScript -OutputRoot $stageDir
+if ($LASTEXITCODE -ne 0) {
+    throw "Documentation bundle build failed (exit=$LASTEXITCODE)"
+}
 
 $isccCandidates = @(
     "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
@@ -120,4 +123,3 @@ if (-not $installer) {
 Write-Host '[Package] Success' -ForegroundColor Green
 Write-Host "[Package] Installer: $($installer.FullName)" -ForegroundColor Green
 Write-Host "[Package] Size MB: $([math]::Round($installer.Length / 1MB, 2))" -ForegroundColor Green
-

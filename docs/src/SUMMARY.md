@@ -6,6 +6,8 @@
 
 - [安装指南](installation.md)
 
+- [本地帮助页说明](local-help.md)
+
 - [配置参考](configuration.md)
 
 - [机器人主控 (Robot Control)](robot-control/README.md)

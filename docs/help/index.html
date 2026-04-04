@@ -38,6 +38,7 @@
     <div class="grid section">
       <nav class="card toc">
         <h2>目录 / Contents</h2>
+        <a href="#entrypoints">入口说明</a>
         <a href="#apps">应用组成</a>
         <a href="#zoom">缩放与字体</a>
         <a href="#robot">robot_control_rust</a>
@@ -45,6 +46,15 @@
         <a href="#workflow">工作流与发布</a>
         <a href="#troubleshooting">排查建议</a>
       </nav>
+      <section class="card" id="entrypoints">
+        <h2>入口说明</h2>
+        <ul>
+          <li>这份 <code>index.html</code> 不是 mdBook 在线手册首页，而是桌面程序优先打开的本地浏览器帮助页。</li>
+          <li><code>robot_control_rust</code> 与 <code>rust_tools_suite</code> 点击“文档 / Documentation”时，会先查找这份 HTML。</li>
+          <li>仓库里的长篇说明、章节导航和在线文档，仍然由 <code>docs/src</code> 下的 mdBook 内容负责。</li>
+          <li>安装包会把这份页面复制为 <code>help_index.html</code>，放到可执行文件同级目录。</li>
+        </ul>
+      </section>
       <section class="card" id="apps">
         <h2>应用组成</h2>
         <ul>
@@ -85,14 +95,14 @@
       <h2>工作流与发布</h2>
       <ul>
         <li>本地自动化入口：<code>.\make.ps1 workflow-seal</code>、<code>.\make.ps1 check</code>、<code>.\make.ps1 preflight</code></li>
-        <li>发布资产应包含：<code>robot_control_rust.exe</code>、<code>rust_tools_suite.exe</code>、<code>RobotControlSuite_Setup.exe</code>、<code>checksums-sha256.txt</code></li>
-        <li>安装包会同时放入两个可执行文件，并保留本地 HTML 帮助页。</li>
+        <li>发布资产应包含：<code>robot_control_rust_windows_x64_portable.zip</code>、<code>rust_tools_suite_windows_x64_portable.zip</code>、<code>RobotControlSuite_Setup.exe</code>、<code>checksums-sha256.txt</code></li>
+        <li>安装包与 portable bundle 会同时带上两个可执行文件、`help_index.html` 和完整 `docs/` 手册目录。</li>
       </ul>
     </section>
     <section class="card section" id="troubleshooting">
       <h2>排查建议</h2>
       <ul>
-        <li>若帮助页没有打开，优先检查安装目录或可执行文件同级是否存在 <code>help_index.html</code>。</li>
+        <li>若帮助页没有打开，优先检查安装目录或可执行文件同级是否存在 <code>docs/index.html</code> 与 <code>help_index.html</code>。</li>
         <li>若字体仍偏小，先确认当前缩放是否已应用，而不是仅修改了待应用值。</li>
         <li>若需要重新验证工作区状态，先执行 <code>.\make.ps1 workspace-guard</code>。</li>
       </ul>

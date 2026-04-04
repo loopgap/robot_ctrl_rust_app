@@ -68,6 +68,7 @@ rust_serial/
 ## 快速导航
 
 - [快速入门](getting-started.md) - 环境准备与首次运行
+- [本地帮助页说明](local-help.md) - 解释 `docs/help/index.html`、程序帮助菜单和 mdBook 的关系
 - [机器人主控](robot-control/README.md) - 主应用完整功能指南
 - [工具套件](micro-tools/README.md) - `rust_tools_suite` 使用手册
 - [工具套件架构](tools-suite-architecture.md) - 聚合目录结构与设计说明
@@ -82,7 +83,7 @@ rust_serial/
 |--------|----------|----------|
 | **CI** | PR / push 到 main/develop | 格式检查、Clippy、测试、文档阻断 |
 | **Security Audit** | 每周一 / 依赖变更 | cargo-audit 与 cargo-deny 门禁 |
-| **Release** | push tag v* | 自动发布 `robot_control_rust.exe`、`rust_tools_suite.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
+| **Release** | push tag v* | 自动发布 `robot_control_rust_windows_x64_portable.zip`、`rust_tools_suite_windows_x64_portable.zip`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
 
 ## 本地开发
 

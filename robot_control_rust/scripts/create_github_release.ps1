@@ -29,8 +29,8 @@ if ([string]::IsNullOrWhiteSpace($BodyFile)) {
 
 if ($null -eq $Assets -or $Assets.Count -eq 0) {
     $Assets = @(
-        "release_artifacts/robot_control_rust.exe",
-        "release_artifacts/rust_tools_suite.exe",
+        "release_artifacts/robot_control_rust_windows_x64_portable.zip",
+        "release_artifacts/rust_tools_suite_windows_x64_portable.zip",
         "release_artifacts/RobotControlSuite_Setup.exe",
         "release_artifacts/checksums-sha256.txt"
     )
@@ -105,4 +105,3 @@ foreach ($asset in $Assets) {
 }
 
 Write-Output "Release created: $($release.html_url)"
-
