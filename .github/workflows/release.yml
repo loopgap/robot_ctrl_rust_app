@@ -146,6 +146,7 @@ jobs:
             throw 'rust_tools_suite.exe not found under rust_tools_suite/target/release'
           }
 
+          New-Item -ItemType Directory -Path 'release_artifacts' -Force | Out-Null
           Copy-Item $exe 'release_artifacts\robot_control_rust.exe'
           Copy-Item $toolSuiteExe 'release_artifacts\rust_tools_suite.exe'
           Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
