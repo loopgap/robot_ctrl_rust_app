@@ -105,7 +105,10 @@ jobs:
           run_test_check "robot_control_rust" "robot_control_rust/Cargo.toml"
           run_doc_check "robot_control_rust" "robot_control_rust/Cargo.toml"
 
-          run_fmt_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_clippy_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_test_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_doc_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
+          run_fmt_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
+          run_clippy_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
+          run_test_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
+          run_doc_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
 
   build-windows-assets:
     name: Build Windows Release Assets
@@ -221,6 +224,7 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           body_path: failure-summary.md
+
 
 
 
