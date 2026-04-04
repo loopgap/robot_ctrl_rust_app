@@ -10,9 +10,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
-// ═══════════════════════════════════════════════════════════════
-// 导航标签
-// ═══════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// 瀵艰埅鏍囩
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
@@ -94,9 +94,9 @@ impl ActiveTab {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 日志条目
-// ═══════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// 鏃ュ織鏉＄洰
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -155,12 +155,12 @@ impl LogEntry {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// UI 状态
-// ═══════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// UI 鐘舵€?
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 pub struct UiState {
-    // PID 文本框
+    // PID 鏂囨湰妗?
     pub kp_text: String,
     pub ki_text: String,
     pub kd_text: String,
@@ -170,7 +170,7 @@ pub struct UiState {
     pub preset_name: String,
     pub preset_desc: String,
 
-    // 图表显示控制
+    // 鍥捐〃鏄剧ず鎺у埗
     pub show_position: bool,
     pub show_velocity: bool,
     pub show_current: bool,
@@ -178,7 +178,7 @@ pub struct UiState {
     pub show_error: bool,
     pub show_pid_output: bool,
 
-    // 终端
+    // 缁堢
     pub send_text: String,
     pub send_hex: bool,
     pub auto_scroll: bool,
@@ -251,7 +251,7 @@ pub struct UiState {
     pub nn_auto_train: bool,
     pub nn_train_interval: u32,
 
-    // CAN 高级参数
+    // CAN 楂樼骇鍙傛暟
     pub can_bitrate_idx: usize,
     pub can_data_bitrate_idx: usize,
     pub can_sample_point_idx: usize,
@@ -259,13 +259,13 @@ pub struct UiState {
     pub can_sjw_idx: usize,
     pub can_data_sjw_idx: usize,
 
-    // USB 协议
+    // USB 鍗忚
     pub usb_protocol_idx: usize,
     pub usb_speed_idx: usize,
     pub usb_vid_text: String,
     pub usb_pid_text: String,
 
-    // 数据包解析
+    // 鏁版嵁鍖呰В鏋?
     pub parser_enabled: bool,
     pub parser_template_idx: usize,
     pub parser_auto_parse: bool,
@@ -274,7 +274,7 @@ pub struct UiState {
     pub parser_last_auto_template_idx: usize,
     pub packet_builder_tab: usize, // 0=Builder, 1=Parser
 
-    // 协议分析页
+    // 鍗忚鍒嗘瀽椤?
     pub analysis_protocol_idx: usize,
     pub analysis_filter_tx: bool,
     pub analysis_filter_rx: bool,
@@ -282,7 +282,7 @@ pub struct UiState {
     pub analysis_query: String,
     pub analysis_hex_input: String,
 
-    // 数据可视化
+    // 鏁版嵁鍙鍖?
     pub viz_add_channel_name: String,
     pub viz_add_source_idx: usize,
     pub viz_add_type_idx: usize,
@@ -290,7 +290,7 @@ pub struct UiState {
     pub viz_pkt_template_idx: usize,
     pub viz_pkt_field_idx: usize,
 
-    // LLM 配置
+    // LLM 閰嶇疆
     pub llm_api_url: String,
     pub llm_api_key: String,
     pub llm_model_name: String,
@@ -298,24 +298,24 @@ pub struct UiState {
     pub llm_last_response: String,
     pub llm_loading: bool,
 
-    // MCP 服务器
+    // MCP 鏈嶅姟鍣?
     pub mcp_port_text: String,
     pub mcp_token_text: String,
     pub mcp_running: bool,
 
-    // 侧边栏
+    // 渚ц竟鏍?
     pub sidebar_expanded: bool,
 
-    // 动效层级：0=极致, 1=标准, 2=原生, 3=优化
+    // 鍔ㄦ晥灞傜骇锛?=鏋佽嚧, 1=鏍囧噯, 2=鍘熺敓, 3=浼樺寲
     pub motion_level_idx: usize,
 
-    // UI 缩放百分比（80-160）
+    // UI 缂╂斁鐧惧垎姣旓紙80-160锛?
     pub ui_scale_percent: u32,
 
-    // 偏好自动保存周期（秒）
+    // 鍋忓ソ鑷姩淇濆瓨鍛ㄦ湡锛堢锛?
     pub prefs_autosave_interval_sec: u32,
 
-    // 更新检查
+    // 鏇存柊妫€鏌?
     pub update_channel: String,
     pub update_manifest_url: String,
     pub update_check_timeout_ms: u32,
@@ -440,9 +440,9 @@ impl Default for UiState {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 主应用状态
-// ═══════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// 涓诲簲鐢ㄧ姸鎬?
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 pub const MIN_UI_SCALE_PERCENT: u32 = 100;
 pub const MAX_UI_SCALE_PERCENT: u32 = 220;
@@ -452,20 +452,20 @@ pub const UI_SCALE_STEP_PERCENT: i32 = 10;
 pub struct AppState {
     pub active_tab: ActiveTab,
 
-    // 语言
+    // 璇█
     pub language: Language,
 
-    // 通信服务
+    // 閫氫俊鏈嶅姟
     pub serial: SerialService,
     pub tcp: TcpService,
     pub udp: UdpService,
     pub can: CanService,
     pub active_conn: ConnectionType,
 
-    // 端口列表
+    // 绔彛鍒楄〃
     pub available_ports: Vec<String>,
 
-    // 控制
+    // 鎺у埗
     pub active_algorithm: ControlAlgorithmType,
     pub pid: PidController,
     pub incremental_pid: IncrementalPidController,
@@ -482,17 +482,17 @@ pub struct AppState {
     pub is_running: bool,
     pub presets: Vec<Preset>,
 
-    // 神经网络
+    // 绁炵粡缃戠粶
     pub nn: NeuralNetwork,
     pub nn_suggested_kp: f64,
     pub nn_suggested_ki: f64,
     pub nn_suggested_kd: f64,
 
-    // 拓扑
+    // 鎷撴墤
     pub topology: TopologyConfig,
     pub builtin_topologies: Vec<TopologyConfig>,
 
-    // 日志
+    // 鏃ュ織
     pub log_entries: Vec<LogEntry>,
 
     // Packet Builder
@@ -517,10 +517,10 @@ pub struct AppState {
     pub data_channels: Vec<DataChannel>,
     pub channel_buffers: Vec<TimeSeriesBuffer>,
 
-    // USB 配置
+    // USB 閰嶇疆
     pub usb_config: UsbConfig,
 
-    // MCP server 状态
+    // MCP server 鐘舵€?
     pub mcp_server_handle: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     pub mcp_shared_state:
         std::sync::Arc<std::sync::Mutex<crate::services::mcp_server::McpSharedState>>,
@@ -554,11 +554,115 @@ pub struct AppState {
     llm_result_rx: Option<
         std::sync::mpsc::Receiver<Result<crate::services::llm_service::SuggestedParams, String>>,
     >,
+    resource_status: String,
+    platform_support_note: Option<String>,
+    last_io_poll_instant: Instant,
+    last_connection_check_instant: Instant,
+    last_background_tick_instant: Instant,
+    error_burst_count: u32,
+    last_error_burst_instant: Option<Instant>,
 }
 
 const MAX_HISTORY: usize = 2000;
 const MAX_LOG: usize = 5000;
 const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
+const MAX_PENDING_LOG_LINES: usize = 10_000;
+const MAX_PARSED_PACKETS: usize = 200;
+const MAX_PROTOCOL_LOGS: usize = 240;
+
+#[derive(Debug, Clone, Copy)]
+pub struct PerformanceProfile {
+    pub repaint_interval_ms: u64,
+    pub io_poll_interval_ms: u64,
+    pub connection_check_interval_ms: u64,
+    pub background_task_interval_ms: u64,
+    pub max_log_entries: usize,
+    pub max_pending_log_lines: usize,
+    pub max_state_history: usize,
+    pub max_frame_entries: usize,
+    pub max_chart_points: usize,
+    pub max_protocol_log_entries: usize,
+    pub max_parsed_packets: usize,
+    pub error_burst_threshold: u32,
+    pub reconnect_backoff_base_ms: u64,
+    pub auto_downgrade_allowed: bool,
+    pub chart_sampling_stride: usize,
+}
+
+impl PerformanceProfile {
+    pub fn for_motion_level(idx: usize) -> Self {
+        match idx {
+            0 => Self {
+                repaint_interval_ms: 8,
+                io_poll_interval_ms: 8,
+                connection_check_interval_ms: 250,
+                background_task_interval_ms: 120,
+                max_log_entries: 8_000,
+                max_pending_log_lines: 10_000,
+                max_state_history: 4_000,
+                max_frame_entries: 10_000,
+                max_chart_points: 4_000,
+                max_protocol_log_entries: 320,
+                max_parsed_packets: 320,
+                error_burst_threshold: 6,
+                reconnect_backoff_base_ms: 1_000,
+                auto_downgrade_allowed: true,
+                chart_sampling_stride: 1,
+            },
+            1 => Self {
+                repaint_interval_ms: 16,
+                io_poll_interval_ms: 16,
+                connection_check_interval_ms: 500,
+                background_task_interval_ms: 180,
+                max_log_entries: 4_000,
+                max_pending_log_lines: 6_000,
+                max_state_history: 2_000,
+                max_frame_entries: 6_000,
+                max_chart_points: 2_000,
+                max_protocol_log_entries: 200,
+                max_parsed_packets: 200,
+                error_burst_threshold: 8,
+                reconnect_backoff_base_ms: 1_500,
+                auto_downgrade_allowed: false,
+                chart_sampling_stride: 1,
+            },
+            2 => Self {
+                repaint_interval_ms: 33,
+                io_poll_interval_ms: 33,
+                connection_check_interval_ms: 800,
+                background_task_interval_ms: 250,
+                max_log_entries: 2_000,
+                max_pending_log_lines: 3_000,
+                max_state_history: 1_200,
+                max_frame_entries: 3_000,
+                max_chart_points: 1_000,
+                max_protocol_log_entries: 120,
+                max_parsed_packets: 120,
+                error_burst_threshold: 10,
+                reconnect_backoff_base_ms: 2_500,
+                auto_downgrade_allowed: false,
+                chart_sampling_stride: 2,
+            },
+            _ => Self {
+                repaint_interval_ms: 66,
+                io_poll_interval_ms: 66,
+                connection_check_interval_ms: 1_200,
+                background_task_interval_ms: 400,
+                max_log_entries: 1_000,
+                max_pending_log_lines: 1_500,
+                max_state_history: 600,
+                max_frame_entries: 1_000,
+                max_chart_points: 400,
+                max_protocol_log_entries: 80,
+                max_parsed_packets: 80,
+                error_burst_threshold: 12,
+                reconnect_backoff_base_ms: 4_000,
+                auto_downgrade_allowed: false,
+                chart_sampling_stride: 4,
+            },
+        }
+    }
+}
 const DEFAULT_UPDATE_DOC_URL: &str =
     "https://github.com/loopgap/robot_ctrl_rust_app/blob/main/docs/src/README.md";
 const DEFAULT_UPDATE_MANIFEST_URL: &str =
@@ -894,6 +998,13 @@ impl AppState {
             serial_connect_rx: None,
             serial_connect_in_progress: false,
             llm_result_rx: None,
+            resource_status: "Balanced".into(),
+            platform_support_note: None,
+            last_io_poll_instant: Instant::now(),
+            last_connection_check_instant: Instant::now(),
+            last_background_tick_instant: Instant::now(),
+            error_burst_count: 0,
+            last_error_burst_instant: None,
         };
         if let Ok(api_key) = std::env::var("LLM_API_KEY") {
             if !api_key.trim().is_empty() {
@@ -906,11 +1017,78 @@ impl AppState {
             }
         }
         s.load_user_preferences();
+        s.apply_performance_profile();
+        s.platform_support_note = s.detect_platform_support_note();
+        s.refresh_resource_status();
         s.refresh_ports();
         s.run_system_check();
         s
     }
 
+    pub fn performance_profile(&self) -> PerformanceProfile {
+        PerformanceProfile::for_motion_level(self.ui.motion_level_idx)
+    }
+
+    pub fn repaint_interval_ms(&self) -> u64 {
+        self.performance_profile().repaint_interval_ms
+    }
+
+    fn trim_vec<T>(items: &mut Vec<T>, max_len: usize) {
+        if items.len() > max_len {
+            items.drain(..items.len() - max_len);
+        }
+    }
+
+    pub fn apply_performance_profile(&mut self) {
+        let profile = self.performance_profile();
+        Self::trim_vec(&mut self.log_entries, profile.max_log_entries.max(1));
+        Self::trim_vec(
+            &mut self.pending_log_lines,
+            profile.max_pending_log_lines.max(1),
+        );
+        Self::trim_vec(&mut self.state_history, profile.max_state_history.max(1));
+        Self::trim_vec(&mut self.parsed_packets, profile.max_parsed_packets.max(1));
+        Self::trim_vec(
+            &mut self.modbus_response_log,
+            profile.max_protocol_log_entries.max(1),
+        );
+        Self::trim_vec(
+            &mut self.canopen_log,
+            profile.max_protocol_log_entries.max(1),
+        );
+        self.can.set_max_frames(profile.max_frame_entries.max(1));
+        for buffer in &mut self.channel_buffers {
+            buffer.set_max_points(profile.max_chart_points.max(1));
+        }
+        self.refresh_resource_status();
+    }
+
+    pub fn refresh_resource_status(&mut self) {
+        let profile = self.performance_profile();
+        self.resource_status = format!(
+            "{}ms | logs {}/{} | state {}/{} | can {}/{}",
+            profile.repaint_interval_ms,
+            self.log_entries.len(),
+            profile.max_log_entries,
+            self.state_history.len(),
+            profile.max_state_history,
+            self.can.frames.len(),
+            self.can.max_frame_capacity(),
+        );
+    }
+
+    fn detect_platform_support_note(&self) -> Option<String> {
+        #[cfg(target_os = "windows")]
+        {
+            return Some("Supported baseline: Windows 8+".into());
+        }
+        #[cfg(target_os = "linux")]
+        {
+            return Some("Supported baseline: Ubuntu 20.04+".into());
+        }
+        #[allow(unreachable_code)]
+        Some("Supported baseline: Windows 8+ / Ubuntu 20.04+".into())
+    }
     pub fn user_prefs_path() -> std::path::PathBuf {
         #[cfg(target_os = "windows")]
         {
@@ -970,10 +1148,11 @@ impl AppState {
             entry.format_data()
         );
         self.pending_log_lines.push(line);
-        if self.pending_log_lines.len() > 10_000 {
-            let overflow = self.pending_log_lines.len() - 10_000;
-            self.pending_log_lines.drain(..overflow);
-        }
+        let max_pending = self
+            .performance_profile()
+            .max_pending_log_lines
+            .max(MAX_PENDING_LOG_LINES / 8);
+        Self::trim_vec(&mut self.pending_log_lines, max_pending);
     }
 
     pub fn flush_pending_logs(&mut self) {
@@ -981,8 +1160,12 @@ impl AppState {
             return;
         }
         let now = Instant::now();
+        let min_flush_ms = self
+            .performance_profile()
+            .background_task_interval_ms
+            .max(120);
         if self.pending_log_lines.len() < 100
-            && now.duration_since(self.last_log_flush_instant) < Duration::from_millis(800)
+            && now.duration_since(self.last_log_flush_instant) < Duration::from_millis(min_flush_ms)
         {
             return;
         }
@@ -1002,9 +1185,24 @@ impl AppState {
 
     pub fn report_error(&mut self, message: impl Into<String>) {
         let message = message.into();
+        let now = Instant::now();
+        let profile = self.performance_profile();
+        if self
+            .last_error_burst_instant
+            .is_some_and(|last| now.duration_since(last) <= Duration::from_secs(5))
+        {
+            self.error_burst_count = self.error_burst_count.saturating_add(1);
+        } else {
+            self.error_burst_count = 1;
+        }
+        self.last_error_burst_instant = Some(now);
         self.last_error_time = chrono::Local::now().format("%H:%M:%S").to_string();
         self.status_message = message.clone();
-        self.add_info_log(&format!("❌ {}", message));
+        self.refresh_resource_status();
+        if self.error_burst_count >= profile.error_burst_threshold {
+            self.status_message = format!("{} | burst {}", message, self.error_burst_count);
+        }
+        self.add_info_log(&format!("Error: {}", message));
         error!(target: "app", message = %self.status_message, "ui_error");
     }
 
@@ -1236,7 +1434,7 @@ impl AppState {
                     self.update_status_detail = detail.clone();
                     self.update_notes_url = target_url.clone();
                     self.status_message = detail.clone();
-                    self.add_info_log(&format!("ℹ {}", detail));
+                    self.add_info_log(&format!("鈩?{}", detail));
                     info!(
                         target: "app",
                         url = %target_url,
@@ -1251,7 +1449,7 @@ impl AppState {
                     self.update_available = false;
                     self.update_status_detail = format!("Update check failed to evaluate: {}", e);
                     self.status_message = self.update_status_detail.clone();
-                    self.add_info_log(&format!("⚠ {}", self.update_status_detail));
+                    self.add_info_log(&format!("鈿?{}", self.update_status_detail));
                     warn!(target: "app", error = %e, "update_check_evaluate_failed");
                     fallback_url
                 }
@@ -1263,7 +1461,7 @@ impl AppState {
                     e
                 );
                 self.status_message = self.update_status_detail.clone();
-                self.add_info_log(&format!("⚠ {}", self.update_status_detail));
+                self.add_info_log(&format!("鈿?{}", self.update_status_detail));
                 warn!(target: "app", error = %e, url = %manifest_url, "update_manifest_fetch_failed");
                 fallback_url
             }
@@ -1670,11 +1868,26 @@ impl AppState {
         }
     }
 
+    pub fn reconnect_paused(&self) -> bool {
+        self.reconnect_paused_by_user
+    }
+
+    pub fn resume_auto_reconnect(&mut self) {
+        self.reconnect_paused_by_user = false;
+        self.next_reconnect_at = Some(Instant::now());
+        self.status_message = "Auto reconnect resumed".into();
+        self.add_info_log("Auto reconnect resumed");
+    }
     pub fn maintain_connection(&mut self) {
+        let profile = self.performance_profile();
+        let now = Instant::now();
+
         if !self.ui.auto_reconnect_enabled || self.reconnect_paused_by_user {
             self.next_reconnect_at = None;
             return;
         }
+
+        self.last_connection_check_instant = now;
 
         if self.serial_connect_in_progress
             && matches!(
@@ -1703,28 +1916,26 @@ impl AppState {
             return;
         }
 
-        let now = Instant::now();
-        let interval_ms = self.ui.auto_reconnect_interval_ms.clamp(500, 30000) as u64;
         if self.next_reconnect_at.is_some_and(|next| next > now) {
             return;
+        }
+
+        let mut interval_ms = (self.ui.auto_reconnect_interval_ms as u64).clamp(500, 30_000);
+        interval_ms = interval_ms.max(profile.reconnect_backoff_base_ms.max(500));
+        if self.error_burst_count >= profile.error_burst_threshold {
+            interval_ms = interval_ms.saturating_mul(2);
+            if profile.auto_downgrade_allowed && self.ui.motion_level_idx == 0 {
+                self.ui.motion_level_idx = 1;
+                self.apply_performance_profile();
+                self.add_info_log(
+                    "Performance downgraded to Standard after repeated connection errors",
+                );
+            }
         }
 
         self.next_reconnect_at = Some(now + Duration::from_millis(interval_ms));
         let _ = self.connect_active();
     }
-
-    pub fn reconnect_paused(&self) -> bool {
-        self.reconnect_paused_by_user
-    }
-
-    pub fn resume_auto_reconnect(&mut self) {
-        self.reconnect_paused_by_user = false;
-        self.next_reconnect_at = Some(Instant::now());
-        self.status_message = "Auto reconnect resumed".into();
-        self.add_info_log("Auto reconnect resumed");
-    }
-
-    // ─── 连接操作 ────────────────────────────────────────
 
     pub fn connect_active(&mut self) -> Result<(), String> {
         self.reconnect_paused_by_user = false;
@@ -1849,8 +2060,6 @@ impl AppState {
         }
     }
 
-    // ─── 发送数据 ────────────────────────────────────────
-
     pub fn send_data(&mut self, data: &[u8]) -> Result<(), String> {
         let result = match self.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
@@ -1871,13 +2080,20 @@ impl AppState {
         result
     }
 
-    // ─── 轮询数据 ────────────────────────────────────────
-
     pub fn poll_data(&mut self) {
+        let profile = self.performance_profile();
+        let now = Instant::now();
+        if now.duration_since(self.last_io_poll_instant)
+            < Duration::from_millis(profile.io_poll_interval_ms)
+        {
+            return;
+        }
+        self.last_io_poll_instant = now;
+
         if self.serial.is_connected() {
             let raw = self.serial.try_read_raw();
             if !raw.is_empty() {
-                self.last_rx_instant = Some(Instant::now());
+                self.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &raw, "Serial");
                 self.serial.push_rx_data(&raw);
             }
@@ -1886,7 +2102,7 @@ impl AppState {
         if self.tcp.is_connected() {
             let data = self.tcp.try_read();
             if !data.is_empty() {
-                self.last_rx_instant = Some(Instant::now());
+                self.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "TCP");
             }
         }
@@ -1894,7 +2110,7 @@ impl AppState {
         if self.udp.is_connected() {
             let data = self.udp.try_read();
             if !data.is_empty() {
-                self.last_rx_instant = Some(Instant::now());
+                self.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "UDP");
             }
         }
@@ -1910,16 +2126,13 @@ impl AppState {
                 }
                 self.current_state = s.clone();
                 self.state_history.push(s);
-                if self.state_history.len() > MAX_HISTORY {
-                    self.state_history
-                        .drain(..self.state_history.len() - MAX_HISTORY);
-                }
+                Self::trim_vec(&mut self.state_history, profile.max_state_history.max(1));
             }
         }
 
         self.sync_mcp_state();
+        self.refresh_resource_status();
     }
-
     fn add_log(&mut self, dir: LogDirection, data: &[u8], channel: &str) {
         let entry = LogEntry {
             timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
@@ -1928,11 +2141,11 @@ impl AppState {
             display_mode: self.ui.display_mode,
             channel: channel.into(),
         };
+        let max_log_entries = self.performance_profile().max_log_entries.max(1);
         self.log_entries.push(entry.clone());
-        if self.log_entries.len() > MAX_LOG {
-            self.log_entries.drain(..self.log_entries.len() - MAX_LOG);
-        }
+        Self::trim_vec(&mut self.log_entries, max_log_entries);
         self.append_log(&entry);
+        self.refresh_resource_status();
     }
 
     pub fn add_info_log(&mut self, msg: &str) {
@@ -1943,14 +2156,14 @@ impl AppState {
             display_mode: DisplayMode::Ascii,
             channel: "System".into(),
         };
+        let max_log_entries = self.performance_profile().max_log_entries.max(1);
         self.log_entries.push(entry.clone());
-        if self.log_entries.len() > MAX_LOG {
-            self.log_entries.drain(..self.log_entries.len() - MAX_LOG);
-        }
+        Self::trim_vec(&mut self.log_entries, max_log_entries);
         self.append_log(&entry);
+        self.refresh_resource_status();
     }
 
-    // ─── 控制操作 ────────────────────────────────────────
+    // 鈹€鈹€鈹€ 鎺у埗鎿嶄綔 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
     pub fn toggle_running(&mut self) {
         self.is_running = !self.is_running;
@@ -1971,9 +2184,9 @@ impl AppState {
         self.add_info_log("\u{26A0} Emergency Stop activated!");
     }
 
-    // ─── 控制算法分发 ────────────────────────────────────
+    // 鈹€鈹€鈹€ 鎺у埗绠楁硶鍒嗗彂 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
-    /// 调用当前激活的控制算法进行计算
+    /// 璋冪敤褰撳墠婵€娲荤殑鎺у埗绠楁硶杩涜璁＄畻
     pub fn compute_active_algorithm(&mut self, position: f64, velocity: f64) -> f64 {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.compute(position),
@@ -1989,7 +2202,7 @@ impl AppState {
         }
     }
 
-    /// 获取当前算法的设定值
+    /// 鑾峰彇褰撳墠绠楁硶鐨勮瀹氬€?
     pub fn get_active_setpoint(&self) -> f64 {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.setpoint,
@@ -2005,7 +2218,7 @@ impl AppState {
         }
     }
 
-    /// 重置当前激活的控制算法
+    /// 閲嶇疆褰撳墠婵€娲荤殑鎺у埗绠楁硶
     pub fn reset_active_algorithm(&mut self) {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.reset(),
@@ -2021,7 +2234,7 @@ impl AppState {
         }
     }
 
-    /// 获取当前算法的输出值
+    /// 鑾峰彇褰撳墠绠楁硶鐨勮緭鍑哄€?
     pub fn get_active_output(&self) -> f64 {
         match self.active_algorithm {
             ControlAlgorithmType::ClassicPid => self.pid.output,
@@ -2037,7 +2250,7 @@ impl AppState {
         }
     }
 
-    // ─── NN 调参 ──────────────────────────────────────────
+    // 鈹€鈹€鈹€ NN 璋冨弬 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
     pub fn nn_suggest_params(&mut self) {
         let errors: Vec<f64> = self.state_history.iter().map(|s| s.error).collect();
@@ -2081,9 +2294,9 @@ impl AppState {
         self.status_message = "Applied NN suggested parameters".into();
     }
 
-    // ─── 解析数据联动可视化 ──────────────────────────────
+    // 鈹€鈹€鈹€ 瑙ｆ瀽鏁版嵁鑱斿姩鍙鍖?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
-    /// 将解析出的数据包字段推送到对应的可视化通道缓冲区
+    /// 灏嗚В鏋愬嚭鐨勬暟鎹寘瀛楁鎺ㄩ€佸埌瀵瑰簲鐨勫彲瑙嗗寲閫氶亾缂撳啿鍖?
     pub fn feed_parsed_to_channels(&mut self, parsed: &ParsedPacket) {
         let mut dropped_total = 0usize;
         for (i, ch) in self.data_channels.iter().enumerate() {
@@ -2113,7 +2326,7 @@ impl AppState {
         }
     }
 
-    /// 从解析结果的字段快速创建可视化通道
+    /// 浠庤В鏋愮粨鏋滅殑瀛楁蹇€熷垱寤哄彲瑙嗗寲閫氶亾
     pub fn add_channel_from_parsed_field(
         &mut self,
         template_name: &str,
@@ -2163,7 +2376,7 @@ impl AppState {
         self.data_channels.push(ch);
         self.channel_buffers.push(TimeSeriesBuffer::default());
 
-        // 回填已有的解析结果
+        // 鍥炲～宸叉湁鐨勮В鏋愮粨鏋?
         let buf_idx = self.channel_buffers.len() - 1;
         let mut dropped_total = 0usize;
         for pkt in &self.parsed_packets {
@@ -2181,7 +2394,7 @@ impl AppState {
         }
     }
 
-    /// 获取已解析数据包中所有可用的 (template_name, field_name) 对
+    /// 鑾峰彇宸茶В鏋愭暟鎹寘涓墍鏈夊彲鐢ㄧ殑 (template_name, field_name) 瀵?
     pub fn available_packet_fields(&self) -> Vec<(String, String)> {
         let mut fields = Vec::new();
         for pkt in &self.parsed_packets {
@@ -2197,9 +2410,9 @@ impl AppState {
         fields
     }
 
-    // ─── LLM 智能调参 ────────────────────────────────────
+    // 鈹€鈹€鈹€ LLM 鏅鸿兘璋冨弬 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
-    /// 使用 LLM API 获取调参建议
+    /// 浣跨敤 LLM API 鑾峰彇璋冨弬寤鸿
     pub fn llm_suggest_params(&mut self) {
         use crate::services::llm_service::LlmService;
         if self.ui.llm_loading {
@@ -2249,6 +2462,19 @@ impl AppState {
     }
 
     pub fn poll_background_tasks(&mut self) {
+        let now = Instant::now();
+        let min_tick_ms = self
+            .performance_profile()
+            .background_task_interval_ms
+            .max(120);
+        if now.duration_since(self.last_background_tick_instant)
+            < Duration::from_millis(min_tick_ms)
+        {
+            self.flush_pending_logs();
+            return;
+        }
+        self.last_background_tick_instant = now;
+
         self.flush_pending_logs();
 
         if let Some(rx) = self.serial_connect_rx.take() {
@@ -2334,9 +2560,10 @@ impl AppState {
                 }
             }
         }
-    }
 
-    // ─── MCP 服务器 ─────────────────────────────────────
+        self.apply_performance_profile();
+        self.refresh_resource_status();
+    }
 
     pub fn start_mcp_server(&mut self) -> Result<(), String> {
         if self.ui.mcp_running {
@@ -2460,7 +2687,7 @@ impl AppState {
         }
     }
 
-    // ─── 图表数据 ────────────────────────────────────────
+    // 鈹€鈹€鈹€ 鍥捐〃鏁版嵁 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
     pub fn chart_data(&self, f: impl Fn(&RobotState) -> f64) -> Vec<[f64; 2]> {
         let start = self.state_history.len().saturating_sub(200);

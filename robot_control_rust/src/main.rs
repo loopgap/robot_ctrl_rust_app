@@ -39,12 +39,7 @@ impl RobotControlApp {
     }
 
     fn repaint_interval_ms(&self) -> u64 {
-        match self.state.ui.motion_level_idx {
-            0 => 8,
-            1 => 16,
-            2 => 33,
-            _ => 66,
-        }
+        self.state.repaint_interval_ms()
     }
 
     fn motion_level_label(lang: Language, idx: usize) -> &'static str {

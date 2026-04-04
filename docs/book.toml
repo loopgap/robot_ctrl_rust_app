@@ -1,13 +1,13 @@
 [book]
 authors = ["Antigravity Workspace"]
 language = "zh-CN"
-multilingual = false
 src = "src"
 title = "Rust Serial 工作区智能手册"
 
 [output.html]
 mathjax-support = false
-search = true
 git-repository-url = "https://github.com/loopgap/robot_ctrl_rust_app"
-git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/loopgap/robot_ctrl_rust_app/edit/main/docs/src/{path}"
+
+
+

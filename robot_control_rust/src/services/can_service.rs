@@ -166,6 +166,21 @@ impl CanService {
         }
     }
 
+    pub fn max_frame_capacity(&self) -> usize {
+        MAX_CAN_FRAMES
+    }
+
+    pub fn set_max_frames(&mut self, max_frames: usize) -> usize {
+        let max_frames = max_frames.max(64).min(MAX_CAN_FRAMES);
+        if self.frames.len() > max_frames {
+            let overflow = self.frames.len() - max_frames;
+            self.frames.drain(..overflow);
+            self.dropped_frames += overflow as u64;
+            return overflow;
+        }
+        0
+    }
+
     pub fn add_frame(&mut self, frame: CanFrame) {
         match frame.direction {
             FrameDirection::Tx => self.frame_count_tx += 1,

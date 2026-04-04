@@ -205,6 +205,17 @@ impl Default for TimeSeriesBuffer {
 }
 
 impl TimeSeriesBuffer {
+    pub fn set_max_points(&mut self, max_points: usize) -> usize {
+        self.max_points = max_points.max(32);
+        if self.data.len() > self.max_points {
+            let overflow = self.data.len() - self.max_points;
+            self.data.drain(..overflow);
+            self.dropped_points += overflow as u64;
+            return overflow;
+        }
+        0
+    }
+
     pub fn push(&mut self, value: f64) {
         let _ = self.push_with_overflow(value);
     }
