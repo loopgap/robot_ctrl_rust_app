@@ -4,7 +4,7 @@ use crate::services::*;
 use std::fs::{metadata, OpenOptions};
 use std::io::Write;
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::TryRecvError;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -431,7 +431,7 @@ impl Default for UiState {
             mcp_running: false,
             sidebar_expanded: true,
             motion_level_idx: 2,
-            ui_scale_percent: 100,
+            ui_scale_percent: 150,
             prefs_autosave_interval_sec: 3,
             update_channel: "stable-0.1".into(),
             update_manifest_url: String::new(),
@@ -443,6 +443,11 @@ impl Default for UiState {
 // ═══════════════════════════════════════════════════════════════
 // 主应用状态
 // ═══════════════════════════════════════════════════════════════
+
+pub const MIN_UI_SCALE_PERCENT: u32 = 100;
+pub const MAX_UI_SCALE_PERCENT: u32 = 220;
+pub const DEFAULT_UI_SCALE_PERCENT: u32 = 150;
+pub const UI_SCALE_STEP_PERCENT: i32 = 10;
 
 pub struct AppState {
     pub active_tab: ActiveTab,
@@ -555,7 +560,7 @@ const MAX_HISTORY: usize = 2000;
 const MAX_LOG: usize = 5000;
 const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
 const DEFAULT_UPDATE_DOC_URL: &str =
-    "https://github.com/search?q=robot_control_rust&type=repositories";
+    "https://github.com/loopgap/robot_ctrl_rust_app/blob/main/docs/src/README.md";
 const DEFAULT_UPDATE_MANIFEST_URL: &str =
     "https://raw.githubusercontent.com/example/robot_control_rust/main/update-manifest.json";
 
@@ -592,6 +597,51 @@ fn parse_version_triplet(text: &str) -> Option<VersionTriplet> {
         minor,
         patch,
     })
+}
+
+fn path_to_file_url(path: &Path) -> String {
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let mut raw = canonical.to_string_lossy().replace('\\', "/");
+    if !raw.starts_with('/') {
+        raw = format!("/{raw}");
+    }
+    let escaped = raw
+        .replace('%', "%25")
+        .replace(' ', "%20")
+        .replace('#', "%23")
+        .replace('?', "%3F");
+    format!("file://{escaped}")
+}
+
+fn resolve_local_help_url() -> Option<String> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            candidates.push(exe_dir.join("help_index.html"));
+            candidates.push(exe_dir.join("help").join("index.html"));
+            for ancestor in exe_dir.ancestors().take(4) {
+                candidates.push(ancestor.join("docs").join("help").join("index.html"));
+            }
+        }
+    }
+
+    candidates.push(PathBuf::from("docs").join("help").join("index.html"));
+    candidates.push(PathBuf::from("help_index.html"));
+
+    candidates
+        .into_iter()
+        .find(|path| path.exists())
+        .map(|path| path_to_file_url(&path))
+}
+
+fn valid_http_url(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        Some(trimmed.to_string())
+    } else {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -745,7 +795,7 @@ impl Default for UserPreferences {
             analysis_filter_rx: true,
             analysis_filter_info: false,
             llm_temperature_text: "0.7".into(),
-            ui_scale_percent: 100,
+            ui_scale_percent: 150,
             prefs_autosave_interval_sec: 3,
             update_channel: "stable-0.1".into(),
             update_manifest_url: String::new(),
@@ -1025,17 +1075,28 @@ impl AppState {
         );
     }
 
+    pub fn documentation_url(&self) -> String {
+        if let Some(url) = resolve_local_help_url() {
+            return url;
+        }
+        if let Ok(url) = std::env::var("ROBOT_CONTROL_UPDATE_URL") {
+            if let Some(valid) = valid_http_url(&url) {
+                return valid;
+            }
+        }
+        DEFAULT_UPDATE_DOC_URL.to_string()
+    }
+
     pub fn update_doc_url(&self) -> String {
         if !self.update_notes_url.trim().is_empty() {
             return self.update_notes_url.trim().to_string();
         }
         if let Ok(url) = std::env::var("ROBOT_CONTROL_UPDATE_URL") {
-            let trimmed = url.trim();
-            if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-                return trimmed.to_string();
+            if let Some(valid) = valid_http_url(&url) {
+                return valid;
             }
         }
-        DEFAULT_UPDATE_DOC_URL.to_string()
+        self.documentation_url()
     }
 
     pub fn update_manifest_url(&self) -> String {
@@ -1279,7 +1340,7 @@ impl AppState {
             analysis_filter_rx: self.ui.analysis_filter_rx,
             analysis_filter_info: self.ui.analysis_filter_info,
             llm_temperature_text: self.ui.llm_temperature_text.clone(),
-            ui_scale_percent: self.ui.ui_scale_percent.clamp(80, 160),
+            ui_scale_percent: self.ui.ui_scale_percent.clamp(100, 220),
             prefs_autosave_interval_sec: self.ui.prefs_autosave_interval_sec,
             update_channel: self.ui.update_channel.clone(),
             update_manifest_url: self.ui.update_manifest_url.clone(),
@@ -1348,7 +1409,7 @@ impl AppState {
         self.ui.analysis_filter_rx = prefs.analysis_filter_rx;
         self.ui.analysis_filter_info = prefs.analysis_filter_info;
         self.ui.llm_temperature_text = prefs.llm_temperature_text;
-        self.ui.ui_scale_percent = prefs.ui_scale_percent.clamp(80, 160);
+        self.ui.ui_scale_percent = prefs.ui_scale_percent.clamp(100, 220);
         self.ui.prefs_autosave_interval_sec = prefs.prefs_autosave_interval_sec.clamp(1, 300);
         self.ui.update_channel = prefs.update_channel;
         self.ui.update_manifest_url = prefs.update_manifest_url;
@@ -2518,7 +2579,7 @@ mod tests {
         assert!(s.dark_mode);
         assert!(s.ui.sidebar_expanded);
         assert_eq!(s.ui.motion_level_idx, 2);
-        assert_eq!(s.ui.ui_scale_percent, 100);
+        assert_eq!(s.ui.ui_scale_percent, 150);
         assert_eq!(s.ui.tcp_host, "127.0.0.1");
     }
 

@@ -11,8 +11,7 @@
 - **`robot_control_rust/`**：核心控制引擎与高性能工业级 GUI。
   - 逻辑：`src/models/` (无 UI 逻辑), `src/services/` (通讯层)。
   - 视图：`src/views/` (基于 egui 的页面)。
-- **`rust_micro_tools/`**：聚合式 GUI 小工具套件，提供统一入口（含 CSV/JWT/Regex 等高频工具）。
-- **`rust_indie_tools/`**：保留独立 GUI 工具工程（便于单工具开发、调试与独立构建）。
+- **`rust_tools_suite/`**：聚合式 GUI 工具套件，提供统一入口（含 CSV/JWT/Regex 等高频工具）。
 - **`docs/`**：基于 `mdBook` 的全局手册，记录用户指南与排障手册。
 - **`scripts/`**：全工作区共享的自动化脚本系统。
 
@@ -80,7 +79,7 @@
 - **发布入口**：使用 `.\scripts\smart-bump.ps1` 完成升号、annotated tag 和发布说明草稿。
 - **Release 必需资产**：
   - `robot_control_rust.exe`
-  - `rust_micro_tools.exe`
+  - `rust_tools_suite.exe`
   - `RobotControlSuite_Setup.exe`
   - `checksums-sha256.txt`
 - **Release 正文来源**：远端 Release 正文必须与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 保持一致。

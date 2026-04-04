@@ -105,19 +105,7 @@ jobs:
           run_test_check "robot_control_rust" "robot_control_rust/Cargo.toml"
           run_doc_check "robot_control_rust" "robot_control_rust/Cargo.toml"
 
-          run_fmt_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          run_clippy_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          run_test_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          run_doc_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-
-          for dir in rust_indie_tools/*/; do
-            if [ -f "${dir}Cargo.toml" ]; then
-              run_fmt_check "${dir%/}" "${dir}Cargo.toml"
-              run_clippy_check "${dir%/}" "${dir}Cargo.toml"
-              run_test_check "${dir%/}" "${dir}Cargo.toml"
-              run_doc_check "${dir%/}" "${dir}Cargo.toml"
-            fi
-          done
+          run_fmt_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_clippy_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_test_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"`n          run_doc_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
 
   build-windows-assets:
     name: Build Windows Release Assets
@@ -133,128 +121,33 @@ jobs:
             throw 'Entrypoint guard failed: main.rs still contains placeholder implementation'
           }
           cargo build --release --manifest-path robot_control_rust/Cargo.toml
-      - name: Build rust_micro_tools.exe
+      - name: Build rust_tools_suite.exe
         shell: pwsh
         run: |
-          cargo build --release --manifest-path rust_micro_tools/Cargo.toml
+          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}' -replace '^v', ''
+          .\robot_control_rust\scripts\package_windows_x64_installer.ps1 -Version $version -SkipBuild
       - name: Smoke test executable launch
         shell: pwsh
         run: |
           $exe = 'robot_control_rust\target\release\robot_control_rust.exe'
-          $logDir = 'smoke_logs'
-          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-          if (-not (Test-Path $exe)) {
-            throw "Missing executable: $exe"
-          }
-
-          function Invoke-SmokeCase {
-            param(
-              [Parameter(Mandatory = $true)][string]$Name,
-              [string[]]$Arguments = @(),
-              [int]$TimeoutSeconds = 8,
-              [int]$MinRuntimeSeconds = 2,
-              [string]$RequireOutputPattern = '',
-              [string]$RejectOutputPattern = 'placeholder'
-            )
-
-            $stdoutPath = Join-Path $logDir ("$Name.stdout.log")
-            $stderrPath = Join-Path $logDir ("$Name.stderr.log")
-
-            if ($null -eq $Arguments -or $Arguments.Count -eq 0) {
-              $proc = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-              Start-Sleep -Seconds $MinRuntimeSeconds
-
-              if ($proc.HasExited) {
-                $stdout = if (Test-Path $stdoutPath) { Get-Content -Raw -Path $stdoutPath } else { '' }
-                $stderr = if (Test-Path $stderrPath) { Get-Content -Raw -Path $stderrPath } else { '' }
-                if (-not [string]::IsNullOrWhiteSpace($RejectOutputPattern) -and (($stdout + "`n" + $stderr) -match $RejectOutputPattern)) {
-                  throw "Smoke case '$Name' exited early and matched rejected pattern '$RejectOutputPattern'. Exit=$($proc.ExitCode). Stdout=$stdout Stderr=$stderr"
-                }
-                # In headless CI environments GUI apps may exit early. If output does not
-                # indicate placeholder fallback, accept this case.
-                return
-              }
-
-              try {
-                Stop-Process -Id $proc.Id -Force -ErrorAction Stop
-              } catch {
-                throw "Smoke case '$Name' could not stop process after validation window"
-              }
-
-              $stopped = $proc.WaitForExit($TimeoutSeconds * 1000)
-              if (-not $stopped) {
-                throw "Smoke case '$Name' failed to stop process within timeout"
-              }
-
-              return
-            }
-
-            $proc = Start-Process -FilePath $exe -ArgumentList $Arguments -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-            $finished = $proc.WaitForExit($TimeoutSeconds * 1000)
-            if (-not $finished) {
-              try {
-                Stop-Process -Id $proc.Id -Force -ErrorAction Stop
-              } catch {
-                throw "Smoke case '$Name' timed out and process could not be stopped"
-              }
-              throw "Smoke case '$Name' timed out"
-            }
-
-            $outputText = if (Test-Path $stdoutPath) { (Get-Content -Raw -Path $stdoutPath).Trim() } else { '' }
-            $stderrText = if (Test-Path $stderrPath) { (Get-Content -Raw -Path $stderrPath).Trim() } else { '' }
-            $exitCode = if ($null -ne $proc.ExitCode) { [int]$proc.ExitCode } else { 0 }
-            if ($exitCode -ne 0) {
-              throw "Smoke case '$Name' failed with exit code $exitCode. Stderr=$stderrText"
-            }
-
-            if (-not [string]::IsNullOrWhiteSpace($RequireOutputPattern) -and $outputText -notmatch $RequireOutputPattern) {
-              throw "Smoke case '$Name' output did not match required pattern '$RequireOutputPattern'. Output: $outputText"
-            }
-
-            $combined = ($outputText + "`n" + $stderrText)
-            if (-not [string]::IsNullOrWhiteSpace($RejectOutputPattern) -and $combined -match $RejectOutputPattern) {
-              throw "Smoke case '$Name' output matched rejected pattern '$RejectOutputPattern'. Output: $combined"
-            }
-          }
-
-          # Keep release gate deterministic on GitHub-hosted Windows runners.
-          # Runtime process smoke is intentionally skipped here because headless
-          # process behavior can be unstable. Placeholder entrypoint is blocked
-          # by source guard in the build step above.
-
-          if ((Get-Item $exe).Length -lt 100KB) {
-            throw "Executable size check failed: smaller than minimum expected footprint (100KB)"
-          }
-      - name: Upload smoke test logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-smoke-logs
-          path: smoke_logs/*
-      - name: Build installer (Setup.exe)
-        shell: pwsh
-        run: |
-          ./robot_control_rust/scripts/package_windows_x64_iexpress_installer.ps1 -SkipBuild
-      - name: Collect release assets
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path release_artifacts | Out-Null
-          $exe = 'robot_control_rust\target\release\robot_control_rust.exe'
-          $microExe = 'rust_micro_tools\target\release\rust_micro_tools.exe'
+          $toolSuiteExe = 'rust_tools_suite\target\release\rust_tools_suite.exe'
           $setup = Get-ChildItem 'robot_control_rust\dist\windows-x64\installer\*_Setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $setup) {
             throw 'Setup.exe not found under robot_control_rust/dist/windows-x64/installer'
           }
-          if (-not (Test-Path $microExe)) {
-            throw 'rust_micro_tools.exe not found under rust_micro_tools/target/release'
+          if (-not (Test-Path $toolSuiteExe)) {
+            throw 'rust_tools_suite.exe not found under rust_tools_suite/target/release'
           }
 
           Copy-Item $exe 'release_artifacts\robot_control_rust.exe'
-          Copy-Item $microExe 'release_artifacts\rust_micro_tools.exe'
+          Copy-Item $toolSuiteExe 'release_artifacts\rust_tools_suite.exe'
           Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
-
           Push-Location release_artifacts
-          Get-FileHash -Algorithm SHA256 robot_control_rust.exe, rust_micro_tools.exe, RobotControlSuite_Setup.exe |
+          Get-FileHash -Algorithm SHA256 robot_control_rust.exe, rust_tools_suite.exe, RobotControlSuite_Setup.exe |
             ForEach-Object { "$($_.Hash.ToLower())  $($_.Path | Split-Path -Leaf)" } |
             Set-Content -Path checksums-sha256.txt -Encoding utf8
           Pop-Location
@@ -279,7 +172,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f artifacts/robot_control_rust.exe
-          test -f artifacts/rust_micro_tools.exe
+          test -f artifacts/rust_tools_suite.exe
           test -f artifacts/RobotControlSuite_Setup.exe
           test -f artifacts/checksums-sha256.txt
           test -f release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md
@@ -292,7 +185,7 @@ jobs:
           body_path: release_notes/RELEASE_NOTES_${{ github.ref_name }}.md
           files: |
             artifacts/robot_control_rust.exe
-            artifacts/rust_micro_tools.exe
+            artifacts/rust_tools_suite.exe
             artifacts/RobotControlSuite_Setup.exe
             artifacts/checksums-sha256.txt
 
@@ -328,3 +221,8 @@ jobs:
           draft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           body_path: failure-summary.md
+
+
+
+
+

@@ -11,14 +11,13 @@
 Rust Serial 工作区是一个统一的、**极致性能与高度智能化**的 Rust 串行设备工作区，包含：
 
 - **机器人控制主应用** (`robot_control_rust`) - 工业控制、协议调试、可视化与联调能力
-- **微型工具集** (`rust_micro_tools`) - 统一 GUI 聚合入口（含 10 款高频工具）
-- **独立图形工具** (`rust_indie_tools`) - 保留独立工程，便于单工具开发与独立构建
+- **桌面工具套件** (`rust_tools_suite`) - 统一 GUI 聚合入口（含 10 款高频工具）
 
 ## 核心特性
 
 ### 🚀 极致性能 UI
 
-使用纯原生的 `egui` (即时模式渲染硬件加速)，提供高达 **144Hz** 的无损实时波形渲染，极大减少内存占用。
+使用纯原生的 `egui` (即时模式渲染硬件加速)，提供高性能桌面交互体验并减少内存占用。
 
 ### 🔧 多协议支持
 
@@ -39,12 +38,12 @@ Rust Serial 工作区是一个统一的、**极致性能与高度智能化**的 
 ### 🔄 智能 Git 工作流
 
 - `smart-bump.ps1` 支持 Semantic Versioning 自动升号与全量生成 Changelog
-- CI 携带自动修复 (Auto-fix) 和自动推回功能
+- 根目录脚本统一执行检查、发布审计与工作区守卫
 - 本地 Git Hooks 拦截性能退化
 
 ### 🌐 零拷贝协议解包
 
-基于 `nom` 将封包解析与内存拷贝降解到 **0 级别**，搭配 `tokio`/`crossbeam` 搭建真正的无锁异步通信骨干网。
+基于 `nom` 将封包解析与内存拷贝降解到 **0 级别**，搭配 `crossbeam` 搭建真正的低开销通信骨干网。
 
 ### 🔌 跨平台融合 (C-FFI)
 
@@ -60,12 +59,8 @@ rust_serial/
 │   │   ├── services/       # 串口/TCP/UDP/CAN/LLM/MCP 服务
 │   │   └── views/          # UI 页面组件
 │   └── scripts/            # 打包与预检脚本
-├── rust_micro_tools/       # 微型工具集 (统一 GUI 聚合入口)
+├── rust_tools_suite/       # 桌面工具套件 (统一 GUI 聚合入口)
 │   └── src/tools/          # 10 款工具实现
-├── rust_indie_tools/       # 独立图形工具
-│   ├── csv_cleaner_gui/    # CSV 清洗工坊
-│   ├── jwt_inspector_gui/  # JWT 解析工坊
-│   └── regex_workbench_gui/# Regex 巡检工坊
 ├── docs/                   # mdBook 文档
 └── scripts/                # 开发脚本与 Git Hooks
 ```
@@ -74,8 +69,8 @@ rust_serial/
 
 - [快速入门](getting-started.md) - 环境准备与首次运行
 - [机器人主控](robot-control/README.md) - 主应用完整功能指南
-- [微型工具集](micro-tools/README.md) - TUI 工具使用手册
-- [独立图形工具](indie-tools/README.md) - 独立 GUI 工具介绍
+- [工具套件](micro-tools/README.md) - `rust_tools_suite` 使用手册
+- [工具套件架构](tools-suite-architecture.md) - 聚合目录结构与设计说明
 - [开发与工作流](workflow.md) - Git 工作流与自动化
 - [智能排障](troubleshooting.md) - 常见问题与解决方案
 
@@ -85,11 +80,11 @@ rust_serial/
 
 | 工作流 | 触发条件 | 核心能力 |
 |--------|----------|----------|
-| **CI** | PR / push 到 main/develop | 格式检查、Clippy 分析、Auto-fix 并推回 |
+| **CI** | PR / push 到 main/develop | 格式检查、Clippy、测试、文档阻断 |
 | **Security Audit** | 每周一 / 依赖变更 | cargo-audit 与 cargo-deny 门禁 |
-| **Release** | push tag v* | 自动发布 `robot_control_rust.exe`、`rust_micro_tools.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
+| **Release** | push tag v* | 自动发布 `robot_control_rust.exe`、`rust_tools_suite.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
 
-### 本地开发
+## 本地开发
 
 ```powershell
 # 格式检查
@@ -102,7 +97,7 @@ cargo clippy --all-targets
 cargo test
 
 # 一键预检 (Windows)
-.\scripts\preflight.ps1
+.\make.ps1 preflight
 ```
 
 ## 失败处理规范

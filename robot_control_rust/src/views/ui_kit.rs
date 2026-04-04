@@ -2,27 +2,27 @@ use egui::{self, Color32, RichText, Ui};
 
 pub fn apply_page_style(ui: &mut Ui) {
     let spacing = ui.spacing_mut();
-    spacing.item_spacing = egui::vec2(12.0, 10.0);
-    spacing.button_padding = egui::vec2(10.0, 6.0);
-    spacing.interact_size.y = 30.0;
-    spacing.text_edit_width = 220.0;
-    spacing.combo_width = 220.0;
-    spacing.slider_width = 260.0;
+    spacing.item_spacing = egui::vec2(14.0, 12.0);
+    spacing.button_padding = egui::vec2(12.0, 8.0);
+    spacing.interact_size.y = 34.0;
+    spacing.text_edit_width = 260.0;
+    spacing.combo_width = 240.0;
+    spacing.slider_width = 300.0;
 }
 
 pub fn page_header(ui: &mut Ui, title: &str, icon: &str) {
     apply_page_style(ui);
     ui.horizontal(|ui| {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(22.0, 22.0), egui::Sense::hover());
         draw_header_icon(ui.painter(), rect, icon, ui.visuals().text_color());
-        ui.add_space(6.0);
-        ui.heading(RichText::new(title).size(22.0));
+        ui.add_space(8.0);
+        ui.heading(RichText::new(title).size(24.0));
     });
-    ui.add_space(10.0);
+    ui.add_space(12.0);
 }
 
 pub fn section_title(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(16.0).strong());
+    ui.label(RichText::new(text).size(17.0).strong());
     ui.add_space(8.0);
 }
 
@@ -30,8 +30,8 @@ pub fn settings_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
     egui::Frame::group(ui.style())
         .fill(ui.visuals().faint_bg_color)
         .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
-        .corner_radius(10.0)
-        .inner_margin(egui::Margin::symmetric(16, 14))
+        .corner_radius(12.0)
+        .inner_margin(egui::Margin::symmetric(18, 16))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());
             add_contents(ui);

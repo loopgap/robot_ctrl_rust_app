@@ -5,7 +5,7 @@ This folder stores archived historical release binaries by tag version.
 ## Layout
 
 - `vX.Y.Z/robot_control_rust.exe`
-- `vX.Y.Z/rust_micro_tools.exe`
+- `vX.Y.Z/rust_tools_suite.exe`
 - `vX.Y.Z/RobotControlSuite_Setup.exe`
 - `vX.Y.Z/checksums-sha256.txt`
 - `vX.Y.Z/<optional source package or legacy assets>`

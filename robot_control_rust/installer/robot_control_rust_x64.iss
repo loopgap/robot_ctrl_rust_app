@@ -47,10 +47,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#StageDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\rust_tools_suite.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StageDir}\help_index.html"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ProjectRoot}\ARCHITECTURE_AND_USAGE.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Robot Control Suite"; Filename: "{app}\{#AppExeName}"
+Name: "{autoprograms}\Rust Tools Suite"; Filename: "{app}\rust_tools_suite.exe"
 Name: "{autodesktop}\Robot Control Suite"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]

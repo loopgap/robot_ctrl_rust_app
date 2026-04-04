@@ -15,13 +15,8 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Get-Location).Path
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
-
-$CoreProjects = @("robot_control_rust", "rust_micro_tools")
-$IndieProjects = Get-ChildItem "rust_indie_tools" -Directory -ErrorAction SilentlyContinue |
-    Where-Object { Test-Path "$($_.FullName)\Cargo.toml" } |
-    ForEach-Object { "rust_indie_tools\$($_.Name)" }
-$AllProjects = $CoreProjects + $IndieProjects
-
+$CoreProjects = @("robot_control_rust", "rust_tools_suite")
+$AllProjects = $CoreProjects
 function Write-Header($Message) {
     Write-Host "`n== $Message ==" -ForegroundColor Cyan
 }
@@ -191,7 +186,7 @@ switch ($Target) {
         Write-Header "Build artifacts"
         Get-ChildItem "robot_control_rust\target\release\robot_control_rust*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
-        Get-ChildItem "rust_micro_tools\target\release\rust_micro_tools*" -ErrorAction SilentlyContinue |
+        Get-ChildItem "rust_tools_suite\target\release\rust_tools_suite*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
     }
     "doc" {
@@ -328,3 +323,8 @@ switch ($Target) {
 "@ -ForegroundColor Cyan
     }
 }
+
+
+
+
+

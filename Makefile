@@ -16,10 +16,7 @@
 SHELL := /bin/bash
 AUDIT_DB := $(CURDIR)/.cargo-advisory-db
 
-CORE_PROJECTS = robot_control_rust rust_micro_tools
-INDIE_DIRS := $(wildcard rust_indie_tools/*/Cargo.toml)
-INDIE_PROJECTS := $(dir $(INDIE_DIRS))
-ALL_PROJECTS := $(CORE_PROJECTS) $(INDIE_PROJECTS)
+CORE_PROJECTS = robot_control_rust rust_tools_suite`nALL_PROJECTS := $(CORE_PROJECTS)
 
 .PHONY: all check fmt fmt-check clippy test test-release build release clean doc audit preflight release-sync release-sync-apply workflow-seal workflow-seal-apply workspace-guard workspace-cleanup help
 
@@ -118,7 +115,7 @@ release:
 	@echo ""
 	@echo "══ 构建产物 ══"
 	@ls -lh robot_control_rust/target/release/robot_control_rust* 2>/dev/null || true
-	@ls -lh rust_micro_tools/target/release/rust_micro_tools* 2>/dev/null || true
+	@ls -lh rust_tools_suite/target/release/rust_tools_suite* 2>/dev/null || true
 
 doc:
 	@echo "══ 生成文档 ══"
@@ -220,3 +217,5 @@ help:
 	@echo "  make workspace-cleanup  清理过程产物目录"
 	@echo "  make clean      清理所有 target/"
 	@echo "  make help       显示此帮助"
+
+

@@ -37,7 +37,7 @@
 
 3. 等待 Release 工作流完成，确认资产：
 - robot_control_rust.exe
-- rust_micro_tools.exe
+- rust_tools_suite.exe
 - RobotControlSuite_Setup.exe
 - checksums-sha256.txt
 
@@ -86,7 +86,7 @@ pwsh ./robot_control_rust/scripts/create_github_release.ps1 -Tag vX.Y.Z
 pwsh ./robot_control_rust/scripts/create_github_release.ps1 \
 	-Tag vX.Y.Z \
 	-BodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
-	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/rust_micro_tools.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
+	-Assets release_artifacts/robot_control_rust.exe,release_artifacts/rust_tools_suite.exe,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
 ```
 
 ## 质量门禁说明

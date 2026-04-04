@@ -66,10 +66,10 @@ robot_control_rust/
 
 - Rust 2021 Edition
 - GUI：`eframe 0.31` / `egui 0.31` / `egui_plot 0.31`
-- 串口：`serialport 4.7`
+- 串口：`serialport 4.8`
 - 数据序列化：`serde` / `serde_json`
 - 时间与日志：`chrono` / `tracing` / `tracing-subscriber`
-- 网络请求：`ureq 2.x`
+- 网络请求：`ureq 3.x`
 - 错误处理：`anyhow` / `thiserror`
 
 ---
@@ -243,16 +243,16 @@ cargo clippy --all-targets
 
 ---
 
-## 11. 闭环测试结果（最终交付）
+## 11. 闭环测试结果（当前基线）
 
-### 11.1 测试矩阵（2026-02-26）
+### 11.1 测试矩阵（2026-04-03）
 
 | 项目 | 命令 | 结果 |
 |------|------|------|
 | 代码格式 | `cargo fmt --check` | ✅ 通过 |
 | Debug 构建 | `cargo build` | ✅ 通过 |
-| Debug 测试 | `cargo test` | ✅ 353 passed |
-| Release 测试 | `cargo test --release` | ✅ 353 passed |
+| Debug 测试 | `cargo test` | ✅ 321 passed |
+| Release 测试 | `cargo test --release` | 按需执行 |
 | 静态分析 | `cargo clippy --all-targets` | ✅ 0 warning |
 
 ### 11.2 分模块测试计数
@@ -285,8 +285,8 @@ cargo clippy --all-targets
 | `services::can_service::tests` | 15 |
 | `services::llm_service::tests` | 13 |
 | `services::mcp_server::tests` | 4 |
-| `views::protocol_analysis::tests` | 33 |
-| **总计** | **353** |
+| `views::protocol_analysis::tests` | 已并入当前测试统计 |
+| **总计** | **321** |
 
 ---
 

@@ -26,12 +26,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Process file residue audit
         shell: pwsh
-        run: |
-          ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
+        run: ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
       - name: Workspace structure guard
         shell: pwsh
-        run: |
-          ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+        run: ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
 
   fmt:
     name: Format Check
@@ -44,26 +42,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Check formatting across projects
+      - name: Check formatting across products
         shell: bash
         run: |
           set -euo pipefail
-
-          run_fmt_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::fmt $project"
-            cargo fmt --check --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_fmt_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_fmt_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          for dir in rust_indie_tools/*/; do
-            if [ -f "${dir}Cargo.toml" ]; then
-              run_fmt_check "${dir%/}" "${dir}Cargo.toml"
-            fi
-          done
+          cargo fmt --check --manifest-path robot_control_rust/Cargo.toml
+          cargo fmt --check --manifest-path rust_tools_suite/Cargo.toml
 
   clippy:
     name: Clippy
@@ -84,26 +68,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Run clippy across projects
+      - name: Run clippy across products
         shell: bash
         run: |
           set -euo pipefail
-
-          run_clippy_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::clippy $project"
-            cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
-            echo "::endgroup::"
-          }
-
-          run_clippy_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_clippy_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          for dir in rust_indie_tools/*/; do
-            if [ -f "${dir}Cargo.toml" ]; then
-              run_clippy_check "${dir%/}" "${dir}Cargo.toml"
-            fi
-          done
+          cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path rust_tools_suite/Cargo.toml --all-targets -- -D warnings
 
   test:
     name: Test
@@ -122,26 +92,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Run tests across projects
+      - name: Run tests across products
         shell: bash
         run: |
           set -euo pipefail
-
-          run_test_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::test $project"
-            cargo test --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_test_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_test_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          for dir in rust_indie_tools/*/; do
-            if [ -f "${dir}Cargo.toml" ]; then
-              run_test_check "${dir%/}" "${dir}Cargo.toml"
-            fi
-          done
+          cargo test --manifest-path robot_control_rust/Cargo.toml
+          cargo test --manifest-path rust_tools_suite/Cargo.toml
 
   doc:
     name: Docs
@@ -154,25 +110,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Build docs across projects
+      - name: Build docs across products
         shell: bash
         env:
           RUSTDOCFLAGS: "-D warnings"
         run: |
           set -euo pipefail
-
-          run_doc_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::doc $project"
-            cargo doc --no-deps --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_doc_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_doc_check "rust_micro_tools" "rust_micro_tools/Cargo.toml"
-          for dir in rust_indie_tools/*/; do
-            if [ -f "${dir}Cargo.toml" ]; then
-              run_doc_check "${dir%/}" "${dir}Cargo.toml"
-            fi
-          done
+          cargo doc --no-deps --manifest-path robot_control_rust/Cargo.toml
+          cargo doc --no-deps --manifest-path rust_tools_suite/Cargo.toml

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Robot Control Suite Help</title>
+  <style>
+    :root { color-scheme: light; --bg: #f5f7fb; --card: #ffffff; --text: #18212f; --muted: #536176; --line: #d9e1ec; --accent: #0b6efd; --accent-soft: #e9f2ff; --ok: #1d7a46; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei UI", "Segoe UI", "PingFang SC", sans-serif; background: linear-gradient(180deg, #f5f7fb 0%, #eef3fb 100%); color: var(--text); line-height: 1.65; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 32px 20px 56px; }
+    .hero { background: linear-gradient(135deg, #ffffff 0%, #edf4ff 100%); border: 1px solid var(--line); border-radius: 24px; padding: 28px; box-shadow: 0 18px 50px rgba(30, 45, 70, 0.08); }
+    h1 { margin: 0 0 12px; font-size: 2rem; line-height: 1.2; }
+    h2 { margin: 0 0 12px; font-size: 1.35rem; }
+    p, li { font-size: 1rem; }
+    .muted { color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(30, 45, 70, 0.06); }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.85rem; font-weight: 700; margin-bottom: 10px; }
+    .toc a { display: block; text-decoration: none; color: var(--text); padding: 10px 12px; border-radius: 12px; border: 1px solid transparent; }
+    .toc a:hover { background: #f3f7ff; border-color: var(--line); }
+    code { font-family: "Cascadia Mono", "Consolas", monospace; background: #eef3fb; border-radius: 6px; padding: 2px 6px; font-size: 0.95em; }
+    ul { margin: 0; padding-left: 1.1rem; }
+    .callout { border-left: 4px solid var(--ok); background: #eefaf2; padding: 12px 14px; border-radius: 12px; margin-top: 16px; }
+    .section { margin-top: 24px; }
+    .footer { margin-top: 28px; color: var(--muted); font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="tag">Local Browser Help</div>
+      <h1>Robot Control Suite 帮助中心</h1>
+      <p>这份帮助页会由默认浏览器直接渲染，适合查看较长说明、快捷键、缩放规则、安装结构和常见排查项。</p>
+      <p class="muted">This page is the local HTML help entry used by <code>robot_control_rust</code> and <code>rust_tools_suite</code>.</p>
+      <div class="callout">默认界面缩放基线为 <strong>150%</strong>。推荐使用 <code>Ctrl + 鼠标滚轮</code> 快速缩放；设置中的滑块只调整待应用值，点击“应用缩放”后才真正生效。</div>
+    </section>
+    <div class="grid section">
+      <nav class="card toc">
+        <h2>目录 / Contents</h2>
+        <a href="#apps">应用组成</a>
+        <a href="#zoom">缩放与字体</a>
+        <a href="#robot">robot_control_rust</a>
+        <a href="#suite">rust_tools_suite</a>
+        <a href="#workflow">工作流与发布</a>
+        <a href="#troubleshooting">排查建议</a>
+      </nav>
+      <section class="card" id="apps">
+        <h2>应用组成</h2>
+        <ul>
+          <li><code>robot_control_rust</code>：串口/协议/控制算法主界面。</li>
+          <li><code>rust_tools_suite</code>：CSV、JWT、Regex、JSON、校验和、URL/Base64/UUID 等工具合集。</li>
+          <li><code>rust_indie_tools</code>：已退役，不再作为正式工作区或发布对象保留。</li>
+        </ul>
+      </section>
+      <section class="card" id="zoom">
+        <h2>缩放与字体</h2>
+        <ul>
+          <li>默认缩放：<code>150%</code></li>
+          <li>可调范围：<code>100%</code> 到 <code>220%</code></li>
+          <li>快捷操作：<code>Ctrl + 滚轮</code></li>
+          <li>设置面板中的滑块不会在拖动时实时抖动界面。</li>
+        </ul>
+      </section>
+    </div>
+    <div class="grid section">
+      <section class="card" id="robot">
+        <h2>robot_control_rust</h2>
+        <ul>
+          <li>用于串口通信、协议分析、报文构造、PID/NN 调参与数据可视化。</li>
+          <li>帮助菜单中的“文档”会优先打开本地 HTML 帮助页。</li>
+          <li>更新检查如果没有独立说明页，也会回退到本地帮助页，而不是打开无意义的 GitHub 搜索页。</li>
+        </ul>
+      </section>
+      <section class="card" id="suite">
+        <h2>rust_tools_suite</h2>
+        <ul>
+          <li>统一承接原先零散的小工具能力。</li>
+          <li>适合做文本处理、编码转换、CSV 清洗、JWT 解析和 Regex 验证。</li>
+          <li>帮助菜单中的“文档”同样优先打开这份本地 HTML 页面。</li>
+        </ul>
+      </section>
+    </div>
+    <section class="card section" id="workflow">
+      <h2>工作流与发布</h2>
+      <ul>
+        <li>本地自动化入口：<code>.\make.ps1 workflow-seal</code>、<code>.\make.ps1 check</code>、<code>.\make.ps1 preflight</code></li>
+        <li>发布资产应包含：<code>robot_control_rust.exe</code>、<code>rust_tools_suite.exe</code>、<code>RobotControlSuite_Setup.exe</code>、<code>checksums-sha256.txt</code></li>
+        <li>安装包会同时放入两个可执行文件，并保留本地 HTML 帮助页。</li>
+      </ul>
+    </section>
+    <section class="card section" id="troubleshooting">
+      <h2>排查建议</h2>
+      <ul>
+        <li>若帮助页没有打开，优先检查安装目录或可执行文件同级是否存在 <code>help_index.html</code>。</li>
+        <li>若字体仍偏小，先确认当前缩放是否已应用，而不是仅修改了待应用值。</li>
+        <li>若需要重新验证工作区状态，先执行 <code>.\make.ps1 workspace-guard</code>。</li>
+      </ul>
+    </section>
+    <p class="footer">Workspace help page for version 0.1.7 reissue preparation.</p>
+  </div>
+</body>
+</html>

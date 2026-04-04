@@ -1859,8 +1859,8 @@ impl Tr {
     }
     pub fn menu_ui_scale_reset(lang: Language) -> &'static str {
         match lang {
-            Language::English => "Reset UI Scale",
-            Language::Chinese => "重置界面缩放",
+            Language::English => "Reset to 150%",
+            Language::Chinese => "重置为 150%",
         }
     }
     pub fn menu_language(lang: Language) -> &'static str {

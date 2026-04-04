@@ -23,7 +23,7 @@
   - [拓扑视图](robot-control/topology.md)
   - [MCP Server](robot-control/mcp.md)
 
-- [微型工具集 (Micro Tools)](micro-tools/README.md)
+- [工具套件 (Rust Tools Suite)](micro-tools/README.md)
   - [校验和工坊](micro-tools/checksum.md)
   - [JSON 工坊](micro-tools/json.md)
   - [日志巡检](micro-tools/log-inspector.md)
@@ -35,7 +35,9 @@
   - [JWT 解析工坊](micro-tools/jwt.md)
   - [Regex 巡检工坊](micro-tools/regex.md)
 
-- [独立图形工具 (Indie Tools)](indie-tools/README.md)
+- [工具套件架构](tools-suite-architecture.md)
+
+- [独立图形工具迁移说明](indie-tools/README.md)
 
 - [开发与工作流说明](workflow.md)
 

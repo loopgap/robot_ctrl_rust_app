@@ -1,119 +1,29 @@
-# 独立图形工具
+# 独立图形工具迁移说明
 
-> 每个工具独立目录、独立 Cargo.toml、单独构建与发布
+`rust_indie_tools` 已从当前工作区的正式构建与发布流中退役，原有 CSV / JWT / Regex 能力已并入 `rust_tools_suite`。
 
-## 简介
+## 当前结论
 
-`rust_indie_tools` 是独立 Rust GUI 工具目录，每个工具：
+- 不再维护独立 GUI 工具的单独发布链。
+- 不再为独立 GUI 工具保留活动工作区入口。
+- 用户应改为使用 `rust_tools_suite` 获取统一的桌面工具体验。
 
-- 独立目录结构
-- 独立 `Cargo.toml`
-- 独立 README 文档
-- 独立 GitHub Matrix Action 自动构建打包
+## 对应关系
 
-UI 风格与主应用一致：**深色工业风 + 蓝色强调色**
-
-## 工具列表
-
-### 1. CSV 清洗工坊 (csv_cleaner_gui)
-
-**功能**: CSV 数据清洗与预处理
-
-| 功能 | 说明 |
+| 原独立工具 | 当前归属 |
 |------|------|
-| 去除空行 | 自动移除空白行 |
-| 字段 Trim | 清除字段首尾空白 |
-| 行去重 | 可选按整行内容去重 |
-| 列数一致性检查 | 统计并报告列数不一致的行 |
+| CSV 清洗工坊 | `rust_tools_suite` |
+| JWT 解析工坊 | `rust_tools_suite` |
+| Regex 巡检工坊 | `rust_tools_suite` |
 
-**闭环流程**: `输入 → 校验 → 执行 → 验证 → 导出`
+## 迁移后的好处
 
-**运行**:
-```powershell
-cd rust_indie_tools/csv_cleaner_gui
-cargo run --release
-```
-
----
-
-### 2. JWT 解析工坊 (jwt_inspector_gui)
-
-**功能**: JWT Token 解析与检查
-
-| 功能 | 说明 |
-|------|------|
-| Header 解析 | Base64URL 解码并格式化 |
-| Payload 解析 | Base64URL 解码并格式化 |
-| JSON 格式化 | 美化 JSON 输出 |
-| 过期检查 | 快速显示过期时间（仅解析，不验签）|
-
-**适用场景**: API 调试、Token 排障、前端联调
-
-**运行**:
-```powershell
-cd rust_indie_tools/jwt_inspector_gui
-cargo run --release
-```
-
----
-
-### 3. Regex 巡检工坊 (regex_workbench_gui)
-
-**功能**: 正则表达式测试与验证
-
-| 功能 | 说明 |
-|------|------|
-| 正则输入 | 支持 Rust 正则语法 |
-| 文本输入 | 多行文本支持 |
-| 命中高亮 | 快速定位匹配内容 |
-| 命中统计 | 显示匹配次数和行号 |
-
-**适用场景**: 日志告警规则验证、文本模式匹配、规则调试
-
-**运行**:
-```powershell
-cd rust_indie_tools/regex_workbench_gui
-cargo run --release
-```
-
----
-
-## 统一规范
-
-### UI 风格
-- 深色工业风 + 蓝色强调色
-- 与 `robot_control_rust` 和 `rust_micro_tools` 保持一致
-
-### 交互流程
-所有工具实现统一闭环流程：
-
-```
-输入 → 校验 → 执行 → 验证 → 导出
-```
-
-### 状态可视化
-| 符号 | 状态 |
-|------|------|
-| `○` | 待处理 |
-| `●` | 已完成 |
-| `▲` | 需关注 |
-
-## 与微型工具集的关系
-
-| 特性 | rust_indie_tools | rust_micro_tools |
-|------|-------------------|------------------|
-| 入口方式 | 独立 GUI 应用 | 统一 GUI 聚合入口 |
-| 双语支持 | ❌ | ✅ |
-| 语言持久化 | ❌ | ✅ |
-| 构建方式 | 每个工具独立 | 统一 |
-| 发布方式 | 独立 Matrix 构建 | 统一发布（`rust_micro_tools.exe`） |
-| 复杂度 | 较复杂 GUI | 轻量聚合 GUI |
-
-两者互补：
-- `rust_micro_tools` 提供统一入口、双语支持与语言持久化，并聚合 CSV/JWT/Regex 能力
-- `rust_indie_tools` 保留独立 GUI 工程，便于单工具开发、调试与独立交付
+- 统一双语界面与偏好持久化
+- 统一响应式布局和流程面板
+- 统一测试、发布和资产命名
 
 ## 相关文档
 
-- 微型工具集: [Micro Tools](../micro-tools/README.md)
-- 主应用: [Robot Control](../robot-control/README.md)
+- [工具套件总览](../micro-tools/README.md)
+- [工具套件架构](../tools-suite-architecture.md)
+- [主应用文档](../robot-control/README.md)

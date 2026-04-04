@@ -1,5 +1,5 @@
 use crate::app::{ActiveTab, AppState, LogDirection};
-use crate::i18n::Tr;
+use crate::i18n::{Language, Tr};
 use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{self, Color32, RichText, Ui, Vec2};
 
@@ -47,13 +47,27 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     // ═══ 启动自检 ═══════════════════════════════════════
     settings_card(ui, |ui| {
-        section_title(ui, "System Check");
+        section_title(
+            ui,
+            if lang == Language::Chinese {
+                "系统自检"
+            } else {
+                "System Check"
+            },
+        );
         let (ok_count, total_count) = state.system_check_summary();
         ui.label(
-            RichText::new(format!(
-                "Passed: {}/{}  |  Version: {}",
-                ok_count, total_count, state.build_version
-            ))
+            RichText::new(if lang == Language::Chinese {
+                format!(
+                    "通过: {}/{}  |  版本: {}",
+                    ok_count, total_count, state.build_version
+                )
+            } else {
+                format!(
+                    "Passed: {}/{}  |  Version: {}",
+                    ok_count, total_count, state.build_version
+                )
+            })
             .color(if ok_count == total_count {
                 Color32::from_rgb(120, 220, 120)
             } else {
@@ -70,10 +84,17 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }),
         );
         ui.label(
-            RichText::new(format!(
-                "Update: {} | Last check: {}",
-                state.update_status_detail, state.update_last_checked_at
-            ))
+            RichText::new(if lang == Language::Chinese {
+                format!(
+                    "更新: {} | 上次检查: {}",
+                    state.update_status_detail, state.update_last_checked_at
+                )
+            } else {
+                format!(
+                    "Update: {} | Last check: {}",
+                    state.update_status_detail, state.update_last_checked_at
+                )
+            })
             .size(11.5),
         );
         ui.add_space(6.0);
@@ -156,7 +177,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         state.status_message = if state.active_status().is_connected() {
                             Tr::connected(lang).into()
                         } else {
-                            "连接中...".into()
+                            if lang == Language::Chinese {
+                                "连接中..."
+                            } else {
+                                "Connecting..."
+                            }
+                            .into()
                         }
                     }
                     Err(e) => state.report_error(format!("{}: {}", Tr::error_label(lang), e)),
@@ -226,8 +252,24 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             );
             state_cell(ui, Tr::error_ch(lang), &format!("{:.3}", s.error));
             state_cell(ui, Tr::pid_output(lang), &format!("{:.2}", s.pid_output));
-            state_cell(ui, "Voltage", &format!("{:.1} V", s.voltage));
-            state_cell(ui, "PWM", &format!("{:.1}%", s.pwm_duty));
+            state_cell(
+                ui,
+                if lang == Language::Chinese {
+                    "电压"
+                } else {
+                    "Voltage"
+                },
+                &format!("{:.1} V", s.voltage),
+            );
+            state_cell(
+                ui,
+                if lang == Language::Chinese {
+                    "PWM 占空比"
+                } else {
+                    "PWM"
+                },
+                &format!("{:.1}%", s.pwm_duty),
+            );
         });
     });
 
@@ -236,7 +278,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     // ═══ 运行指标 ════════════════════════════════════════
     settings_card(ui, |ui| {
-        section_title(ui, "Runtime Metrics");
+        section_title(
+            ui,
+            if lang == Language::Chinese {
+                "运行指标"
+            } else {
+                "Runtime Metrics"
+            },
+        );
         let (mcp_req, mcp_unauth) = state.mcp_metrics_snapshot();
         egui::Grid::new("runtime_metrics_grid")
             .num_columns(2)
@@ -244,27 +293,83 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show(ui, |ui| {
                 stat_row(
                     ui,
-                    "Connect Attempts",
+                    if lang == Language::Chinese {
+                        "连接尝试次数"
+                    } else {
+                        "Connect Attempts"
+                    },
                     &state.metrics.connect_attempts.to_string(),
                 );
                 ui.end_row();
                 stat_row(
                     ui,
-                    "Connect Failures",
+                    if lang == Language::Chinese {
+                        "连接失败次数"
+                    } else {
+                        "Connect Failures"
+                    },
                     &state.metrics.connect_failures.to_string(),
                 );
                 ui.end_row();
-                stat_row(ui, "LLM Requests", &state.metrics.llm_requests.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "LLM 请求数"
+                    } else {
+                        "LLM Requests"
+                    },
+                    &state.metrics.llm_requests.to_string(),
+                );
                 ui.end_row();
-                stat_row(ui, "LLM Success", &state.metrics.llm_success.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "LLM 成功数"
+                    } else {
+                        "LLM Success"
+                    },
+                    &state.metrics.llm_success.to_string(),
+                );
                 ui.end_row();
-                stat_row(ui, "LLM Failures", &state.metrics.llm_failures.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "LLM 失败数"
+                    } else {
+                        "LLM Failures"
+                    },
+                    &state.metrics.llm_failures.to_string(),
+                );
                 ui.end_row();
-                stat_row(ui, "MCP Startups", &state.metrics.mcp_startups.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "MCP 启动次数"
+                    } else {
+                        "MCP Startups"
+                    },
+                    &state.metrics.mcp_startups.to_string(),
+                );
                 ui.end_row();
-                stat_row(ui, "MCP Requests", &mcp_req.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "MCP 请求数"
+                    } else {
+                        "MCP Requests"
+                    },
+                    &mcp_req.to_string(),
+                );
                 ui.end_row();
-                stat_row(ui, "MCP Unauthorized", &mcp_unauth.to_string());
+                stat_row(
+                    ui,
+                    if lang == Language::Chinese {
+                        "MCP 未授权次数"
+                    } else {
+                        "MCP Unauthorized"
+                    },
+                    &mcp_unauth.to_string(),
+                );
                 ui.end_row();
             });
     });
@@ -290,7 +395,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     settings_card(ui, |ui| {
-        section_title(ui, "协议分析入口");
+        section_title(
+            ui,
+            if lang == Language::Chinese {
+                "协议分析入口"
+            } else {
+                "Protocol Analysis Entry"
+            },
+        );
         let mut tx = 0usize;
         let mut rx = 0usize;
         let mut info = 0usize;
@@ -303,7 +415,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         }
 
         ui.horizontal_wrapped(|ui| {
-            ui.label(format!("总帧数: {}", state.log_entries.len()));
+            ui.label(format!(
+                "{}: {}",
+                if lang == Language::Chinese {
+                    "总帧数"
+                } else {
+                    "Total Frames"
+                },
+                state.log_entries.len()
+            ));
             ui.separator();
             ui.label(format!("TX: {}", tx));
             ui.label(format!("RX: {}", rx));
@@ -311,8 +431,19 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
 
         ui.add_space(6.0);
-        ui.label("协议分析已集成在主界面中，可直接在侧边栏‘协议分析’页使用完整分析工具。 ");
-        if ui.button("打开协议分析页").clicked() {
+        ui.label(if lang == Language::Chinese {
+            "协议分析已集成在主界面中，可直接在侧边栏“协议分析”页使用完整分析工具。"
+        } else {
+            "Protocol analysis is integrated into the main workspace. Open the Protocol Analysis tab for the full toolset."
+        });
+        if ui
+            .button(if lang == Language::Chinese {
+                "打开协议分析页"
+            } else {
+                "Open Protocol Analysis"
+            })
+            .clicked()
+        {
             state.active_tab = ActiveTab::ProtocolAnalysis;
         }
     });

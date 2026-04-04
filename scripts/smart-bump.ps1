@@ -106,17 +106,8 @@ function Get-CurrentBranch {
 function Get-ProjectManifests {
 	$manifests = @(
 		"robot_control_rust/Cargo.toml",
-		"rust_micro_tools/Cargo.toml"
-	)
-
-	$indie = Get-ChildItem "rust_indie_tools" -Directory -ErrorAction SilentlyContinue |
-		Where-Object { Test-Path (Join-Path $_.FullName "Cargo.toml") } |
-		ForEach-Object {
-			$relative = $_.FullName.Replace($RepoRoot + "\\", "")
-			"$relative/Cargo.toml"
-		}
-
-	return $manifests + $indie
+		"rust_tools_suite/Cargo.toml"
+	)`r`n`treturn $manifests
 }
 
 function Get-VersionFromManifest([string]$manifestPath) {
@@ -265,3 +256,5 @@ finally {
 	Invoke-ProcessCleanup -Skip:$SkipProcessCleanup
 	Invoke-WorkspaceGuard -Skip:$SkipWorkspaceGuard
 }
+
+

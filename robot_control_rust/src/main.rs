@@ -7,13 +7,17 @@ mod models;
 mod services;
 mod views;
 
-use app::{ActiveTab, AppState, DisplayMode, LogDirection};
+use app::{
+    ActiveTab, AppState, DisplayMode, LogDirection, DEFAULT_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT,
+    MIN_UI_SCALE_PERCENT, UI_SCALE_STEP_PERCENT,
+};
 use eframe::egui;
 use i18n::{Language, Tr};
 use std::time::{Duration, Instant};
 
 struct RobotControlApp {
     state: AppState,
+    pending_ui_scale_percent: u32,
     last_prefs_save: Instant,
     show_preferences: bool,
     show_about: bool,
@@ -22,8 +26,11 @@ struct RobotControlApp {
 
 impl RobotControlApp {
     fn new() -> Self {
+        let state = AppState::new();
+        let pending_ui_scale_percent = state.ui.ui_scale_percent;
         Self {
-            state: AppState::new(),
+            state,
+            pending_ui_scale_percent,
             last_prefs_save: Instant::now(),
             show_preferences: false,
             show_about: false,
@@ -50,18 +57,97 @@ impl RobotControlApp {
     }
 
     fn apply_theme(&self, ctx: &egui::Context) {
-        if self.state.dark_mode {
+        let mut visuals = if self.state.dark_mode {
             let mut visuals = egui::Visuals::dark();
             visuals.override_text_color = Some(egui::Color32::from_rgb(220, 220, 230));
-            ctx.set_visuals(visuals);
+            visuals
         } else {
-            ctx.set_visuals(egui::Visuals::light());
-        }
+            egui::Visuals::light()
+        };
+        visuals.selection.bg_fill = egui::Color32::from_rgb(0, 122, 204).gamma_multiply(0.75);
+        ctx.set_visuals(visuals);
+
+        let mut style = (*ctx.style()).clone();
+        style.text_styles.insert(
+            egui::TextStyle::Small,
+            egui::FontId::new(13.5, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Body,
+            egui::FontId::new(15.5, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Button,
+            egui::FontId::new(15.0, egui::FontFamily::Proportional),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Monospace,
+            egui::FontId::new(14.5, egui::FontFamily::Monospace),
+        );
+        style.text_styles.insert(
+            egui::TextStyle::Heading,
+            egui::FontId::new(24.0, egui::FontFamily::Proportional),
+        );
+        style.spacing.item_spacing = egui::vec2(12.0, 10.0);
+        style.spacing.button_padding = egui::vec2(14.0, 8.0);
+        style.spacing.interact_size.y = 34.0;
+        style.spacing.text_edit_width = 260.0;
+        style.spacing.combo_width = 260.0;
+        style.spacing.slider_width = 300.0;
+        style.spacing.window_margin = egui::Margin::same(16);
+        ctx.set_style(style);
     }
 
     fn apply_ui_scale(&self, ctx: &egui::Context) {
-        let scale = self.state.ui.ui_scale_percent.clamp(80, 160) as f32 / 100.0;
+        let scale = self
+            .state
+            .ui
+            .ui_scale_percent
+            .clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT) as f32
+            / 100.0;
         ctx.set_pixels_per_point(scale);
+    }
+
+    fn set_ui_scale(&mut self, percent: u32) {
+        let clamped = percent.clamp(MIN_UI_SCALE_PERCENT, MAX_UI_SCALE_PERCENT);
+        self.state.ui.ui_scale_percent = clamped;
+        self.pending_ui_scale_percent = clamped;
+        self.state.status_message = Tr::ui_scale_set(clamped, self.state.lang());
+    }
+
+    fn apply_pending_ui_scale(&mut self) {
+        self.set_ui_scale(self.pending_ui_scale_percent);
+    }
+
+    fn reset_ui_scale(&mut self) {
+        self.set_ui_scale(DEFAULT_UI_SCALE_PERCENT);
+    }
+
+    fn render_tab_selector(&mut self, ui: &mut egui::Ui, lang: Language, available_width: f32) {
+        let show_tab_strip = self.state.ui.sidebar_expanded && available_width >= 1500.0;
+
+        if show_tab_strip {
+            ui.horizontal_wrapped(|ui| {
+                for &tab in ActiveTab::all() {
+                    let selected = self.state.active_tab == tab;
+                    let button = egui::Button::new(tab.label(lang))
+                        .selected(selected)
+                        .min_size(egui::vec2(132.0, 34.0));
+                    if ui.add(button).clicked() {
+                        self.state.active_tab = tab;
+                    }
+                }
+            });
+        } else {
+            egui::ComboBox::from_id_salt("top_tab_selector")
+                .width(320.0)
+                .selected_text(self.state.active_tab.label(lang))
+                .show_ui(ui, |ui| {
+                    for &tab in ActiveTab::all() {
+                        ui.selectable_value(&mut self.state.active_tab, tab, tab.label(lang));
+                    }
+                });
+        }
     }
 
     fn render_active_tab(&mut self, ui: &mut egui::Ui) {
@@ -114,6 +200,28 @@ impl RobotControlApp {
 
         if ctx.input(|i| i.key_pressed(egui::Key::F5)) {
             self.state.refresh_ports();
+        }
+
+        let zoom_delta = ctx.input(|i| {
+            if i.modifiers.ctrl {
+                i.raw_scroll_delta.y
+            } else {
+                0.0
+            }
+        });
+        if zoom_delta.abs() > f32::EPSILON {
+            let next = if zoom_delta > 0.0 {
+                self.state
+                    .ui
+                    .ui_scale_percent
+                    .saturating_add(UI_SCALE_STEP_PERCENT as u32)
+            } else {
+                self.state
+                    .ui
+                    .ui_scale_percent
+                    .saturating_sub(UI_SCALE_STEP_PERCENT as u32)
+            };
+            self.set_ui_scale(next);
         }
     }
 
@@ -218,20 +326,52 @@ impl RobotControlApp {
             });
 
             ui.separator();
-            let before_scale = self.state.ui.ui_scale_percent;
+            ui.label(format!(
+                "{}: {}%",
+                if lang == Language::Chinese {
+                    "当前生效"
+                } else {
+                    "Current"
+                },
+                self.state.ui.ui_scale_percent
+            ));
             ui.add(
-                egui::Slider::new(&mut self.state.ui.ui_scale_percent, 80..=160)
-                    .text(Tr::menu_ui_scale(lang))
-                    .suffix("%"),
+                egui::Slider::new(
+                    &mut self.pending_ui_scale_percent,
+                    MIN_UI_SCALE_PERCENT..=MAX_UI_SCALE_PERCENT,
+                )
+                .text(Tr::menu_ui_scale(lang))
+                .suffix("%"),
             );
-            if self.state.ui.ui_scale_percent != before_scale {
-                self.state.status_message = Tr::ui_scale_set(self.state.ui.ui_scale_percent, lang);
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(if lang == Language::Chinese {
+                        "应用缩放"
+                    } else {
+                        "Apply Scale"
+                    })
+                    .clicked()
+                {
+                    self.apply_pending_ui_scale();
+                    ui.close_menu();
+                }
+                if ui.button(Tr::menu_ui_scale_reset(lang)).clicked() {
+                    self.reset_ui_scale();
+                    ui.close_menu();
+                }
+            });
+            if self.pending_ui_scale_percent != self.state.ui.ui_scale_percent {
+                ui.small(if lang == Language::Chinese {
+                    "拖动滑块只修改待应用值，点击“应用缩放”后才真正生效。"
+                } else {
+                    "Dragging changes only the pending value. Click Apply Scale to commit it."
+                });
             }
-            if ui.button(Tr::menu_ui_scale_reset(lang)).clicked() {
-                self.state.ui.ui_scale_percent = 100;
-                self.state.status_message = Tr::ui_scale_set(100, lang);
-                ui.close_menu();
-            }
+            ui.small(if lang == Language::Chinese {
+                "快捷缩放：Ctrl + 滚轮"
+            } else {
+                "Quick zoom: Ctrl + mouse wheel"
+            });
 
             ui.separator();
             let theme_button = if self.state.dark_mode {
@@ -270,7 +410,7 @@ impl RobotControlApp {
             }
 
             if ui.button(Tr::menu_docs(lang)).clicked() {
-                let url = self.state.update_doc_url();
+                let url = self.state.documentation_url();
                 ctx.open_url(egui::OpenUrl { url, new_tab: true });
                 self.state.status_message = Tr::docs_opened(lang).into();
                 ui.close_menu();
@@ -312,8 +452,9 @@ impl RobotControlApp {
                 .resizable(false)
                 .collapsible(false)
                 .show(ctx, |ui| {
+                    ui.set_min_width(420.0);
                     ui.label(Tr::menu_language(lang));
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(
                             &mut self.state.language,
                             Language::Chinese,
@@ -331,9 +472,10 @@ impl RobotControlApp {
                     ui.checkbox(&mut self.state.ui.sidebar_expanded, Tr::prefs_sidebar(lang));
                     ui.checkbox(&mut self.state.ui.auto_scroll, Tr::auto_scroll(lang));
 
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(Tr::display(lang));
                         egui::ComboBox::from_id_salt("prefs_display_mode")
+                            .width(220.0)
                             .selected_text(match self.state.ui.display_mode {
                                 DisplayMode::Hex => "HEX",
                                 DisplayMode::Ascii => "ASCII",
@@ -358,9 +500,10 @@ impl RobotControlApp {
                             });
                     });
 
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(Tr::prefs_motion_level(lang));
                         egui::ComboBox::from_id_salt("prefs_motion_level")
+                            .width(220.0)
                             .selected_text(Self::motion_level_label(
                                 lang,
                                 self.state.ui.motion_level_idx,
@@ -376,16 +519,43 @@ impl RobotControlApp {
                             });
                     });
 
-                    let before_scale = self.state.ui.ui_scale_percent;
+                    ui.label(format!(
+                        "{}: {}%",
+                        if lang == Language::Chinese {
+                            "当前生效"
+                        } else {
+                            "Current"
+                        },
+                        self.state.ui.ui_scale_percent
+                    ));
                     ui.add(
-                        egui::Slider::new(&mut self.state.ui.ui_scale_percent, 80..=160)
-                            .text(Tr::prefs_ui_scale(lang))
-                            .suffix("%"),
+                        egui::Slider::new(
+                            &mut self.pending_ui_scale_percent,
+                            MIN_UI_SCALE_PERCENT..=MAX_UI_SCALE_PERCENT,
+                        )
+                        .text(Tr::prefs_ui_scale(lang))
+                        .suffix("%"),
                     );
-                    if self.state.ui.ui_scale_percent != before_scale {
-                        self.state.status_message =
-                            Tr::ui_scale_set(self.state.ui.ui_scale_percent, lang);
-                    }
+                    ui.horizontal_wrapped(|ui| {
+                        if ui
+                            .button(if lang == Language::Chinese {
+                                "应用缩放"
+                            } else {
+                                "Apply Scale"
+                            })
+                            .clicked()
+                        {
+                            self.apply_pending_ui_scale();
+                        }
+                        if ui.button(Tr::menu_ui_scale_reset(lang)).clicked() {
+                            self.reset_ui_scale();
+                        }
+                    });
+                    ui.small(if lang == Language::Chinese {
+                        "快捷缩放：Ctrl + 滚轮"
+                    } else {
+                        "Quick zoom: Ctrl + mouse wheel"
+                    });
 
                     ui.add(
                         egui::Slider::new(&mut self.state.ui.prefs_autosave_interval_sec, 1..=300)
@@ -393,13 +563,14 @@ impl RobotControlApp {
                     );
 
                     ui.separator();
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         if ui.button(Tr::save(lang)).clicked() {
                             self.state.save_user_preferences();
                             self.state.status_message = Tr::prefs_saved(lang).into();
                         }
                         if ui.button(Tr::reset(lang)).clicked() {
                             self.state.reset_user_preferences();
+                            self.pending_ui_scale_percent = self.state.ui.ui_scale_percent;
                         }
                     });
                 });
@@ -413,12 +584,26 @@ impl RobotControlApp {
                 .resizable(false)
                 .collapsible(false)
                 .show(ctx, |ui| {
+                    ui.set_min_width(360.0);
                     ui.heading(Tr::app_title(lang));
-                    ui.label(format!("Version: {}", self.state.build_version));
+                    ui.label(format!(
+                        "{}: {}",
+                        if lang == Language::Chinese {
+                            "版本"
+                        } else {
+                            "Version"
+                        },
+                        self.state.build_version
+                    ));
+                    ui.label(format!(
+                        "{}: {}",
+                        Tr::menu_language(lang),
+                        self.state.language.label()
+                    ));
                     ui.separator();
                     ui.label(Tr::about_summary(lang));
                     if ui.button(Tr::menu_docs(lang)).clicked() {
-                        let url = self.state.update_doc_url();
+                        let url = self.state.documentation_url();
                         ctx.open_url(egui::OpenUrl { url, new_tab: true });
                     }
                 });
@@ -476,11 +661,25 @@ impl eframe::App for RobotControlApp {
         self.state.maintain_connection();
         self.maybe_auto_save_preferences();
 
+        let lang = self.state.lang();
+        let width = ctx.available_rect().width();
+        let accent = egui::Color32::from_rgb(0, 122, 204);
+
         egui::TopBottomPanel::top("app_topbar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 self.render_menu_bar(ui, ctx);
-                let lang = self.state.lang();
-
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.heading(Tr::app_title(lang));
+                    ui.colored_label(
+                        accent,
+                        if lang == Language::Chinese {
+                            "连接、诊断、调参与数据分析一体化工作台"
+                        } else {
+                            "Unified workspace for connection, diagnostics, tuning, and data analysis"
+                        },
+                    );
+                });
                 ui.separator();
 
                 if ui
@@ -494,31 +693,6 @@ impl eframe::App for RobotControlApp {
                     self.state.dark_mode = !self.state.dark_mode;
                 }
 
-                ui.separator();
-
-                if self.state.ui.sidebar_expanded {
-                    for &tab in ActiveTab::all() {
-                        let selected = self.state.active_tab == tab;
-                        if ui.selectable_label(selected, tab.label(lang)).clicked() {
-                            self.state.active_tab = tab;
-                        }
-                    }
-                } else {
-                    egui::ComboBox::from_id_salt("top_tab_selector")
-                        .selected_text(self.state.active_tab.label(lang))
-                        .show_ui(ui, |ui| {
-                            for &tab in ActiveTab::all() {
-                                ui.selectable_value(
-                                    &mut self.state.active_tab,
-                                    tab,
-                                    tab.label(lang),
-                                );
-                            }
-                        });
-                }
-
-                ui.separator();
-
                 if self.state.active_status().is_connected() {
                     if ui.button(Tr::disconnect(lang)).clicked() {
                         self.state.disconnect_active();
@@ -526,17 +700,39 @@ impl eframe::App for RobotControlApp {
                 } else if ui.button(Tr::connect(lang)).clicked() {
                     let _ = self.state.connect_active();
                 }
+            });
+            ui.separator();
+            self.render_tab_selector(ui, lang, width);
+        });
 
+        egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!(
+                    "{}: {}",
+                    if lang == Language::Chinese {
+                        "当前页面"
+                    } else {
+                        "Active View"
+                    },
+                    self.state.active_tab.label(lang)
+                ));
                 ui.separator();
                 ui.label(format!(
                     "{}: {}",
                     Tr::top_health(lang),
                     self.state.link_health_text()
                 ));
+                ui.separator();
                 ui.label(format!(
                     "{}: {}",
                     Tr::top_status(lang),
                     self.state.status_message
+                ));
+                ui.separator();
+                ui.label(format!(
+                    "{}: {}%",
+                    Tr::menu_ui_scale(lang),
+                    self.state.ui.ui_scale_percent
                 ));
             });
         });
@@ -636,8 +832,8 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Robot Control Suite")
-            .with_inner_size([1500.0, 900.0])
-            .with_min_inner_size([1000.0, 650.0]),
+            .with_inner_size([1600.0, 960.0])
+            .with_min_inner_size([1180.0, 760.0]),
         ..Default::default()
     };
 

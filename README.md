@@ -6,37 +6,30 @@
 [![Security Audit](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/audit.yml/badge.svg)](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/audit.yml)
 [![Release](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/release.yml/badge.svg)](https://github.com/loopgap/robot_ctrl_rust_app/actions/workflows/release.yml)
 
-本仓库是一个统一的、**极致性能与高度智能化的** Rust 串行设备工作区，包含机器人控制主应用、统一入口的小工具合集，以及多个可独立交付的 GUI 工具。
+本仓库是一个统一的、**极致性能与高度智能化的** Rust 串行设备工作区，包含机器人控制主应用、统一入口的桌面工具套件，以及在线文档与发布自动化。
 
 工作流的最高目标是：**统一覆盖、严格阻断、智能修复、极致性能**。
 
 ## 🌟 最新核心特性 (Features)
 
 - **智能 Git 工作流**：`smart-bump.ps1` 支持 SemVer 升号、annotated tag 和发布说明草稿生成。
-- **极致性能 UI**：弃用冗余的 Web GUI，使用纯原生的 `egui` (即时模式渲染硬件加速) 提供高达 144Hz 的无损实时波形渲染，极大减少内存占用。
-- **智能排障与设备感知 CLI**：
-  - 微型工具新增“交互式 TUI 命令接口 (`rust_micro_tools`)”，用户无需记忆繁杂命令即可一键补全、智能查找设备接口，体验炫酷的渐变彩色动画。
-  - 内置 `doctor` 指令提供从驱动到网络的全栈排障指南。
-- **跨平台融合体验 (C-FFI)**：
-  - 控制引擎的协议解析不仅独立执行，更导出成 C 动态库 (`.dll`/`.so`)。直接被外围生态（如 Python/C++）以零成本对接调用。
-- **零拷贝协议解包 (Zero-copy Pipeline)**：基于 `nom` 将封包解析与内存拷贝降解到 0 级别，搭配 `tokio`/`crossbeam` 搭建真正的无锁异步通信骨干网。
+- **极致性能 UI**：使用纯原生的 `egui` (即时模式渲染硬件加速) 提供流畅的实时桌面体验，减少内存占用。
+- **统一桌面工具套件**：`rust_tools_suite` 聚合 10 款高频工具，提供双语界面、响应式布局、文件导入导出与闭环流程面板。
+- **跨平台融合体验 (C-FFI)**：控制引擎协议解析导出为 C 动态库 (`.dll`/`.so`)，可被 Python/C++ 直接调用。
+- **零拷贝协议解包 (Zero-copy Pipeline)**：基于 `nom` 的高效封包解析，结合 `crossbeam` 构建低开销通信骨干。
 
 ## 子目录导航
 
 - `robot_control_rust`
-  主应用，覆盖工业控制、协议调试、可视化与联调能力（支持零拷贝极速图表组件和 C-FFI 跨环境外接API）。
+  主应用，覆盖工业控制、协议调试、可视化与联调能力。
   文档：[`robot_control_rust/README.md`](robot_control_rust/README.md)
 
-- `rust_micro_tools`
-  包含基于 `inquire` 构建的智能 TUI / CLI 与硬件互动的合集，强调一致 UI、双语支持和闭环流程面板。
-  文档：[`rust_micro_tools/README.md`](rust_micro_tools/README.md)
+- `rust_tools_suite`
+  当前工作区唯一保留的聚合式桌面工具目录，统一提供 10 款高频工具、双语支持和响应式工作流。
+  文档：[`rust_tools_suite/README.md`](rust_tools_suite/README.md)
 
-- `rust_indie_tools`
-  独立 Rust GUI 工具目录，每个工具单独维护、单独跨平台 Matrix Action 自动构建打包。
-  文档：[`rust_indie_tools/README.md`](rust_indie_tools/README.md)
-  
 - `docs`
-  使用 `mdBook` 生成的在线交互式智能说明站点（包含所有项目的入门说明和 `doctor` 故障大全）。
+  使用 `mdBook` 生成的在线交互式说明站点，覆盖安装、操作、发布与排障。
 
 ## 智能化开发工作流
 
@@ -46,11 +39,9 @@
 |--------|----------|------|
 | **CI** | PR / push 到 `main`/`develop` | 格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | `cargo-audit` 与 `cargo-deny` 严格门禁 |
-| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust.exe`、`rust_micro_tools.exe`、`Setup.exe`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
+| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust.exe`、`rust_tools_suite.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
 
 ### 本地终端与交互测试
-
-通过附带的 `mdBook`，你可以随时呼出本地知识库：
 
 ```powershell
 # Windows PowerShell
@@ -60,10 +51,8 @@
 # 在确认无误后推送分支和 tag（将触发 Release 工作流）
 .\scripts\smart-bump.ps1 -Part patch -Push
 
-# 直接调用交互式终端：
-cd rust_micro_tools
-cargo run -- connect
-# [在未传入参数时, 提示你选择端口和波特率，展示 Spinner 动画提示]
+# 直接运行统一工具套件
+cargo run --release --manifest-path rust_tools_suite/Cargo.toml
 ```
 
 ## 失败后的建议格式与智能修复
@@ -78,14 +67,14 @@ cargo run -- connect
 
 ## Git Hooks
 
-运行 `.\scripts\install-hooks.ps1` 安装本地钩子。钩子会在提交或推送前执行工作流校验和性能退化拦截，让你不再“瞎猜”哪行代码引发了卡顿。
+运行 `.\scripts\install-hooks.ps1` 安装本地钩子。钩子会在提交或推送前执行工作流校验和性能退化拦截。
 
 ## 发布流程
 
 1. 在 `main/master` 分支完成并通过 `.\make.ps1 preflight`。
 2. 执行 `.\scripts\smart-bump.ps1 -Part patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
-4. 在 Release 页面验证四个必需资产：`robot_control_rust.exe`、`rust_micro_tools.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
+4. 在 Release 页面验证四个必需资产：`robot_control_rust.exe`、`rust_tools_suite.exe`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
 
 发布失败可用以下命令回滚：
 

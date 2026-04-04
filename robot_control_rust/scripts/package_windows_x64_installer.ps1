@@ -6,8 +6,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $projectRoot
 $manifestPath = Join-Path $projectRoot 'Cargo.toml'
+$toolSuiteManifestPath = Join-Path $repoRoot 'rust_tools_suite\Cargo.toml'
 $releaseExe = Join-Path $projectRoot 'target\release\robot_control_rust.exe'
+$toolSuiteReleaseExe = Join-Path $repoRoot 'rust_tools_suite\target\release\rust_tools_suite.exe'
+$helpHtml = Join-Path $repoRoot 'docs\help\index.html'
 $issPath = Join-Path $projectRoot 'installer\robot_control_rust_x64.iss'
 
 $distRoot = Join-Path $projectRoot 'dist\windows-x64'
@@ -30,21 +34,32 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 Write-Host "[Package] Version: $Version" -ForegroundColor Cyan
 
 if (-not $SkipBuild) {
-    Write-Host "[Package] Building release binary..." -ForegroundColor Yellow
+    Write-Host '[Package] Building release binaries...' -ForegroundColor Yellow
     cargo build --release --manifest-path $manifestPath
     if ($LASTEXITCODE -ne 0) {
-        throw "Release build failed (exit=$LASTEXITCODE)"
+        throw "robot_control_rust release build failed (exit=$LASTEXITCODE)"
+    }
+    cargo build --release --manifest-path $toolSuiteManifestPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "rust_tools_suite release build failed (exit=$LASTEXITCODE)"
     }
 }
 
-if (-not (Test-Path $releaseExe)) {
-    throw "Release exe not found: $releaseExe"
+foreach ($required in @($releaseExe, $toolSuiteReleaseExe, $helpHtml, $issPath)) {
+    if (-not (Test-Path $required)) {
+        throw "Required file not found: $required"
+    }
 }
 
+if (Test-Path $stageDir) {
+    Remove-Item $stageDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Copy-Item -Force $releaseExe (Join-Path $stageDir 'robot_control_rust.exe')
+Copy-Item -Force $toolSuiteReleaseExe (Join-Path $stageDir 'rust_tools_suite.exe')
+Copy-Item -Force $helpHtml (Join-Path $stageDir 'help_index.html')
 Copy-Item -Force (Join-Path $projectRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path $stageDir 'ARCHITECTURE_AND_USAGE.md')
 
 $isccCandidates = @(
@@ -73,7 +88,12 @@ if (-not $iscc) {
 }
 
 if (-not $iscc) {
-    throw "Inno Setup not found. Install Inno Setup 6 and rerun this script."
+    Write-Host '[Package] Inno Setup not found. Falling back to iExpress...' -ForegroundColor Yellow
+    & (Join-Path $PSScriptRoot 'package_windows_x64_iexpress_installer.ps1') -Version $Version -SkipBuild:$SkipBuild
+    if ($LASTEXITCODE -ne 0) {
+        throw "iExpress fallback failed (exit=$LASTEXITCODE)"
+    }
+    return
 }
 
 Write-Host "[Package] Using ISCC: $iscc" -ForegroundColor Green
@@ -97,6 +117,7 @@ if (-not $installer) {
     throw "Installer not found in $outputDir"
 }
 
-Write-Host "[Package] Success" -ForegroundColor Green
+Write-Host '[Package] Success' -ForegroundColor Green
 Write-Host "[Package] Installer: $($installer.FullName)" -ForegroundColor Green
 Write-Host "[Package] Size MB: $([math]::Round($installer.Length / 1MB, 2))" -ForegroundColor Green
+

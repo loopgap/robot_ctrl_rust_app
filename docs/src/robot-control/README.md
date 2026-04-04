@@ -48,8 +48,8 @@ robot_control_rust/
 |------|------|------|
 | Rust | 2021 Edition | 开发语言 |
 | eframe / egui | 0.31 | GUI 框架 |
-| serialport | 4.7 | 串口通信 |
-| tokio | async | 异步运行时 |
+| serialport | 4.8 | 串口通信 |
+| ureq | 3.x | HTTP / LLM API 调用 |
 | serde | 1.x | 数据序列化 |
 | tracing | 日志 | 追踪日志 |
 

@@ -15,8 +15,7 @@
       "release_notes",
       "robot_control_rust",
       "route.md",
-      "rust_indie_tools",
-      "rust_micro_tools",
+      "rust_tools_suite",
       "scripts",
       ".cargo-advisory-db",
       ".vscode",
@@ -43,7 +42,8 @@
       "temp",
       "out",
       "dist",
-      "build"
+      "build",
+      "robot_control_rust/dist"
     ],
     "blockedGlobPatterns": [
       "smoke_logs_local*",
@@ -62,7 +62,8 @@
       "temp",
       "out",
       "dist",
-      "build"
+      "build",
+      "robot_control_rust/dist"
     ],
     "globPatterns": [
       "smoke_logs_local*",
@@ -75,8 +76,7 @@
       "scripts",
       "release_notes",
       "robot_control_rust/src",
-      "rust_micro_tools/src",
-      "rust_indie_tools"
+      "rust_tools_suite/src"
     ]
   }
 }
