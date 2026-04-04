@@ -347,7 +347,7 @@ impl Default for UiState {
             newline_type: "\\r\\n".into(),
             repeat_send: false,
             repeat_interval_ms: 1000,
-            auto_reconnect_enabled: true,
+            auto_reconnect_enabled: false,
             auto_reconnect_interval_ms: 2000,
             quick_cmd_1: "status".into(),
             quick_cmd_2: "help".into(),
@@ -542,9 +542,11 @@ pub struct AppState {
     can_dropped_frames_seen: u64,
     channel_overflow_notified: u64,
     last_rx_instant: Option<Instant>,
+    reconnect_armed: bool,
     reconnect_paused_by_user: bool,
     next_reconnect_at: Option<Instant>,
     last_mcp_sync_instant: Option<Instant>,
+    last_port_scan_request_at: Option<Instant>,
     port_scan_in_progress: bool,
     port_scan_rx: Option<std::sync::mpsc::Receiver<Vec<String>>>,
     pending_log_lines: Vec<String>,
@@ -569,6 +571,7 @@ const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_PENDING_LOG_LINES: usize = 10_000;
 const MAX_PARSED_PACKETS: usize = 200;
 const MAX_PROTOCOL_LOGS: usize = 240;
+const PORT_SCAN_COOLDOWN_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PerformanceProfile {
@@ -870,7 +873,7 @@ impl Default for UserPreferences {
             udp_remote_host: "127.0.0.1".into(),
             udp_remote_port_text: "9001".into(),
             auto_newline: false,
-            auto_reconnect_enabled: true,
+            auto_reconnect_enabled: false,
             auto_reconnect_interval_ms: 2000,
             quick_cmd_1: "status".into(),
             quick_cmd_2: "help".into(),
@@ -988,9 +991,11 @@ impl AppState {
             can_dropped_frames_seen: 0,
             channel_overflow_notified: 0,
             last_rx_instant: None,
+            reconnect_armed: false,
             reconnect_paused_by_user: false,
             next_reconnect_at: None,
             last_mcp_sync_instant: None,
+            last_port_scan_request_at: None,
             port_scan_in_progress: false,
             port_scan_rx: None,
             pending_log_lines: Vec::new(),
@@ -1020,7 +1025,6 @@ impl AppState {
         s.apply_performance_profile();
         s.platform_support_note = s.detect_platform_support_note();
         s.refresh_resource_status();
-        s.refresh_ports();
         s.run_system_check();
         s
     }
@@ -1776,8 +1780,23 @@ impl AppState {
         if self.port_scan_in_progress {
             return;
         }
+        let now = Instant::now();
+        if self.last_port_scan_request_at.is_some_and(|last| {
+            now.duration_since(last) < Duration::from_millis(PORT_SCAN_COOLDOWN_MS)
+        }) {
+            self.status_message = format!(
+                "Port scan cooling down. Retry in {:.1}s",
+                (PORT_SCAN_COOLDOWN_MS as f32
+                    - now
+                        .duration_since(self.last_port_scan_request_at.unwrap())
+                        .as_millis() as f32)
+                    / 1000.0
+            );
+            return;
+        }
 
         let (tx, rx) = std::sync::mpsc::channel();
+        self.last_port_scan_request_at = Some(now);
         self.port_scan_in_progress = true;
         self.port_scan_rx = Some(rx);
         self.status_message = "Scanning serial ports...".into();
@@ -1901,18 +1920,64 @@ impl AppState {
         self.reconnect_paused_by_user
     }
 
+    pub fn reconnect_armed(&self) -> bool {
+        self.reconnect_armed
+    }
+
+    pub fn reconnect_countdown_text(&self) -> Option<String> {
+        self.next_reconnect_at.map(|next| {
+            let remaining = next.saturating_duration_since(Instant::now());
+            format!("Retry in {:.1}s", remaining.as_secs_f32())
+        })
+    }
+
+    fn clear_reconnect_schedule(&mut self) {
+        self.next_reconnect_at = None;
+    }
+
+    fn arm_auto_reconnect(&mut self) {
+        self.reconnect_armed = true;
+        self.reconnect_paused_by_user = false;
+        self.clear_reconnect_schedule();
+    }
+
+    pub fn pause_auto_reconnect(&mut self) {
+        self.reconnect_paused_by_user = true;
+        self.clear_reconnect_schedule();
+        self.status_message = "Reconnect paused".into();
+        self.add_info_log("Reconnect paused");
+    }
+
     pub fn resume_auto_reconnect(&mut self) {
+        if !self.reconnect_armed {
+            self.status_message = "Reconnect is idle until a manual connection succeeds".into();
+            return;
+        }
         self.reconnect_paused_by_user = false;
         self.next_reconnect_at = Some(Instant::now());
         self.status_message = "Auto reconnect resumed".into();
         self.add_info_log("Auto reconnect resumed");
     }
+
+    pub fn set_active_connection(&mut self, conn: ConnectionType) {
+        if self.active_conn == conn {
+            return;
+        }
+        self.active_conn = conn;
+        self.reconnect_armed = false;
+        self.reconnect_paused_by_user = true;
+        self.clear_reconnect_schedule();
+        self.status_message =
+            "Connection target changed. Refresh ports and connect when ready.".into();
+    }
+
     pub fn maintain_connection(&mut self) {
         let profile = self.performance_profile();
         let now = Instant::now();
 
-        if !self.ui.auto_reconnect_enabled || self.reconnect_paused_by_user {
-            self.next_reconnect_at = None;
+        if !self.ui.auto_reconnect_enabled || self.reconnect_paused_by_user || !self.reconnect_armed
+        {
+            self.clear_reconnect_schedule();
             return;
         }
 
@@ -1941,7 +2006,18 @@ impl AppState {
         }
 
         if self.active_status().is_connected() {
-            self.next_reconnect_at = None;
+            self.clear_reconnect_schedule();
+            return;
+        }
+
+        if matches!(
+            self.active_conn,
+            ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu
+        ) && self.serial.config.port_name.trim().is_empty()
+        {
+            self.clear_reconnect_schedule();
+            self.status_message =
+                "Reconnect waiting for a selected serial port. Click Refresh ports.".into();
             return;
         }
 
@@ -1972,12 +2048,8 @@ impl AppState {
         let result = match self.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
                 if self.serial.config.port_name.trim().is_empty() {
-                    if self.port_scan_in_progress {
-                        return Err("Serial port scan in progress, please wait...".into());
-                    }
-                    self.refresh_ports();
                     return Err(
-                        "No serial port selected. Scanning started, please retry in a moment."
+                        "No serial port selected. Click Refresh ports, choose one, then connect."
                             .into(),
                     );
                 }
@@ -1988,9 +2060,8 @@ impl AppState {
                         .iter()
                         .any(|p| p == &self.serial.config.port_name)
                 {
-                    self.refresh_ports();
                     return Err(
-                        "Selected serial port is no longer available. Port scan started.".into(),
+                        "Selected serial port is no longer available. Click Refresh ports.".into(),
                     );
                 }
 
@@ -2035,7 +2106,7 @@ impl AppState {
                 self.status_message = format!("Connecting: {}", self.active_conn);
             }
             Ok(_) => {
-                self.next_reconnect_at = None;
+                self.arm_auto_reconnect();
                 info!(target: "connection", connection = %self.active_conn, "connect_success");
                 self.add_info_log(&format!("Connected: {}", self.active_conn));
             }
@@ -2073,8 +2144,9 @@ impl AppState {
     }
 
     pub fn disconnect_active(&mut self) {
+        self.reconnect_armed = false;
         self.reconnect_paused_by_user = true;
-        self.next_reconnect_at = None;
+        self.clear_reconnect_schedule();
         self.serial_connect_in_progress = false;
         self.serial_connect_rx = None;
         match self.active_conn {
@@ -2513,7 +2585,7 @@ impl AppState {
                     match result {
                         Ok(serial) => {
                             self.serial = serial;
-                            self.next_reconnect_at = None;
+                            self.arm_auto_reconnect();
                             info!(target: "connection", connection = %self.active_conn, "connect_success");
                             self.add_info_log(&format!("Connected: {}", self.active_conn));
                         }
@@ -2937,8 +3009,9 @@ mod tests {
         s.active_conn = crate::models::ConnectionType::Serial;
         s.ui.auto_reconnect_enabled = true;
         s.ui.auto_reconnect_interval_ms = 3000;
+        s.reconnect_armed = true;
         s.reconnect_paused_by_user = false;
-        s.serial.config.port_name.clear();
+        s.serial.config.port_name = "COM1".into();
         s.port_scan_in_progress = false;
 
         let before_attempts = s.metrics.connect_attempts;
@@ -2964,6 +3037,50 @@ mod tests {
         s.maintain_connection();
 
         assert_eq!(s.metrics.connect_attempts, before_attempts);
+        assert!(s.next_reconnect_at.is_none());
+    }
+
+    #[test]
+    fn test_serial_auto_reconnect_requires_prior_success() {
+        let mut s = AppState::new();
+        s.active_conn = crate::models::ConnectionType::Serial;
+        s.ui.auto_reconnect_enabled = true;
+        s.reconnect_paused_by_user = false;
+        s.serial.config.port_name = "COM1".into();
+
+        let before_attempts = s.metrics.connect_attempts;
+        s.maintain_connection();
+        assert_eq!(s.metrics.connect_attempts, before_attempts);
+        assert!(s.next_reconnect_at.is_none());
+
+        s.reconnect_armed = true;
+        s.maintain_connection();
+        assert_eq!(s.metrics.connect_attempts, before_attempts + 1);
+    }
+
+    #[test]
+    fn test_connect_active_requires_manual_port_refresh() {
+        let mut s = AppState::new();
+        s.active_conn = crate::models::ConnectionType::Serial;
+        s.serial.config.port_name.clear();
+        s.port_scan_in_progress = false;
+
+        let err = s.connect_active().unwrap_err();
+        assert!(err.contains("Refresh ports"));
+        assert!(!s.port_scan_in_progress);
+    }
+
+    #[test]
+    fn test_manual_disconnect_disarms_reconnect() {
+        let mut s = AppState::new();
+        s.reconnect_armed = true;
+        s.reconnect_paused_by_user = false;
+        s.next_reconnect_at = Some(std::time::Instant::now());
+
+        s.disconnect_active();
+
+        assert!(!s.reconnect_armed);
+        assert!(s.reconnect_paused_by_user);
         assert!(s.next_reconnect_at.is_none());
     }
 

@@ -26,7 +26,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }
             });
 
-        state.active_conn = conn_types[state.ui.conn_type_idx];
+        state.set_active_connection(conn_types[state.ui.conn_type_idx]);
     });
 
     ui.add_space(10.0);
@@ -124,17 +124,54 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             ui.separator();
-            ui.checkbox(&mut state.ui.auto_reconnect_enabled, "Auto reconnect");
+            ui.checkbox(&mut state.ui.auto_reconnect_enabled, "Reconnect after drop");
             ui.label("Interval(ms):");
             ui.add(
                 egui::DragValue::new(&mut state.ui.auto_reconnect_interval_ms)
                     .range(500..=30000)
                     .speed(50.0),
             );
-            if state.reconnect_paused()
-                && state.ui.auto_reconnect_enabled
-                && ui.button("Resume reconnect").clicked()
-            {
+        });
+
+        ui.add_space(6.0);
+        ui.horizontal_wrapped(|ui| {
+            if !state.ui.auto_reconnect_enabled {
+                ui.label(
+                    RichText::new("Background retry is off until you enable it.")
+                        .small()
+                        .color(Color32::GRAY),
+                );
+                return;
+            }
+
+            if !state.reconnect_armed() {
+                ui.label(
+                    RichText::new("Retry arms after one successful manual connection.")
+                        .small()
+                        .color(Color32::GRAY),
+                );
+                return;
+            }
+
+            if let Some(countdown) = state.reconnect_countdown_text() {
+                ui.label(RichText::new(countdown).small().color(Color32::LIGHT_BLUE));
+            } else {
+                ui.label(
+                    RichText::new("Retry idle until the current link drops.")
+                        .small()
+                        .color(Color32::GRAY),
+                );
+            }
+
+            if state.reconnect_paused() {
+                if ui.button("Resume retry").clicked() {
+                    state.resume_auto_reconnect();
+                }
+            } else if ui.button("Stop retry").clicked() {
+                state.pause_auto_reconnect();
+            }
+
+            if ui.button("Retry now").clicked() {
                 state.resume_auto_reconnect();
             }
         });
