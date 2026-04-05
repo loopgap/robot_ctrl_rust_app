@@ -745,10 +745,18 @@ fn resolve_local_help_url() -> Option<String> {
     {
         candidates.push(PathBuf::from("/usr/share/rust-tools-suite/help_index.html"));
         candidates.push(PathBuf::from("/usr/share/rust-tools-suite/docs/index.html"));
-        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/docs/book/index.html"));
-        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/help_index.html"));
-        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/docs/index.html"));
-        candidates.push(PathBuf::from("/usr/share/doc/rust-tools-suite/docs/book/index.html"));
+        candidates.push(PathBuf::from(
+            "/usr/share/rust-tools-suite/docs/book/index.html",
+        ));
+        candidates.push(PathBuf::from(
+            "/usr/share/doc/rust-tools-suite/help_index.html",
+        ));
+        candidates.push(PathBuf::from(
+            "/usr/share/doc/rust-tools-suite/docs/index.html",
+        ));
+        candidates.push(PathBuf::from(
+            "/usr/share/doc/rust-tools-suite/docs/book/index.html",
+        ));
     }
 
     candidates.push(PathBuf::from("help_index.html"));
