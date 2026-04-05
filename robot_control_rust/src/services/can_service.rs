@@ -171,7 +171,7 @@ impl CanService {
     }
 
     pub fn set_max_frames(&mut self, max_frames: usize) -> usize {
-        let max_frames = max_frames.max(64).min(MAX_CAN_FRAMES);
+        let max_frames = max_frames.clamp(64, MAX_CAN_FRAMES);
         if self.frames.len() > max_frames {
             let overflow = self.frames.len() - max_frames;
             self.frames.drain(..overflow);
