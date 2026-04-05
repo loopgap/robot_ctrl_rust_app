@@ -11,6 +11,8 @@ $script:Colors = @{
     BOLD = [char]27 + "[1m"
 }
 
+$script:ModuleDir = $PSScriptRoot
+
 function Write-Header {
     param([string]$Message)
     Write-Host ""
@@ -44,19 +46,67 @@ function Write-Warning {
 }
 
 function Invoke-CommandWithOutput {
-    param([string]$Command, [string]$Arguments, [string]$WorkingDir = ".")
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string]$Arguments = "",
+        [string]$WorkingDir = "."
+    )
+
     try {
-        $output = & $Command $Arguments 2>&1
-        return @{ ExitCode = $LASTEXITCODE; Output = $output }
+        Push-Location $WorkingDir
+        $global:LASTEXITCODE = 0
+
+        $output = if ([string]::IsNullOrWhiteSpace($Arguments)) {
+            & $Command 2>&1
+        }
+        else {
+            & ([scriptblock]::Create("& $Command $Arguments")) 2>&1
+        }
+
+        $exitCode = if ($null -eq $LASTEXITCODE) {
+            if ($?) { 0 } else { 1 }
+        }
+        else {
+            [int]$LASTEXITCODE
+        }
+
+        $combined = @($output)
+        $stdOut = ($combined |
+            Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } |
+            ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
+        $stdErr = ($combined |
+            Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } |
+            ForEach-Object { $_.ToString() }) -join [Environment]::NewLine
+
+        return @{
+            ExitCode = $exitCode
+            Output   = $combined
+            StdOut   = $stdOut
+            StdErr   = $stdErr
+        }
     }
     catch {
-        return @{ ExitCode = 1; Output = $_.Exception.Message }
+        return @{
+            ExitCode = 1
+            Output   = @($_.Exception.Message)
+            StdOut   = ""
+            StdErr   = $_.Exception.Message
+        }
+    }
+    finally {
+        Pop-Location
     }
 }
 
 function Get-ProjectDirs {
-    $root = Split-Path (Split-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) -Parent) -Parent
-    Get-ChildItem $root -Filter "Cargo.toml" -Recurse -Depth 1 | ForEach-Object { $_.DirectoryName }
+    $root = Split-Path -Parent $script:ModuleDir
+    if (-not (Test-Path $root)) {
+        return @()
+    }
+
+    Get-ChildItem -Path $root -Filter "Cargo.toml" -Recurse -Depth 1 |
+        ForEach-Object { $_.DirectoryName } |
+        Sort-Object -Unique
 }
 
 Export-ModuleMember -Function @("Write-Header", "Write-Step", "Write-Info", "Write-Success", "Write-Error", "Write-Warning", "Invoke-CommandWithOutput", "Get-ProjectDirs")
