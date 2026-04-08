@@ -2932,7 +2932,7 @@ dependencies = [
 
 [[package]]
 name = "robot_control_rust"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "chrono",

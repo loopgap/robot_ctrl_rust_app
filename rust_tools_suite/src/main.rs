@@ -30,7 +30,17 @@ struct Args {
     doctor: bool,
 }
 
+#[cfg(target_os = "linux")]
+fn check_linux_env() {
+    if std::env::var("WINIT_UNIX_BACKEND").is_err() {
+        std::env::set_var("WINIT_UNIX_BACKEND", "wayland,x11");
+    }
+}
+
 fn main() -> eframe::Result<()> {
+    #[cfg(target_os = "linux")]
+    check_linux_env();
+
     let args = Args::parse();
 
     if args.gui || args.port.is_none() {

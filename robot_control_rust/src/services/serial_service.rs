@@ -1,15 +1,19 @@
 use crate::models::{ConnectionStatus, RobotState, SerialConfig};
 use anyhow::Result;
 use chrono::Local;
-use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits};
-use std::io::Read;
+use serialport::{DataBits, FlowControl, Parity, StopBits};
+use std::io::{Read, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
+use std::thread;
 use std::time::Duration;
+
+use super::connection_provider::ConnectionProvider;
 
 const PACKET_HEADER: u8 = 0xAA;
 const PACKET_TAIL: u8 = 0x55;
 
 pub struct SerialService {
-    port: Option<Box<dyn SerialPort>>,
     pub status: ConnectionStatus,
     pub config: SerialConfig,
     pub bytes_sent: u64,
@@ -17,6 +21,11 @@ pub struct SerialService {
     pub error_count: u64,
     pub last_comm: String,
     rx_buffer: Vec<u8>,
+
+    // Communication with the background thread
+    tx: Option<mpsc::Sender<Vec<u8>>>,
+    rx: Option<mpsc::Receiver<Vec<u8>>>,
+    stop_flag: Arc<AtomicBool>,
 }
 
 impl Default for SerialService {
@@ -28,7 +37,6 @@ impl Default for SerialService {
 impl SerialService {
     pub fn new() -> Self {
         Self {
-            port: None,
             status: ConnectionStatus::Disconnected,
             config: SerialConfig::default(),
             bytes_sent: 0,
@@ -36,10 +44,25 @@ impl SerialService {
             error_count: 0,
             last_comm: "N/A".into(),
             rx_buffer: Vec::with_capacity(4096),
+            tx: None,
+            rx: None,
+            stop_flag: Arc::new(AtomicBool::new(false)),
         }
     }
 
     pub fn scan_ports() -> Vec<String> {
+        #[cfg(target_os = "windows")]
+        {
+            for _ in 0..3 {
+                if let Ok(ports) = serialport::available_ports() {
+                    if !ports.is_empty() {
+                        return ports.into_iter().map(|p| p.port_name).collect();
+                    }
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+        }
+
         serialport::available_ports()
             .map(|ports| ports.into_iter().map(|p| p.port_name).collect())
             .unwrap_or_default()
@@ -82,71 +105,91 @@ impl SerialService {
             _ => FlowControl::None,
         };
 
-        let port = serialport::new(&self.config.port_name, self.config.baud_rate)
+        let port_builder = serialport::new(&self.config.port_name, self.config.baud_rate)
             .timeout(Duration::from_millis(self.config.timeout_ms))
             .data_bits(data_bits)
             .stop_bits(stop_bits)
             .parity(parity)
-            .flow_control(flow)
-            .open();
+            .flow_control(flow);
 
-        match port {
-            Ok(p) => {
-                self.port = Some(p);
-                self.status = ConnectionStatus::Connected;
-                log::info!("Connected to {}", self.config.port_name);
-                Ok(())
+        let mut port_result = Err(anyhow::anyhow!("Init error"));
+        let retries = if cfg!(target_os = "windows") { 3 } else { 1 };
+
+        for attempt in 1..=retries {
+            port_result = port_builder
+                .clone()
+                .open()
+                .map_err(|e| anyhow::anyhow!("Failed to connect: {}", e));
+            if port_result.is_ok() {
+                break;
             }
+            if attempt < retries {
+                log::warn!("Retry {} to open port {}", attempt, self.config.port_name);
+                thread::sleep(Duration::from_millis(500));
+            }
+        }
+
+        let mut port = match port_result {
+            Ok(p) => p,
             Err(e) => {
                 self.status = ConnectionStatus::Error;
                 self.error_count += 1;
-                Err(anyhow::anyhow!("Failed to connect: {}", e))
+                return Err(e);
             }
-        }
+        };
+
+        let (tx_to_thread, rx_from_main) = mpsc::channel::<Vec<u8>>();
+        let (tx_to_main, rx_from_thread) = mpsc::channel::<Vec<u8>>();
+
+        self.tx = Some(tx_to_thread);
+        self.rx = Some(rx_from_thread);
+        self.stop_flag = Arc::new(AtomicBool::new(false));
+        let stop_flag = self.stop_flag.clone();
+
+        let port_name = self.config.port_name.clone();
+
+        thread::spawn(move || {
+            let mut buf = [0u8; 1024];
+            while !stop_flag.load(Ordering::Relaxed) {
+                // Read from main thread to send to serial port
+                if let Ok(data) = rx_from_main.try_recv() {
+                    if let Err(e) = port.write_all(&data) {
+                        log::error!("Serial write error on {}: {}", port_name, e);
+                        break;
+                    }
+                    let _ = port.flush();
+                }
+
+                // Read from serial port to send to main thread
+                match port.read(&mut buf) {
+                    Ok(n) if n > 0 => {
+                        let _ = tx_to_main.send(buf[..n].to_vec());
+                    }
+                    Ok(_) => {}
+                    Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                    Err(e) => {
+                        log::error!("Serial read error on {}: {}", port_name, e);
+                        break;
+                    }
+                }
+
+                thread::sleep(Duration::from_millis(1));
+            }
+            log::info!("Serial thread for {} exited", port_name);
+        });
+
+        self.status = ConnectionStatus::Connected;
+        log::info!("Connected to {}", self.config.port_name);
+        Ok(())
     }
 
     pub fn disconnect(&mut self) {
-        self.port = None;
+        self.stop_flag.store(true, Ordering::Relaxed);
+        self.tx = None;
+        self.rx = None;
         self.status = ConnectionStatus::Disconnected;
         self.rx_buffer.clear();
-    }
-
-    pub fn is_connected(&self) -> bool {
-        self.port.is_some() && self.status.is_connected()
-    }
-
-    /// 非阻塞读取 - 尝试读取可用数据
-    pub fn try_read_raw(&mut self) -> Vec<u8> {
-        let port = match self.port.as_mut() {
-            Some(p) => p,
-            None => return Vec::new(),
-        };
-
-        let mut buf = [0u8; 1024];
-        match port.read(&mut buf) {
-            Ok(n) if n > 0 => {
-                self.bytes_received += n as u64;
-                self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
-                buf[..n].to_vec()
-            }
-            Ok(_) => Vec::new(),
-            Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => Vec::new(),
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Vec::new(),
-            Err(e) => {
-                log::error!("Serial read error: {}", e);
-                self.error_count += 1;
-                if matches!(
-                    e.kind(),
-                    std::io::ErrorKind::BrokenPipe
-                        | std::io::ErrorKind::NotConnected
-                        | std::io::ErrorKind::UnexpectedEof
-                ) {
-                    self.port = None;
-                    self.status = ConnectionStatus::Error;
-                }
-                Vec::new()
-            }
-        }
     }
 
     pub fn push_rx_data(&mut self, data: &[u8]) {
@@ -159,7 +202,6 @@ impl SerialService {
         self.try_parse_packet()
     }
 
-    /// 尝试读取并解析为 RobotState
     pub fn try_read_state(&mut self) -> Option<RobotState> {
         let data = self.try_read_raw();
         if data.is_empty() {
@@ -214,40 +256,36 @@ impl SerialService {
         state
     }
 
-    pub fn send_data(&mut self, data: &[u8]) -> Result<()> {
-        if let Some(ref mut port) = self.port {
-            use std::io::Write;
-            if let Err(e) = port.write_all(data) {
-                self.error_count += 1;
-                if matches!(
-                    e.kind(),
-                    std::io::ErrorKind::BrokenPipe
-                        | std::io::ErrorKind::NotConnected
-                        | std::io::ErrorKind::UnexpectedEof
-                ) {
-                    self.port = None;
-                    self.status = ConnectionStatus::Error;
-                }
-                return Err(e.into());
+    pub fn try_read_raw(&mut self) -> Vec<u8> {
+        let mut all_data = Vec::new();
+        if let Some(rx) = &self.rx {
+            while let Ok(data) = rx.try_recv() {
+                all_data.extend_from_slice(&data);
             }
+        }
 
-            if let Err(e) = port.flush() {
-                self.error_count += 1;
-                if matches!(
-                    e.kind(),
-                    std::io::ErrorKind::BrokenPipe
-                        | std::io::ErrorKind::NotConnected
-                        | std::io::ErrorKind::UnexpectedEof
-                ) {
-                    self.port = None;
-                    self.status = ConnectionStatus::Error;
-                }
-                return Err(e.into());
-            }
-
-            self.bytes_sent += data.len() as u64;
+        if !all_data.is_empty() {
+            self.bytes_received += all_data.len() as u64;
             self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
-            Ok(())
+        }
+
+        all_data
+    }
+
+    pub fn send_data(&mut self, data: &[u8]) -> Result<()> {
+        if let Some(tx) = &self.tx {
+            match tx.send(data.to_vec()) {
+                Ok(_) => {
+                    self.bytes_sent += data.len() as u64;
+                    self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
+                    Ok(())
+                }
+                Err(_) => {
+                    self.status = ConnectionStatus::Error;
+                    self.error_count += 1;
+                    Err(anyhow::anyhow!("Background thread disconnected"))
+                }
+            }
         } else {
             Err(anyhow::anyhow!("Port not open"))
         }
@@ -284,5 +322,27 @@ impl SerialService {
         self.bytes_sent = 0;
         self.bytes_received = 0;
         self.error_count = 0;
+    }
+}
+
+impl ConnectionProvider for SerialService {
+    fn is_connected(&self) -> bool {
+        self.tx.is_some() && self.status.is_connected()
+    }
+
+    fn disconnect(&mut self) {
+        self.disconnect()
+    }
+
+    fn try_read_raw(&mut self) -> Vec<u8> {
+        self.try_read_raw()
+    }
+
+    fn send_data(&mut self, data: &[u8]) -> Result<()> {
+        self.send_data(data)
+    }
+
+    fn reset_stats(&mut self) {
+        self.reset_stats()
     }
 }
