@@ -45,6 +45,7 @@
 
 | 类别 | 功能 |
 |------|------|
+| **核心架构** | 深度的双系统支持 (Win8+ & Ubuntu 20+)；基于 `ConnectionProvider` 的无阻塞并发通信基架 (Non-blocking I/O)，消除死锁与 UI 冻结。 |
 | **多协议通信** | Serial / TCP (Client+Server) / UDP / CAN 2.0 / CAN FD / USB (12种协议) / Modbus RTU / Modbus TCP |
 | **控制算法** | 经典 PID / 增量 PID / Bang-Bang / 模糊 PID / 串级 PID / Smith 预估 / ADRC / LADRC / LQR / MPC |
 | **智能调参** | 神经网络自适应调参 + LLM API 在线建议 |

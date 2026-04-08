@@ -2225,7 +2225,7 @@ impl AppState {
         }
 
         if self.tcp.is_connected() {
-            let data = self.tcp.try_read();
+            let data = self.tcp.try_read_raw();
             if !data.is_empty() {
                 self.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "TCP");
@@ -2233,7 +2233,7 @@ impl AppState {
         }
 
         if self.udp.is_connected() {
-            let data = self.udp.try_read();
+            let data = self.udp.try_read_raw();
             if !data.is_empty() {
                 self.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "UDP");

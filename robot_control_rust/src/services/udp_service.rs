@@ -3,6 +3,8 @@ use anyhow::Result;
 use chrono::Local;
 use std::net::UdpSocket;
 
+use super::connection_provider::ConnectionProvider;
+
 pub struct UdpService {
     socket: Option<UdpSocket>,
     pub status: ConnectionStatus,
@@ -64,11 +66,33 @@ impl UdpService {
         self.status = ConnectionStatus::Disconnected;
     }
 
-    pub fn is_connected(&self) -> bool {
+    pub fn send_to(&mut self, data: &[u8], addr: &str) -> Result<()> {
+        if let Some(ref socket) = self.socket {
+            let n = socket.send_to(data, addr)?;
+            self.bytes_sent += n as u64;
+            self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("UDP socket not bound"))
+        }
+    }
+
+    pub fn send_default(&mut self, data: &[u8]) -> Result<()> {
+        let addr = format!("{}:{}", self.remote_addr, self.remote_port);
+        self.send_to(data, &addr)
+    }
+}
+
+impl ConnectionProvider for UdpService {
+    fn is_connected(&self) -> bool {
         self.socket.is_some() && self.status.is_connected()
     }
 
-    pub fn try_read(&mut self) -> Vec<u8> {
+    fn disconnect(&mut self) {
+        self.close();
+    }
+
+    fn try_read_raw(&mut self) -> Vec<u8> {
         let socket = match self.socket.as_ref() {
             Some(s) => s,
             None => return Vec::new(),
@@ -90,23 +114,11 @@ impl UdpService {
         }
     }
 
-    pub fn send_to(&mut self, data: &[u8], addr: &str) -> Result<()> {
-        if let Some(ref socket) = self.socket {
-            let n = socket.send_to(data, addr)?;
-            self.bytes_sent += n as u64;
-            self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("UDP socket not bound"))
-        }
+    fn send_data(&mut self, data: &[u8]) -> Result<()> {
+        self.send_default(data)
     }
 
-    pub fn send_default(&mut self, data: &[u8]) -> Result<()> {
-        let addr = format!("{}:{}", self.remote_addr, self.remote_port);
-        self.send_to(data, &addr)
-    }
-
-    pub fn reset_stats(&mut self) {
+    fn reset_stats(&mut self) {
         self.bytes_sent = 0;
         self.bytes_received = 0;
         self.error_count = 0;

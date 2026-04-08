@@ -1,4 +1,5 @@
 use crate::app::{ActiveTab, AppState, LogDirection};
+use crate::services::ConnectionProvider;
 use crate::i18n::{Language, Tr};
 use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{self, Color32, RichText, Ui, Vec2};
