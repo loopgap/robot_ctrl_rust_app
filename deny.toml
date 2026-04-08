@@ -8,6 +8,7 @@ yanked = "deny"
 ignore = [
     # Known indirect dependencies that cannot be upgraded yet
     # Add specific advisory IDs as needed: { id = "RUSTSEC-XXXX-XXXX" }
+    "RUSTSEC-2023-0071"
 ]
 
 [bans]
