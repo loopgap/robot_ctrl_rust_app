@@ -1,6 +1,6 @@
 [package]
 name = "rust_tools_suite"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 description = "Rust Tools Suite with responsive desktop workflow"
 
@@ -36,6 +36,7 @@ panic = "abort"
 
 [dev-dependencies]
 rsa = { version = "0.9", features = ["pem"] }
+
 
 
 

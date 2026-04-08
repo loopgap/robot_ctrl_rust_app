@@ -21,7 +21,7 @@ pub struct SerialService {
     pub error_count: u64,
     pub last_comm: String,
     rx_buffer: Vec<u8>,
-    
+
     // Communication with the background thread
     tx: Option<mpsc::Sender<Vec<u8>>>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
@@ -62,7 +62,7 @@ impl SerialService {
                 thread::sleep(Duration::from_millis(100));
             }
         }
-        
+
         serialport::available_ports()
             .map(|ports| ports.into_iter().map(|p| p.port_name).collect())
             .unwrap_or_default()
@@ -114,9 +114,12 @@ impl SerialService {
 
         let mut port_result = Err(anyhow::anyhow!("Init error"));
         let retries = if cfg!(target_os = "windows") { 3 } else { 1 };
-        
+
         for attempt in 1..=retries {
-            port_result = port_builder.clone().open().map_err(|e| anyhow::anyhow!("Failed to connect: {}", e));
+            port_result = port_builder
+                .clone()
+                .open()
+                .map_err(|e| anyhow::anyhow!("Failed to connect: {}", e));
             if port_result.is_ok() {
                 break;
             }
@@ -137,14 +140,14 @@ impl SerialService {
 
         let (tx_to_thread, rx_from_main) = mpsc::channel::<Vec<u8>>();
         let (tx_to_main, rx_from_thread) = mpsc::channel::<Vec<u8>>();
-        
+
         self.tx = Some(tx_to_thread);
         self.rx = Some(rx_from_thread);
         self.stop_flag = Arc::new(AtomicBool::new(false));
         let stop_flag = self.stop_flag.clone();
-        
+
         let port_name = self.config.port_name.clone();
-        
+
         thread::spawn(move || {
             let mut buf = [0u8; 1024];
             while !stop_flag.load(Ordering::Relaxed) {
@@ -170,7 +173,7 @@ impl SerialService {
                         break;
                     }
                 }
-                
+
                 thread::sleep(Duration::from_millis(1));
             }
             log::info!("Serial thread for {} exited", port_name);
@@ -260,12 +263,12 @@ impl SerialService {
                 all_data.extend_from_slice(&data);
             }
         }
-        
+
         if !all_data.is_empty() {
             self.bytes_received += all_data.len() as u64;
             self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
         }
-        
+
         all_data
     }
 

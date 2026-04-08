@@ -9,7 +9,9 @@ pub fn open_text_file() -> Result<Option<(PathBuf, String)>, String> {
     let Some(path) = FileDialog::new()
         .add_filter(
             "Text",
-            &["txt", "log", "json", "csv", "jwt", "md", "pem", "key", "pub"],
+            &[
+                "txt", "log", "json", "csv", "jwt", "md", "pem", "key", "pub",
+            ],
         )
         .pick_file()
     else {
@@ -18,7 +20,7 @@ pub fn open_text_file() -> Result<Option<(PathBuf, String)>, String> {
 
     let mut result = Err(std::io::Error::other("Init"));
     let retries = if cfg!(target_os = "windows") { 3 } else { 1 };
-    
+
     for _ in 0..retries {
         result = fs::read_to_string(&path);
         if result.is_ok() {
