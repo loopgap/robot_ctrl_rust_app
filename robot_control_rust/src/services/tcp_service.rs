@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::time::Duration;
 
+use super::connection_provider::ConnectionProvider;
+
 pub struct TcpService {
     stream: Option<TcpStream>,
     listener: Option<TcpListener>,
@@ -103,8 +105,14 @@ impl TcpService {
             }
         }
     }
+}
 
-    pub fn disconnect(&mut self) {
+impl ConnectionProvider for TcpService {
+    fn is_connected(&self) -> bool {
+        self.stream.is_some() && self.status.is_connected()
+    }
+
+    fn disconnect(&mut self) {
         if let Some(ref stream) = self.stream {
             stream.shutdown(Shutdown::Both).ok();
         }
@@ -114,11 +122,7 @@ impl TcpService {
         self.connected_clients.clear();
     }
 
-    pub fn is_connected(&self) -> bool {
-        self.stream.is_some() && self.status.is_connected()
-    }
-
-    pub fn try_read(&mut self) -> Vec<u8> {
+    fn try_read_raw(&mut self) -> Vec<u8> {
         if self.is_server {
             self.try_accept();
         }
@@ -148,7 +152,7 @@ impl TcpService {
         }
     }
 
-    pub fn send_data(&mut self, data: &[u8]) -> Result<()> {
+    fn send_data(&mut self, data: &[u8]) -> Result<()> {
         if let Some(ref mut stream) = self.stream {
             stream.write_all(data)?;
             stream.flush()?;
@@ -160,7 +164,7 @@ impl TcpService {
         }
     }
 
-    pub fn reset_stats(&mut self) {
+    fn reset_stats(&mut self) {
         self.bytes_sent = 0;
         self.bytes_received = 0;
         self.error_count = 0;

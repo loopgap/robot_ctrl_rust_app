@@ -915,7 +915,23 @@ fn install_font_fallback(ctx: &egui::Context) {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn check_linux_env() {
+    if std::env::var("WINIT_UNIX_BACKEND").is_err() {
+        std::env::set_var("WINIT_UNIX_BACKEND", "wayland,x11");
+    }
+    if let Ok(groups) = std::process::Command::new("groups").output() {
+        let out = String::from_utf8_lossy(&groups.stdout);
+        if !out.contains("dialout") && !out.contains("tty") && !out.contains("root") {
+            eprintln!("Warning: User is not in dialout or tty group. Serial port access might fail.\nPlease run: sudo usermod -a -G dialout $USER");
+        }
+    }
+}
+
 fn main() -> eframe::Result<()> {
+    #[cfg(target_os = "linux")]
+    check_linux_env();
+
     if maybe_handle_cli_flag() {
         return Ok(());
     }

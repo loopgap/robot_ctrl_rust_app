@@ -3252,7 +3252,7 @@ dependencies = [
 
 [[package]]
 name = "rust_tools_suite"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "base64",
  "chrono",
