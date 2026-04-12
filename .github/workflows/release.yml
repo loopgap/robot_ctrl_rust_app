@@ -84,6 +84,10 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}' -replace '^v', ''
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$') {
+            Write-Error "Invalid version format: $version"
+            exit 1
+          }
           $outDir = "release_artifacts"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
           
@@ -124,6 +128,11 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Invalid version format: $version"
+            exit 1
+          fi
+          
           # Create debian package structure
           pkg_dir="dist/debian"
           mkdir -p "$pkg_dir/usr/local/bin"
@@ -133,16 +142,16 @@ jobs:
           cp target/release/robot_control "$pkg_dir/usr/local/bin/"
           cp target/release/tools_suite "$pkg_dir/usr/local/bin/"
           
-          # Create control file
+          # Create control file with proper quoting
           mkdir -p "$pkg_dir/DEBIAN"
-          cat > "$pkg_dir/DEBIAN/control" << CONTROL
-          Package: robot-control-suite
-          Version: $version
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Description: Robot Control and Tools Suite
-          CONTROL
+          printf '%s\n' \
+            "Package: robot-control-suite" \
+            "Version: ${version}" \
+            "Section: utils" \
+            "Priority: optional" \
+            "Architecture: amd64" \
+            "Description: Robot Control and Tools Suite" \
+            > "$pkg_dir/DEBIAN/control"
           
           # Build package
           dpkg-deb --build "$pkg_dir" "dist/robot_tools_suite_${version}_amd64.deb"
