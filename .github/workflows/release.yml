@@ -80,6 +80,9 @@ jobs:
       - name: Build tools_suite
         shell: pwsh
         run: cargo build --release -p tools_suite
+      - name: Build devtools
+        shell: pwsh
+        run: cargo build --release -p devtools
       - name: Create portable zip artifacts
         shell: pwsh
         run: |
@@ -96,6 +99,9 @@ jobs:
           
           # Tools Suite
           Compress-Archive -Path "target/release/tools_suite.exe" -DestinationPath "$outDir/rust_tools_suite_${version}_windows_x64_portable.zip" -Force
+          
+          # Devtools
+          Compress-Archive -Path "target/release/devtools.exe" -DestinationPath "$outDir/devtools_${version}_windows_x64_portable.zip" -Force
           
           Write-Host "Created artifacts in $outDir"
       - name: Upload Windows release assets
@@ -122,6 +128,8 @@ jobs:
         run: cargo build --release -p robot_control
       - name: Build tools_suite
         run: cargo build --release -p tools_suite
+      - name: Build devtools
+        run: cargo build --release -p devtools
       - name: Create Debian package
         shell: bash
         run: |
@@ -141,6 +149,7 @@ jobs:
           # Install binaries
           cp target/release/robot_control "$pkg_dir/usr/local/bin/"
           cp target/release/tools_suite "$pkg_dir/usr/local/bin/"
+          cp target/release/devtools "$pkg_dir/usr/local/bin/"
           
           # Create control file with proper quoting
           mkdir -p "$pkg_dir/DEBIAN"
@@ -155,11 +164,21 @@ jobs:
           
           # Build package
           dpkg-deb --build "$pkg_dir" "dist/robot_tools_suite_${version}_amd64.deb"
+          
+          # Create tar.gz archive for portable distribution
+          mkdir -p "dist/portable"
+          cp target/release/robot_control "dist/portable/"
+          cp target/release/tools_suite "dist/portable/"
+          cp target/release/devtools "dist/portable/"
+          tar -czf "dist/robot_ctrl_rust_${version}_linux_x64_portable.tar.gz" -C dist portable
+          
       - name: Upload Linux release assets
         uses: actions/upload-artifact@v4
         with:
           name: linux-release-assets
-          path: dist/*.deb
+          path: |
+            dist/*.deb
+            dist/*.tar.gz
 
   publish-release:
     name: Publish GitHub Release
@@ -182,7 +201,7 @@ jobs:
         run: |
           set -euo pipefail
           cd artifacts
-          sha256sum *.zip *.deb > checksums-sha256.txt
+          sha256sum *.zip *.deb *.tar.gz > checksums-sha256.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -191,4 +210,5 @@ jobs:
           files: |
             artifacts/*.zip
             artifacts/*.deb
+            artifacts/*.tar.gz
             artifacts/checksums-sha256.txt
