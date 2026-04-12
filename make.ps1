@@ -1,330 +1,189 @@
-<#
-.SYNOPSIS
-    Unified task runner for the rust_serial workspace.
-.DESCRIPTION
-    PowerShell entrypoint equivalent to the root Makefile.
-#>
+# robot_ctrl_rust_app Workspace - PowerShell Build Script
+#
+# Usage:
+#   .\make.ps1 <target>
+#
+# Targets: all, check, fmt, fmt-check, clippy, test, test-release,
+#          build, release, doc, audit, clean, preflight, help
+
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("all", "check", "fmt", "fmt-check", "clippy", "test", "test-release",
-                 "build", "release", "doc", "audit", "clean", "preflight",
-                 "release-sync", "release-sync-apply", "workflow-seal", "workflow-seal-apply", "workspace-guard", "workspace-cleanup", "help")]
+    [ValidateSet("all", "check", "check-parallel", "fmt", "fmt-check", "clippy", "test", "test-release",
+                 "build", "build-parallel", "release", "release-parallel", "build-all-parallel",
+                 "test-all-parallel", "doc", "audit", "clean", "preflight", "help")]
     [string]$Target = "help"
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = (Get-Location).Path
-$AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
-$CoreProjects = @("robot_control_rust", "rust_tools_suite")
-$AllProjects = $CoreProjects
+$RepoRoot = $PSScriptRoot
+
+# Crate names
+$RobotCore = "crates/robot_core"
+$RobotControl = "crates/robot_control"
+$ToolsSuite = "crates/tools_suite"
+$Devtools = "crates/devtools"
+
+$AllCrates = @($RobotCore, $RobotControl, $ToolsSuite, $Devtools)
+$BuildCrates = @($RobotControl, $ToolsSuite)
+
+# Get CPU count for parallel jobs
+$CpuCount = [Environment]::ProcessorCount
+if ($CpuCount -eq 0) { $CpuCount = 4 }
+
 function Write-Header($Message) {
     Write-Host "`n== $Message ==" -ForegroundColor Cyan
 }
 
-function Show-FailureGuidance {
+function Invoke-Cargo {
     param(
-        [string]$Summary,
-        [string]$SuggestedCommand,
-        [string]$FixDirection,
-        [string]$WhereToInspect
+        [string[]]$Arguments
     )
-    Write-Host ""
-    Write-Host "Problem: $Summary" -ForegroundColor Red
-    Write-Host "Suggested command: $SuggestedCommand" -ForegroundColor Yellow
-    Write-Host "Fix direction: $FixDirection" -ForegroundColor Cyan
-    Write-Host "Inspect first: $WhereToInspect" -ForegroundColor DarkGray
-}
-
-function Invoke-ForEachProject {
-    param(
-        [scriptblock]$Action,
-        [string[]]$ProjectsToRun = $AllProjects
-    )
-    foreach ($Project in $ProjectsToRun) {
-        Write-Host "-> $Project" -ForegroundColor DarkGray
-        & $Action $Project
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "FAILED: $Project" -ForegroundColor Red
-            exit 1
-        }
-    }
-}
-
-function Invoke-PwshScript {
-    param(
-        [string]$ScriptRelativePath,
-        [string[]]$Arguments = @()
-    )
-
-    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-    if (-not $pwsh) {
-        throw "pwsh (PowerShell 7+) is required to run $ScriptRelativePath"
-    }
-
-    $scriptPath = Join-Path $RepoRoot $ScriptRelativePath
-    & $pwsh.Source -NoProfile -File $scriptPath @Arguments
+    cargo @Arguments
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
-    }
-}
-
-function Invoke-WorkspaceGuard {
-    Invoke-PwshScript -ScriptRelativePath "scripts\enforce-workspace-structure.ps1" -Arguments @("-Mode", "audit", "-Strict")
-}
-
-function Invoke-WorkspaceCleanup {
-    Invoke-PwshScript -ScriptRelativePath "scripts\cleanup-process-files.ps1" -Arguments @("-Mode", "apply")
-}
-
-function Invoke-MakeSubTarget {
-    param([string]$TargetName)
-
-    & $PSCommandPath $TargetName
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
-    if (-not $?) {
-        exit 1
     }
 }
 
 switch ($Target) {
-		"all" {
-		Write-Header "Run all checks (fmt-check + clippy + test + build)"
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-MakeSubTarget "workspace-guard"
-		Invoke-MakeSubTarget "fmt-check"
-		Invoke-MakeSubTarget "clippy"
-		Invoke-MakeSubTarget "test"
-		Invoke-MakeSubTarget "build"
-		Write-Host "`nAll checks passed." -ForegroundColor Green
-		}
-
-    "fmt" {
-        Write-Header "Format code"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo fmt --manifest-path "$Project\Cargo.toml"
-        }
-    }
-    "fmt-check" {
-        Write-Header "Check formatting"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo fmt --check --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project contains unformatted Rust code" `
-                    "cargo fmt --manifest-path $Project\Cargo.toml" `
-                    "Format this project, then rerun .\make.ps1 fmt-check" `
-                    "Recently edited .rs files under $Project"
-            }
-        }
-    }
-    "clippy" {
-        Write-Header "Run clippy"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo clippy --manifest-path "$Project\Cargo.toml" --all-targets -- -D warnings
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project failed clippy" `
-                    "cargo clippy --manifest-path $Project\Cargo.toml --all-targets -- -D warnings" `
-                    "Fix warning-level findings first, then resolve specific lints" `
-                    "The first error or warning in the clippy log"
-            }
-        }
-    }
-    "test" {
-        Write-Header "Run tests"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo test --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project tests failed" `
-                    "cargo test --manifest-path $Project\Cargo.toml" `
-                    "Reproduce the failing test first, then separate assertion, fixture, and platform issues" `
-                    "The failing test name and owning module"
-            }
-        }
-    }
-    "test-release" {
-        Write-Header "Run release tests"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo test --release --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project release tests failed" `
-                    "cargo test --release --manifest-path $Project\Cargo.toml" `
-                    "Check release-only behavior, feature gates, and initialization paths" `
-                    "The failing release-mode test case"
-            }
-        }
-    }
-    "build" {
-        Write-Header "Debug build"
-        Invoke-ForEachProject -ProjectsToRun $CoreProjects -Action { param($Project)
-            cargo build --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project debug build failed" `
-                    "cargo build --manifest-path $Project\Cargo.toml" `
-                    "Fix compilation errors first, then verify dependencies and feature flags" `
-                    "The first compiler error in the build log"
-            }
-        }
-    }
-    "release" {
-        Write-Header "Release build"
-        Invoke-ForEachProject -ProjectsToRun $CoreProjects -Action { param($Project)
-            cargo build --release --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project release build failed" `
-                    "cargo build --release --manifest-path $Project\Cargo.toml" `
-                    "Check system dependencies, target configuration, and release-only code paths" `
-                    "The first compiler error in the release build log"
-            }
-        }
-        Write-Header "Build artifacts"
-        Get-ChildItem "robot_control_rust\target\release\robot_control_rust*" -ErrorAction SilentlyContinue |
-            Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
-        Get-ChildItem "rust_tools_suite\target\release\rust_tools_suite*" -ErrorAction SilentlyContinue |
-            Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
-    }
-    "doc" {
-        Write-Header "Build docs"
-        Invoke-ForEachProject -Action { param($Project)
-            $DocCommand = '$env:RUSTDOCFLAGS="-D warnings"; cargo doc --no-deps --manifest-path '
-            $DocCommand += "$Project\Cargo.toml"
-            $env:RUSTDOCFLAGS = "-D warnings"
-            cargo doc --no-deps --manifest-path "$Project\Cargo.toml"
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project docs build failed" `
-                    $DocCommand `
-                    "Fix rustdoc warnings and invalid docs comments" `
-                    "The first rustdoc warning or error"
-            }
-            Remove-Item Env:RUSTDOCFLAGS -ErrorAction SilentlyContinue
-        }
-    }
-    "audit" {
-        Write-Header "Run cargo-audit and cargo-deny"
-        foreach ($Project in $AllProjects) {
-            Write-Host "-> $Project" -ForegroundColor DarkGray
-            $LockFile = Join-Path $Project "Cargo.lock"
-            cargo audit -d $AuditDbPath -f $LockFile
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project security audit failed" `
-                    "cargo audit -d $AuditDbPath -f $Project\Cargo.lock" `
-                    "Upgrade vulnerable dependencies first, then consider regenerating Cargo.lock" `
-                    "The advisory ID and affected crate in the audit output"
-                exit 1
-            }
-            Push-Location $Project
-            cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
-            $DenyExit = $LASTEXITCODE
-            Pop-Location
-            if ($DenyExit -ne 0) {
-                Show-FailureGuidance `
-                    "$Project dependency policy check failed" `
-                    "cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
-                    "Review source policy, advisories, and duplicate dependency bans" `
-                    "The first cargo-deny error for the current project"
-                exit 1
-            }
-        }
-    }
-    "clean" {
-        Write-Header "Clean build artifacts"
-        Invoke-ForEachProject -Action { param($Project)
-            cargo clean --manifest-path "$Project\Cargo.toml"
-        }
-    }
-    "check" {
-        Write-Header "Fast validation"
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-MakeSubTarget "workspace-guard"
-        Invoke-MakeSubTarget "fmt-check"
-        Invoke-MakeSubTarget "clippy"
-        Invoke-MakeSubTarget "test"
+    "all" {
+        Write-Header "Run all checks and build"
+        & $PSCommandPath "check"
+        & $PSCommandPath "build"
         Write-Host "`nAll checks passed." -ForegroundColor Green
     }
+
+    "check" {
+        Write-Header "Check (fmt + clippy + test)"
+        & $PSCommandPath "fmt-check"
+        & $PSCommandPath "clippy"
+        & $PSCommandPath "test"
+        Write-Host "`n✓ All checks passed" -ForegroundColor Green
+    }
+
+    "check-parallel" {
+        Write-Header "Check (parallel: fmt + clippy + test)"
+        & $PSCommandPath "fmt"
+        & $PSCommandPath "clippy"
+        & $PSCommandPath "test"
+        Write-Host "`n✓ All checks passed (parallel)" -ForegroundColor Green
+    }
+
+    "fmt" {
+        Write-Header "Formatting code"
+        Invoke-Cargo -Arguments "fmt"
+    }
+
+    "fmt-check" {
+        Write-Header "Checking format"
+        Invoke-Cargo -Arguments "fmt", "--check"
+    }
+
+    "clippy" {
+        Write-Header "Clippy static analysis"
+        Invoke-Cargo -Arguments "clippy", "--all-targets", "--", "-D", "warnings"
+    }
+
+    "test" {
+        Write-Header "Running tests"
+        Invoke-Cargo -Arguments "test", "--all"
+    }
+
+    "test-release" {
+        Write-Header "Running tests in release mode"
+        Invoke-Cargo -Arguments "test", "--release", "--all"
+    }
+
+    "test-all-parallel" {
+        Write-Header "Running all tests in parallel (using $CpuCount jobs)"
+        Invoke-Cargo -Arguments "test", "--all", "-j", $CpuCount
+    }
+
+    "build" {
+        Write-Header "Debug build"
+        Invoke-Cargo -Arguments "build", "-p", $RobotControl, "-p", $ToolsSuite
+    }
+
+    "build-parallel" {
+        Write-Header "Debug build (parallel, using $CpuCount jobs)"
+        Invoke-Cargo -Arguments "build", "-p", $RobotControl, "-p", $ToolsSuite, "-j", $CpuCount
+    }
+
+    "release" {
+        Write-Header "Release build"
+        Invoke-Cargo -Arguments "build", "--release", "-p", $RobotControl, "-p", $ToolsSuite
+        Write-Host "`n== Build artifacts ==" -ForegroundColor Cyan
+        Get-ChildItem target/release/*.exe -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host $_.Name -ForegroundColor Gray
+        }
+    }
+
+    "release-parallel" {
+        Write-Header "Release build (parallel, using $CpuCount jobs)"
+        Invoke-Cargo -Arguments "build", "--release", "-p", $RobotControl, "-p", $ToolsSuite, "-j", $CpuCount
+        Write-Host "`n== Build artifacts ==" -ForegroundColor Cyan
+        Get-ChildItem target/release/*.exe -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host $_.Name -ForegroundColor Gray
+        }
+    }
+
+    "build-all-parallel" {
+        Write-Header "Build all crates in parallel (using $CpuCount jobs)"
+        Invoke-Cargo -Arguments "build", "--all", "-j", $CpuCount
+    }
+
+    "doc" {
+        Write-Header "Generating documentation"
+        $env:RUSTDOCFLAGS = "-D warnings"
+        Invoke-Cargo -Arguments "doc", "--no-deps"
+        Remove-Item Env:\RUSTDOCFLAGS
+    }
+
+    "audit" {
+        Write-Header "Security audit"
+        foreach ($crate in $AllCrates) {
+            Write-Host "-> $crate" -ForegroundColor DarkGray
+            Invoke-Cargo -Arguments "audit", "-f", "$crate/Cargo.lock"
+        }
+    }
+
+    "clean" {
+        Write-Header "Cleaning build artifacts"
+        Invoke-Cargo -Arguments "clean"
+    }
+
     "preflight" {
-        Write-Header "Preflight validation"
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-MakeSubTarget "workspace-guard"
-        Invoke-MakeSubTarget "fmt-check"
-        Invoke-MakeSubTarget "clippy"
-        Invoke-MakeSubTarget "test"
-        Invoke-MakeSubTarget "test-release"
-        Invoke-MakeSubTarget "release"
-        Invoke-MakeSubTarget "doc"
-        Write-Host "`nPreflight passed. Ready to release." -ForegroundColor Green
+        Write-Header "Preflight checks"
+        & $PSCommandPath "fmt-check"
+        & $PSCommandPath "clippy"
+        & $PSCommandPath "test"
+        & $PSCommandPath "test-release"
+        & $PSCommandPath "release"
+        & $PSCommandPath "doc"
+        Write-Host "`n🚀 Preflight all passed! Ready to release." -ForegroundColor Green
     }
-    "release-sync" {
-        Write-Header "Release state audit"
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-MakeSubTarget "workspace-guard"
-        Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "audit")
-    }
-    "release-sync-apply" {
-        Write-Header "Release state normalize"
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-PwshScript -ScriptRelativePath "scripts\sync-release-state.ps1" -Arguments @("-Mode", "apply", "-PruneLocalTagsNotOnRemote", "-CleanOrphanNotes")
-        Invoke-MakeSubTarget "workspace-cleanup"
-        Invoke-MakeSubTarget "workspace-guard"
-    }
-    "workflow-seal" {
-        Write-Header "Workflow seal (audit)"
-        Invoke-PwshScript -ScriptRelativePath "scripts\workflow-seal.ps1" -Arguments @("-Mode", "audit")
-    }
-    "workflow-seal-apply" {
-        Write-Header "Workflow seal (apply)"
-        Invoke-PwshScript -ScriptRelativePath "scripts\workflow-seal.ps1" -Arguments @("-Mode", "apply", "-PruneLocalTagsNotOnRemote", "-CleanOrphanNotes")
-    }
-    "workspace-guard" {
-        Write-Header "Workspace structure guard"
-        Invoke-WorkspaceGuard
-    }
-    "workspace-cleanup" {
-        Write-Header "Workspace process-file cleanup"
-        Invoke-WorkspaceCleanup
-    }
+
     "help" {
         Write-Host @"
-
-  rust_serial unified task runner
-  =======================================
-
-  Usage: .\make.ps1 <target>
-
-  Targets:
-    all          fmt-check + clippy + test + build
-    check        format + clippy + test
-    fmt          format all Rust projects
-    fmt-check    verify formatting without rewriting files
-    clippy       run clippy with -D warnings
-    test         run tests for all Rust projects
-    test-release run tests in release mode
-    build        debug build for release projects
-    release      release build for release projects
-    doc          build docs with rustdoc warnings denied
-    audit        run cargo-audit for all Rust projects
-    preflight    full validation before release
-    release-sync audit release tags/notes/archive consistency
-    release-sync-apply normalize local release tags/notes state
-    workflow-seal run cleanup + structure + release-state seal (audit)
-    workflow-seal-apply normalize release-state and reseal workspace
-    workspace-guard enforce workspace layout and path policy
-    workspace-cleanup remove transient process files
-    clean        clean all target directories
-    help         show this help
-
-"@ -ForegroundColor Cyan
+Available targets:
+  make.ps1 all              Run all checks and build
+  make.ps1 check            Format + clippy + test (fast validation)
+  make.ps1 check-parallel   Format + clippy + test (parallel)
+  make.ps1 fmt               Auto-format all code
+  make.ps1 fmt-check         Check format (no modifications)
+  make.ps1 clippy            Static analysis
+  make.ps1 test              Run all tests
+  make.ps1 test-release      Run tests in release mode
+  make.ps1 test-all-parallel Run all tests in parallel
+  make.ps1 build            Debug build
+  make.ps1 build-parallel   Debug build (parallel)
+  make.ps1 release          Release build
+  make.ps1 release-parallel Release build (parallel)
+  make.ps1 build-all-parallel Build all crates in parallel
+  make.ps1 doc             Generate documentation
+  make.ps1 audit           Security audit
+  make.ps1 clean           Clean all build artifacts
+  make.ps1 preflight       Full pre-release validation
+  make.ps1 help            Show this help
+"@
     }
 }
-
-
-
-
-

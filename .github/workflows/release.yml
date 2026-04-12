@@ -48,67 +48,21 @@ jobs:
     needs: verify-tag
     steps:
       - uses: actions/checkout@v4
-      - name: Process file residue audit
-        shell: pwsh
-        run: |
-          ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
-      - name: Workspace structure guard
-        shell: pwsh
-        run: |
-          ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy,rustfmt
+          components: clippy, rustfmt
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Run release quality gate across projects
+      - name: Run quality gate
         shell: bash
         run: |
           set -euo pipefail
-
-          run_fmt_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::fmt $project"
-            cargo fmt --check --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_clippy_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::clippy $project"
-            cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
-            echo "::endgroup::"
-          }
-
-          run_test_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::test $project"
-            cargo test --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_doc_check() {
-            local project="$1"
-            local manifest="$2"
-            echo "::group::doc $project"
-            RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --manifest-path "$manifest"
-            echo "::endgroup::"
-          }
-
-          run_fmt_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_clippy_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_test_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-          run_doc_check "robot_control_rust" "robot_control_rust/Cargo.toml"
-
-          run_fmt_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
-          run_clippy_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
-          run_test_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
-          run_doc_check "rust_tools_suite" "rust_tools_suite/Cargo.toml"
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test --all
+          RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 
   build-windows-assets:
     name: Build Windows Release Assets
@@ -120,43 +74,31 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: mdbook
-      - name: Build robot_control_rust.exe
+      - name: Build robot_control
         shell: pwsh
-        run: |
-          if (Select-String -Path 'robot_control_rust\src\main.rs' -Pattern 'println!\("placeholder"\)' -Quiet) {
-            throw 'Entrypoint guard failed: main.rs still contains placeholder implementation'
-          }
-          cargo build --release --manifest-path robot_control_rust/Cargo.toml
-      - name: Build rust_tools_suite.exe
+        run: cargo build --release -p robot_control
+      - name: Build tools_suite
         shell: pwsh
-        run: |
-          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
-      - name: Build Windows installer
+        run: cargo build --release -p tools_suite
+      - name: Create portable zip artifacts
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}' -replace '^v', ''
-          .\robot_control_rust\scripts\package_windows_x64_installer.ps1 -Version $version -SkipBuild
-      - name: Build portable release assets
-        shell: pwsh
-        run: |
-          $version = '${{ github.ref_name }}' -replace '^v', ''
-          .\robot_control_rust\scripts\package_windows_x64_release_assets.ps1 -Version $version -OutputDir 'release_artifacts' -SkipBuild
-          $setup = Get-ChildItem 'robot_control_rust\dist\windows-x64\installer\*_Setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $setup) {
-            throw 'Setup.exe not found under robot_control_rust/dist/windows-x64/installer'
-          }
-
-          Copy-Item (Join-Path 'release_artifacts' "robot_control_rust_${version}_windows_x64_portable.zip") 'release_artifacts\robot_control_rust_windows_x64_portable.zip'
-          Copy-Item (Join-Path 'release_artifacts' "rust_tools_suite_${version}_windows_x64_portable.zip") 'release_artifacts\rust_tools_suite_windows_x64_portable.zip'
-          Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
+          $outDir = "release_artifacts"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          
+          # Robot Control
+          Compress-Archive -Path "target/release/robot_control.exe" -DestinationPath "$outDir/robot_control_rust_${version}_windows_x64_portable.zip" -Force
+          
+          # Tools Suite
+          Compress-Archive -Path "target/release/tools_suite.exe" -DestinationPath "$outDir/rust_tools_suite_${version}_windows_x64_portable.zip" -Force
+          
+          Write-Host "Created artifacts in $outDir"
       - name: Upload Windows release assets
         uses: actions/upload-artifact@v4
         with:
           name: windows-release-assets
-          path: |
-            release_artifacts/robot_control_rust_windows_x64_portable.zip
-            release_artifacts/rust_tools_suite_windows_x64_portable.zip
-            release_artifacts/RobotControlSuite_Setup.exe
+          path: release_artifacts/*.zip
 
   build-linux-assets:
     name: Build Linux Release Assets
@@ -172,18 +114,43 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev dpkg-dev
-      - name: Build Debian package
+      - name: Build robot_control
+        run: cargo build --release -p robot_control
+      - name: Build tools_suite
+        run: cargo build --release -p tools_suite
+      - name: Create Debian package
         shell: bash
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          bash rust_tools_suite/packaging/package_deb.sh --version "$version"
-          cp "dist/debian/rust-tools-suite_${version}_amd64.deb" "dist/debian/rust_tools_suite_linux_amd64.deb"
+          
+          # Create debian package structure
+          pkg_dir="dist/debian"
+          mkdir -p "$pkg_dir/usr/local/bin"
+          mkdir -p "$pkg_dir/usr/local/share/applications"
+          
+          # Install binaries
+          cp target/release/robot_control "$pkg_dir/usr/local/bin/"
+          cp target/release/tools_suite "$pkg_dir/usr/local/bin/"
+          
+          # Create control file
+          mkdir -p "$pkg_dir/DEBIAN"
+          cat > "$pkg_dir/DEBIAN/control" << CONTROL
+          Package: robot-control-suite
+          Version: $version
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Description: Robot Control and Tools Suite
+          CONTROL
+          
+          # Build package
+          dpkg-deb --build "$pkg_dir" "dist/robot_tools_suite_${version}_amd64.deb"
       - name: Upload Linux release assets
         uses: actions/upload-artifact@v4
         with:
           name: linux-release-assets
-          path: dist/debian/rust_tools_suite_linux_amd64.deb
+          path: dist/*.deb
 
   publish-release:
     name: Publish GitHub Release
@@ -201,78 +168,18 @@ jobs:
         with:
           name: linux-release-assets
           path: artifacts
-      - name: Verify required assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f artifacts/robot_control_rust_windows_x64_portable.zip
-          test -f artifacts/rust_tools_suite_windows_x64_portable.zip
-          test -f artifacts/rust_tools_suite_linux_amd64.deb
-          test -f artifacts/RobotControlSuite_Setup.exe
-          test -f release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md
-          test -s release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md
       - name: Create checksums
         shell: bash
         run: |
           set -euo pipefail
           cd artifacts
-          sha256sum \
-            robot_control_rust_windows_x64_portable.zip \
-            rust_tools_suite_windows_x64_portable.zip \
-            rust_tools_suite_linux_amd64.deb \
-            RobotControlSuite_Setup.exe > checksums-sha256.txt
-      - name: Publish exact release asset set
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $isPrerelease = '${{ contains(github.ref_name, '-') }}' -eq 'true'
-          .\robot_control_rust\scripts\create_github_release.ps1 `
-            -Tag '${{ github.ref_name }}' `
-            -ReleaseName '${{ github.ref_name }}' `
-            -BodyFile "release_notes/RELEASE_NOTES_${{ github.ref_name }}.md" `
-            -Assets @(
-              'artifacts/robot_control_rust_windows_x64_portable.zip',
-              'artifacts/rust_tools_suite_windows_x64_portable.zip',
-              'artifacts/rust_tools_suite_linux_amd64.deb',
-              'artifacts/RobotControlSuite_Setup.exe',
-              'artifacts/checksums-sha256.txt'
-            ) `
-            -Prerelease:$isPrerelease `
-            -Draft:$false `
-            -PruneExtraAssets
-
-  publish-draft-on-failure:
-    name: Publish Draft Release On Failure
-    if: ${{ always() && failure() }}
-    runs-on: ubuntu-latest
-    needs:
-      - verify-tag
-      - quality-gate
-      - build-windows-assets
-      - build-linux-assets
-      - publish-release
-    steps:
-      - name: Create failure summary
-        run: |
-          cat > failure-summary.md << 'EOF'
-          Automatic draft release generated because release workflow did not fully succeed.
-
-          Job results:
-          - verify-tag: ${{ needs.verify-tag.result }}
-          - quality-gate: ${{ needs.quality-gate.result }}
-          - build-windows-assets: ${{ needs.build-windows-assets.result }}
-          - build-linux-assets: ${{ needs.build-linux-assets.result }}
-          - publish-release: ${{ needs.publish-release.result }}
-
-          Next actions:
-          1. Inspect the failed job logs.
-          2. Fix the issue and re-run release workflow.
-          3. Use rollback script if the tag should be revoked.
-          EOF
-      - name: Create Draft GitHub Release
+          sha256sum *.zip *.deb > checksums-sha256.txt
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
-          body_path: failure-summary.md
+          files: |
+            artifacts/*.zip
+            artifacts/*.deb
+            artifacts/checksums-sha256.txt

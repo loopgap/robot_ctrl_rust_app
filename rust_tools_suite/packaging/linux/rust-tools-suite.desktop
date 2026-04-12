@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Rust Tools Suite
-Comment=Responsive desktop utility suite
-Exec=rust_tools_suite --gui
-Icon=rust-tools-suite
-Terminal=false
-Categories=Development;Utility;

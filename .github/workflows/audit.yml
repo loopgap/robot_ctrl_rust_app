@@ -20,7 +20,7 @@ env:
 
 jobs:
   audit:
-    name: 安全与依赖策略检查
+    name: Security and Dependency Policy Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,16 +32,14 @@ jobs:
       - name: Install cargo-deny
         run: cargo install --locked cargo-deny
 
-      - name: Run security audit across products
+      - name: Run security audit
         shell: bash
         run: |
           set -euo pipefail
-          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 -f robot_control_rust/Cargo.lock
-          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 -f rust_tools_suite/Cargo.lock
+          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071
 
-      - name: Run dependency policy checks across products
+      - name: Run dependency policy checks
         shell: bash
         run: |
           set -euo pipefail
-          (cd robot_control_rust && cargo deny check advisories bans sources --config "$GITHUB_WORKSPACE/deny.toml")
-          (cd rust_tools_suite && cargo deny check advisories bans sources --config "$GITHUB_WORKSPACE/deny.toml")
+          cargo deny check advisories bans sources --config deny.toml
