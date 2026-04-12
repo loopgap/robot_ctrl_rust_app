@@ -82,7 +82,7 @@ impl McpServer {
         auth_token: Option<String>,
         running: Arc<AtomicBool>,
     ) -> Result<(), String> {
-        let listener = TcpListener::bind(("0.0.0.0", port))
+        let listener = TcpListener::bind(("127.0.0.1", port))
             .map_err(|e| format!("Failed to bind MCP port {}: {}", port, e))?;
         running.store(true, Ordering::SeqCst);
 

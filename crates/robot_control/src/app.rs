@@ -771,13 +771,55 @@ fn resolve_local_help_url() -> Option<String> {
         .map(|path| path_to_file_url(&path))
 }
 
+fn is_valid_secret(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if trimmed.len() > 2048 {
+        return false;
+    }
+    !trimmed
+        .chars()
+        .any(|c| c.is_control() && c != '\n' && c != '\r' && c != '\t')
+}
+
 fn valid_http_url(value: &str) -> Option<String> {
     let trimmed = value.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        Some(trimmed.to_string())
-    } else {
-        None
+    let lower = trimmed.to_lowercase();
+    if !lower.starts_with("http://") && !lower.starts_with("https://") {
+        return None;
     }
+    let host_port = lower
+        .trim_start_matches("http://")
+        .trim_start_matches("https://");
+    let host = host_port.split('/').next().unwrap_or(host_port);
+    if host.starts_with("localhost")
+        || host.starts_with("127.")
+        || host.starts_with("0.")
+        || host.starts_with("10.")
+        || host.starts_with("172.16.")
+        || host.starts_with("172.17.")
+        || host.starts_with("172.18.")
+        || host.starts_with("172.19.")
+        || host.starts_with("172.20.")
+        || host.starts_with("172.21.")
+        || host.starts_with("172.22.")
+        || host.starts_with("172.23.")
+        || host.starts_with("172.24.")
+        || host.starts_with("172.25.")
+        || host.starts_with("172.26.")
+        || host.starts_with("172.27.")
+        || host.starts_with("172.28.")
+        || host.starts_with("172.29.")
+        || host.starts_with("172.30.")
+        || host.starts_with("172.31.")
+        || host.starts_with("192.168.")
+        || host.starts_with("169.254.")
+    {
+        return None;
+    }
+    Some(trimmed.to_string())
 }
 
 #[derive(Debug, Clone, Default)]
@@ -1036,12 +1078,12 @@ impl AppState {
             last_error_burst_instant: None,
         };
         if let Ok(api_key) = std::env::var("LLM_API_KEY") {
-            if !api_key.trim().is_empty() {
+            if is_valid_secret(&api_key) {
                 s.ui.llm_api_key = api_key;
             }
         }
         if let Ok(mcp_token) = std::env::var("MCP_TOKEN") {
-            if !mcp_token.trim().is_empty() {
+            if is_valid_secret(&mcp_token) {
                 s.ui.mcp_token_text = mcp_token;
             }
         }
@@ -1332,13 +1374,12 @@ impl AppState {
 
     pub fn update_manifest_url(&self) -> String {
         let configured = self.ui.update_manifest_url.trim();
-        if configured.starts_with("http://") || configured.starts_with("https://") {
-            return configured.to_string();
+        if let Some(valid) = valid_http_url(configured) {
+            return valid;
         }
         if let Ok(url) = std::env::var("ROBOT_CONTROL_UPDATE_MANIFEST_URL") {
-            let trimmed = url.trim();
-            if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-                return trimmed.to_string();
+            if let Some(valid) = valid_http_url(&url) {
+                return valid;
             }
         }
         DEFAULT_UPDATE_MANIFEST_URL.to_string()
