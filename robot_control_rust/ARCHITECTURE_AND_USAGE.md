@@ -29,9 +29,8 @@ robot_control_rust/
 ├─ README.md
 ├─ ARCHITECTURE_AND_USAGE.md
 ├─ scripts/
-│  ├─ preflight.ps1
 │  ├─ preflight.sh
-│  └─ package_windows_x64_iexpress_installer.ps1
+│  └─ (packaging 已迁移至 scripts/go/rusktask)
 ├─ src/
 │  ├─ main.rs
 │  ├─ app.rs
@@ -238,8 +237,8 @@ cargo clippy --all-targets
 
 本地一键预检：
 
-- Windows：`./scripts/preflight.ps1`
-- Linux/macOS：`./scripts/preflight.sh`
+- Windows：`./scripts/task.ps1 preflight`
+- Linux/macOS：`./scripts/task preflight`
 
 ---
 

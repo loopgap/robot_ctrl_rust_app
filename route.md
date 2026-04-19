@@ -43,13 +43,13 @@
 
 ```powershell
 # 1. 固化工作区状态（过程文件清理 + 结构守卫 + 发布状态审计）
-.\make.ps1 workflow-seal
+.\scripts\task.ps1 workflow-seal
 
 # 2. 快速检查
-.\make.ps1 check
+.\scripts\task.ps1 check
 
 # 3. 推送前全量审查 (包含安全审计与跨项目测试)
-.\scripts\review.ps1 -BeforePush
+cd .\scripts\go\rusktask; go run . review --before-push
 ```
 
 **严禁**跳过 `Git Hooks`。如果验证失败，必须根据“失败建议格式”进行智能修复后再提交。
@@ -75,8 +75,8 @@
 ## 6. 发布治理规范 (Tag & Release Governance)
 
 - **Tag 规范**：仅允许在 `main/master` 产生 `vMAJOR.MINOR.PATCH`（可扩展 `-rc.N` 预发布后缀）。
-- **本地前置**：打 tag 前必须通过 `.\make.ps1 preflight`。
-- **发布入口**：使用 `.\scripts\smart-bump.ps1` 完成升号、annotated tag 和发布说明草稿。
+- **本地前置**：打 tag 前必须通过 `.\scripts\task.ps1 preflight`。
+- **发布入口**：使用 `.\scripts\task.ps1 smart-bump` 完成升号、annotated tag 和发布说明草稿。
 - **Release 必需资产**：
   - `robot_control_rust.exe`
   - `rust_tools_suite.exe`
@@ -84,4 +84,4 @@
   - `checksums-sha256.txt`
 - **Release 正文来源**：远端 Release 正文必须与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 保持一致。
 - **质量门禁**：Release 流水线必须包含 tag 策略校验、Windows 可执行文件 smoke test、哈希清单生成。
-- **回滚机制**：发布失败时优先使用 `scripts/smart-rollback.ps1` 进行 tag/release/版本提交回滚。
+- **回滚机制**：发布失败时优先使用 `.\scripts\task.ps1 smart-rollback` 进行 tag/release/版本提交回滚。

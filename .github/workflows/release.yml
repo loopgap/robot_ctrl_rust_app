@@ -32,15 +32,30 @@ jobs:
           fi
 
           git fetch origin main master --quiet || true
+
+          has_base=0
           if git show-ref --verify --quiet refs/remotes/origin/main; then
-            git merge-base --is-ancestor HEAD origin/main || echo "::warning::Not on main"
-          fi
-          if git show-ref --verify --quiet refs/remotes/origin/master; then
-            git merge-base --is-ancestor HEAD origin/master || echo "::warning::Not on master"
+            has_base=1
+            if git merge-base --is-ancestor HEAD origin/main; then
+              echo "::notice::Tag commit is reachable from origin/main"
+              exit 0
+            fi
           fi
 
-          echo "::notice::Tag verified."
-          exit 0
+          if git show-ref --verify --quiet refs/remotes/origin/master; then
+            has_base=1
+            if git merge-base --is-ancestor HEAD origin/master; then
+              echo "::notice::Tag commit is reachable from origin/master"
+              exit 0
+            fi
+          fi
+
+          if [[ "$has_base" -eq 0 ]]; then
+            echo "::error::Neither origin/main nor origin/master exists; cannot verify tag ancestry"
+          else
+            echo "::error::Tag commit must be reachable from origin/main or origin/master"
+          fi
+          exit 1
 
   quality-gate:
     name: Quality Gate
@@ -48,14 +63,21 @@ jobs:
     needs: verify-tag
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/go/rusktask/go.mod
       - name: Process file residue audit
-        shell: pwsh
+        shell: bash
         run: |
-          ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
+          set -euo pipefail
+          cd scripts/go/rusktask
+          go run . workspace-cleanup --mode audit --strict
       - name: Workspace structure guard
-        shell: pwsh
+        shell: bash
         run: |
-          ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+          set -euo pipefail
+          cd scripts/go/rusktask
+          go run . workspace-guard --mode audit --strict
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
@@ -116,39 +138,53 @@ jobs:
     needs: quality-gate
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/go/rusktask/go.mod
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@v2
         with:
           tool: mdbook
       - name: Build robot_control_rust.exe
-        shell: pwsh
+        shell: bash
         run: |
-          if (Select-String -Path 'robot_control_rust\src\main.rs' -Pattern 'println!\("placeholder"\)' -Quiet) {
-            throw 'Entrypoint guard failed: main.rs still contains placeholder implementation'
-          }
+          set -euo pipefail
+          if grep -q 'println!("placeholder")' robot_control_rust/src/main.rs; then
+            echo "::error::Entrypoint guard failed: main.rs still contains placeholder implementation"
+            exit 1
+          fi
           cargo build --release --manifest-path robot_control_rust/Cargo.toml
       - name: Build rust_tools_suite.exe
-        shell: pwsh
+        shell: bash
         run: |
+          set -euo pipefail
           cargo build --release --manifest-path rust_tools_suite/Cargo.toml
       - name: Build Windows installer
-        shell: pwsh
+        shell: bash
         run: |
-          $version = '${{ github.ref_name }}' -replace '^v', ''
-          .\robot_control_rust\scripts\package_windows_x64_installer.ps1 -Version $version -SkipBuild
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          cd scripts/go/rusktask
+          go run . package-windows-installer --version "$version" --skip-build
       - name: Build portable release assets
-        shell: pwsh
+        shell: bash
         run: |
-          $version = '${{ github.ref_name }}' -replace '^v', ''
-          .\robot_control_rust\scripts\package_windows_x64_release_assets.ps1 -Version $version -OutputDir 'release_artifacts' -SkipBuild
-          $setup = Get-ChildItem 'robot_control_rust\dist\windows-x64\installer\*_Setup.exe' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $setup) {
-            throw 'Setup.exe not found under robot_control_rust/dist/windows-x64/installer'
-          }
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
 
-          Copy-Item (Join-Path 'release_artifacts' "robot_control_rust_${version}_windows_x64_portable.zip") 'release_artifacts\robot_control_rust_windows_x64_portable.zip'
-          Copy-Item (Join-Path 'release_artifacts' "rust_tools_suite_${version}_windows_x64_portable.zip") 'release_artifacts\rust_tools_suite_windows_x64_portable.zip'
-          Copy-Item $setup.FullName 'release_artifacts\RobotControlSuite_Setup.exe'
+          cd scripts/go/rusktask
+          go run . package-windows-assets --version "$version" --output-dir release_artifacts --skip-build
+          cd ../..
+
+          setup=$(ls -t robot_control_rust/dist/windows-x64/installer/*_Setup.exe 2>/dev/null | head -n1 || true)
+          if [[ -z "$setup" ]]; then
+            echo "::error::Setup.exe not found under robot_control_rust/dist/windows-x64/installer"
+            exit 1
+          fi
+
+          cp "release_artifacts/robot_control_rust_${version}_windows_x64_portable.zip" "release_artifacts/robot_control_rust_windows_x64_portable.zip"
+          cp "release_artifacts/rust_tools_suite_${version}_windows_x64_portable.zip" "release_artifacts/rust_tools_suite_windows_x64_portable.zip"
+          cp "$setup" "release_artifacts/RobotControlSuite_Setup.exe"
       - name: Upload Windows release assets
         uses: actions/upload-artifact@v4
         with:
@@ -193,6 +229,16 @@ jobs:
       - build-linux-assets
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/go/rusktask/go.mod
+      - name: Validate release notes policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/task release-notes-validate \
+            RELEASE_NOTES_FILE="release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md" \
+            RELEASE_NOTES_MODE="release"
       - uses: actions/download-artifact@v4
         with:
           name: windows-release-assets
@@ -222,25 +268,19 @@ jobs:
             rust_tools_suite_linux_amd64.deb \
             RobotControlSuite_Setup.exe > checksums-sha256.txt
       - name: Publish exact release asset set
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $isPrerelease = '${{ contains(github.ref_name, '-') }}' -eq 'true'
-          .\robot_control_rust\scripts\create_github_release.ps1 `
-            -Tag '${{ github.ref_name }}' `
-            -ReleaseName '${{ github.ref_name }}' `
-            -BodyFile "release_notes/RELEASE_NOTES_${{ github.ref_name }}.md" `
-            -Assets @(
-              'artifacts/robot_control_rust_windows_x64_portable.zip',
-              'artifacts/rust_tools_suite_windows_x64_portable.zip',
-              'artifacts/rust_tools_suite_linux_amd64.deb',
-              'artifacts/RobotControlSuite_Setup.exe',
-              'artifacts/checksums-sha256.txt'
-            ) `
-            -Prerelease:$isPrerelease `
-            -Draft:$false `
-            -PruneExtraAssets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body_path: release_notes/RELEASE_NOTES_${{ github.ref_name }}.md
+          files: |
+            artifacts/robot_control_rust_windows_x64_portable.zip
+            artifacts/rust_tools_suite_windows_x64_portable.zip
+            artifacts/rust_tools_suite_linux_amd64.deb
+            artifacts/RobotControlSuite_Setup.exe
+            artifacts/checksums-sha256.txt
 
   publish-draft-on-failure:
     name: Publish Draft Release On Failure

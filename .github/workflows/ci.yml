@@ -24,12 +24,21 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/go/rusktask/go.mod
       - name: Process file residue audit
-        shell: pwsh
-        run: ./scripts/cleanup-process-files.ps1 -Mode audit -Strict
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd scripts/go/rusktask
+          go run . workspace-cleanup --mode audit --strict
       - name: Workspace structure guard
-        shell: pwsh
-        run: ./scripts/enforce-workspace-structure.ps1 -Mode audit -Strict
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd scripts/go/rusktask
+          go run . workspace-guard --mode audit --strict
 
   fmt:
     name: Format Check
