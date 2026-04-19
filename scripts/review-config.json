@@ -42,19 +42,11 @@
     }
   },
   "git": {
-    "protectedBranches": ["main", "master", "release/*"],
+    "protectedBranches": ["main"],
     "branchNaming": {
       "patterns": [
-        "^feature/",
-        "^fix/",
-        "^docs/",
-        "^refactor/",
-        "^test/",
-        "^chore/",
         "^main$",
-        "^master$",
-        "^develop$",
-        "^release/"
+        "^develop$"
       ]
     },
     "commitTypes": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]

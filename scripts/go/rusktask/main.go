@@ -1289,8 +1289,8 @@ func ensureReleaseBranch(repoRoot string) error {
 	}
 
 	branch := strings.TrimSpace(branchOutput)
-	if branch != "main" && branch != "master" {
-		return fmt.Errorf("release bump must run on main/master. Current branch: %s", branch)
+	if branch != "main" {
+		return fmt.Errorf("release bump must run on main. Current branch: %s", branch)
 	}
 
 	return nil
@@ -1688,44 +1688,16 @@ func checkBranchProtection(repoRoot string, prePush bool) error {
 		return errors.New("failed to resolve current branch")
 	}
 
-	protectedPatterns := []string{"main", "master", "release/*"}
-	for _, pattern := range protectedPatterns {
-		matched, _ := filepath.Match(pattern, branch)
-		if !matched {
-			continue
-		}
+	if branch != "main" && branch != "develop" {
+		return fmt.Errorf("branch policy violation: only 'main' and 'develop' are allowed. current branch: %s", branch)
+	}
 
+	if branch == "main" {
 		if prePush {
 			return fmt.Errorf("direct push to protected branch is not allowed: %s", branch)
 		}
 
 		fmt.Fprintf(os.Stderr, "warning: currently on protected branch: %s\n", branch)
-	}
-
-	validPatterns := []string{
-		"feature/*",
-		"fix/*",
-		"docs/*",
-		"refactor/*",
-		"test/*",
-		"chore/*",
-		"main",
-		"master",
-		"develop",
-		"release/*",
-	}
-
-	isValid := false
-	for _, pattern := range validPatterns {
-		matched, _ := filepath.Match(pattern, branch)
-		if matched {
-			isValid = true
-			break
-		}
-	}
-
-	if !isValid {
-		fmt.Fprintf(os.Stderr, "warning: branch name does not match recommended patterns: %s\n", branch)
 	}
 
 	return nil

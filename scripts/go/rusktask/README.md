@@ -21,7 +21,7 @@ go run . preflight
 - `audit [--ignore <ID>]`: cargo-audit + cargo-deny checks.
 - `check`: fmt --check + clippy + test.
 - `preflight`: workspace cleanup + guard + check + release test/build + doc.
-- `git-check [--pre-push] [--commit-msg-file <path>]`: git workflow guard (branch policy, commit message format, staged-file policy, remote sync in pre-push mode).
+- `git-check [--pre-push] [--commit-msg-file <path>]`: git workflow guard (strictly allows only `main`/`develop`, commit message format, staged-file policy, remote sync in pre-push mode).
 - `rust-review [--fix] [--skip-tests] [--skip-audit] [--project <name>]...`: Rust review pipeline per selected project(s).
 - `review [--quick] [--fix] [--before-push] [--skip-tests] [--skip-audit] [--project <name>]...`: combined review orchestration.
 - `install-hooks [--uninstall] [--force]`: install/uninstall managed Git hooks that call rusktask directly.
