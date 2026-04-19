@@ -42,7 +42,8 @@
       "out",
       "dist",
       "build",
-      "robot_control_rust/dist"
+      "robot_control_rust/dist",
+      ".cargo-advisory-db..lock"
     ],
     "blockedGlobPatterns": [
       "smoke_logs_local*",
@@ -62,7 +63,8 @@
       "out",
       "dist",
       "build",
-      "robot_control_rust/dist"
+      "robot_control_rust/dist",
+      ".cargo-advisory-db..lock"
     ],
     "globPatterns": [
       "smoke_logs_local*",
