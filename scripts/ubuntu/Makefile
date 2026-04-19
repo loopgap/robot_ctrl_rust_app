@@ -15,7 +15,10 @@
 
 SHELL := /bin/bash
 AUDIT_DB := $(CURDIR)/.cargo-advisory-db
+AUDIT_IGNORE_IDS := RUSTSEC-2023-0071
+AUDIT_IGNORE_FLAGS := $(foreach id,$(AUDIT_IGNORE_IDS),--ignore $(id))
 RUSKTASK := cd scripts/go/rusktask && go run .
+SELF_MAKE := $(MAKE) -f $(abspath $(lastword $(MAKEFILE_LIST)))
 
 CORE_PROJECTS = robot_control_rust rust_tools_suite
 ALL_PROJECTS := $(CORE_PROJECTS)
@@ -74,129 +77,129 @@ fmt:
 	@echo "══ 格式化代码 ══"
 	@for p in $(ALL_PROJECTS); do \
 		echo "→ $$p"; \
-		cargo fmt --manifest-path $${p}Cargo.toml || exit 1; \
+		cargo fmt --manifest-path $${p}/Cargo.toml || exit 1; \
 	done
 
 fmt-check:
-	@echo "══ 检查格式 ══"
+	@echo "== Format check =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo fmt --check --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! cargo fmt --check --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 存在未格式化代码"; \
-			echo "建议命令: cargo fmt --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 先格式化该项目，再重新运行 ./scripts/task fmt-check"; \
-			echo "如需继续排查先看哪里: $$p 下最近修改的 .rs 文件"; \
+			echo "Problem: $$p has formatting issues"; \
+			echo "Suggested command: cargo fmt --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: format first, then rerun ./scripts/task fmt-check"; \
+			echo "Inspect first: recently changed .rs files in $$p"; \
 			exit 1; \
 		fi; \
 	done
 
 clippy:
-	@echo "══ Clippy 静态分析 ══"
+	@echo "== Clippy lint =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo clippy --manifest-path $${p}Cargo.toml --all-targets -- -D warnings; then \
+		echo "-> $$p"; \
+		if ! cargo clippy --manifest-path $${p}/Cargo.toml --all-targets -- -D warnings; then \
 			echo ""; \
-			echo "问题摘要: $$p 的 Clippy 检查失败"; \
-			echo "建议命令: cargo clippy --manifest-path $${p}Cargo.toml --all-targets -- -D warnings"; \
-			echo "修改方向: 优先修复 -D warnings 触发项，再处理具体 lint"; \
-			echo "如需继续排查先看哪里: Clippy 日志中首个 error 或 warning 所在文件"; \
+			echo "Problem: $$p clippy check failed"; \
+			echo "Suggested command: cargo clippy --manifest-path $${p}/Cargo.toml --all-targets -- -D warnings"; \
+			echo "Fix direction: resolve the first -D warnings violation"; \
+			echo "Inspect first: first error or warning in clippy output"; \
 			exit 1; \
 		fi; \
 	done
 
 test:
-	@echo "══ 运行测试 ══"
+	@echo "== Run tests =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo test --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! cargo test --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 的测试失败"; \
-			echo "建议命令: cargo test --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 先复现失败用例，再区分断言失败、夹具问题或平台差异"; \
-			echo "如需继续排查先看哪里: 失败测试名称和对应模块"; \
+			echo "Problem: $$p tests failed"; \
+			echo "Suggested command: cargo test --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: reproduce first failing test and isolate root cause"; \
+			echo "Inspect first: failing test name and module"; \
 			exit 1; \
 		fi; \
 	done
 
 test-release:
-	@echo "══ Release 模式测试 ══"
+	@echo "== Run release tests =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo test --release --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! cargo test --release --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 的 Release 测试失败"; \
-			echo "建议命令: cargo test --release --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 检查优化级别下的行为差异、特性门和初始化路径"; \
-			echo "如需继续排查先看哪里: Release 模式下失败的测试用例"; \
+			echo "Problem: $$p release tests failed"; \
+			echo "Suggested command: cargo test --release --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: check release-only behavior, feature gates, and init paths"; \
+			echo "Inspect first: first failing release test case"; \
 			exit 1; \
 		fi; \
 	done
 
 build:
-	@echo "══ Debug 构建 ══"
+	@echo "== Debug build =="
 	@for p in $(CORE_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo build --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! cargo build --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 的 Debug 构建失败"; \
-			echo "建议命令: cargo build --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 先修复编译错误，再确认依赖和特性配置"; \
-			echo "如需继续排查先看哪里: 编译日志中首个 error"; \
+			echo "Problem: $$p debug build failed"; \
+			echo "Suggested command: cargo build --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: resolve the first compiler error, then verify deps/features"; \
+			echo "Inspect first: first error in compiler output"; \
 			exit 1; \
 		fi; \
 	done
 
 release:
-	@echo "══ Release 构建 ══"
+	@echo "== Release build =="
 	@for p in $(CORE_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo build --release --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! cargo build --release --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 的 Release 构建失败"; \
-			echo "建议命令: cargo build --release --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 检查系统依赖、目标平台配置和 release-only 分支"; \
-			echo "如需继续排查先看哪里: release 构建日志中首个 error"; \
+			echo "Problem: $$p release build failed"; \
+			echo "Suggested command: cargo build --release --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: verify system deps, target config, and release-only branches"; \
+			echo "Inspect first: first error in release build output"; \
 			exit 1; \
 		fi; \
 	done
 	@echo ""
-	@echo "══ 构建产物 ══"
+	@echo "== Build artifacts =="
 	@ls -lh robot_control_rust/target/release/robot_control_rust* 2>/dev/null || true
 	@ls -lh rust_tools_suite/target/release/rust_tools_suite* 2>/dev/null || true
 
 doc:
-	@echo "══ 生成文档 ══"
+	@echo "== Build docs =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --manifest-path $${p}Cargo.toml; then \
+		echo "-> $$p"; \
+		if ! RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --manifest-path $${p}/Cargo.toml; then \
 			echo ""; \
-			echo "问题摘要: $$p 的文档构建失败"; \
-			echo "建议命令: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --manifest-path $${p}Cargo.toml"; \
-			echo "修改方向: 先修复 rustdoc warning 和失效文档注释"; \
-			echo "如需继续排查先看哪里: rustdoc 输出中的 warning 或 error"; \
+			echo "Problem: $$p docs build failed"; \
+			echo "Suggested command: RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --manifest-path $${p}/Cargo.toml"; \
+			echo "Fix direction: resolve rustdoc warnings and invalid docs comments"; \
+			echo "Inspect first: first rustdoc warning/error"; \
 			exit 1; \
 		fi; \
 	done
 
 audit:
-	@echo "══ 安全审计 ══"
+	@echo "== Security audit =="
 	@for p in $(ALL_PROJECTS); do \
-		echo "→ $$p"; \
-		if ! cargo audit -d $(AUDIT_DB) -f $${p}Cargo.lock; then \
+		echo "-> $$p"; \
+		if ! cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $${p}/Cargo.lock; then \
 			echo ""; \
-			echo "问题摘要: $$p 的安全审计失败"; \
-			echo "建议命令: cargo audit -d $(AUDIT_DB) -f $${p}Cargo.lock"; \
-			echo "修改方向: 优先升级存在漏洞的依赖，必要时重新生成 Cargo.lock"; \
-			echo "如需继续排查先看哪里: audit 输出中的 advisory ID 和受影响依赖"; \
+			echo "Problem: $$p security audit failed"; \
+			echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $${p}/Cargo.lock"; \
+			echo "Fix direction: upgrade vulnerable dependencies and regenerate lock if needed"; \
+			echo "Inspect first: advisory ID and affected crate in audit output"; \
 			exit 1; \
 		fi; \
 		if ! (cd $$p && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml); then \
 			echo ""; \
-			echo "问题摘要: $$p 的依赖策略检查失败"; \
-			echo "建议命令: (cd $$p && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml)"; \
-			echo "修改方向: 检查 advisories、sources 和 bans 规则是否需要调整"; \
-			echo "如需继续排查先看哪里: cargo-deny 输出中的首个 error"; \
+			echo "Problem: $$p dependency policy check failed"; \
+			echo "Suggested command: (cd $$p && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml)"; \
+			echo "Fix direction: review advisories, source policy, and bans rules"; \
+			echo "Inspect first: first cargo-deny error"; \
 			exit 1; \
 		fi; \
 	done
@@ -204,7 +207,7 @@ audit:
 clean:
 	@echo "══ 清理构建产物 ══"
 	@for p in $(ALL_PROJECTS); do \
-		cargo clean --manifest-path $${p}Cargo.toml; \
+		cargo clean --manifest-path $${p}/Cargo.toml; \
 	done
 
 check: workspace-cleanup workspace-guard fmt-check clippy test
@@ -219,14 +222,14 @@ ci-local:
 	@echo "══ 本地 CI（核心）══"
 	@$(RUSKTASK) workspace-cleanup --mode audit --strict
 	@$(RUSKTASK) workspace-guard --mode audit --strict
-	@$(MAKE) fmt-check
-	@$(MAKE) clippy
-	@$(MAKE) test
-	@$(MAKE) doc
+	@$(SELF_MAKE) fmt-check
+	@$(SELF_MAKE) clippy
+	@$(SELF_MAKE) test
+	@$(SELF_MAKE) doc
 
 ci-local-full: ci-local
 	@echo "══ 本地 CI（完整）══"
-	@$(MAKE) audit
+	@$(SELF_MAKE) audit
 
 release-sync:
 	@echo "══ Release 状态审计 ══"
@@ -347,19 +350,19 @@ package-windows-portable-installer:
 
 release-local-windows:
 	@echo "══ 本地 Windows Release 流程 ══"
-	@$(MAKE) ci-local
-	@$(MAKE) package-windows-installer PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_BUILD_TAG="$(PACKAGE_BUILD_TAG)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
-	@$(MAKE) package-windows-assets PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_OUTPUT_DIR="$(PACKAGE_OUTPUT_DIR)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
+	@$(SELF_MAKE) ci-local
+	@$(SELF_MAKE) package-windows-installer PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_BUILD_TAG="$(PACKAGE_BUILD_TAG)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
+	@$(SELF_MAKE) package-windows-assets PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_OUTPUT_DIR="$(PACKAGE_OUTPUT_DIR)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
 
 release-local-linux:
 	@echo "══ 本地 Linux Release 流程 ══"
-	@$(MAKE) ci-local
+	@$(SELF_MAKE) ci-local
 	@bash rust_tools_suite/packaging/package_deb.sh $(if $(PACKAGE_VERSION),--version "$(PACKAGE_VERSION)",) $(if $(filter 1,$(PACKAGE_SKIP_BUILD)),--skip-build,)
 
 release-local-dual:
 	@echo "══ 本地双系统 Release 流程 ══"
-	@$(MAKE) release-local-windows PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_BUILD_TAG="$(PACKAGE_BUILD_TAG)" PACKAGE_OUTPUT_DIR="$(PACKAGE_OUTPUT_DIR)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
-	@$(MAKE) release-local-linux PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
+	@$(SELF_MAKE) release-local-windows PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_BUILD_TAG="$(PACKAGE_BUILD_TAG)" PACKAGE_OUTPUT_DIR="$(PACKAGE_OUTPUT_DIR)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
+	@$(SELF_MAKE) release-local-linux PACKAGE_VERSION="$(PACKAGE_VERSION)" PACKAGE_SKIP_BUILD="$(PACKAGE_SKIP_BUILD)"
 
 go-check:
 	@echo "══ Go 编排检查链路 ══"

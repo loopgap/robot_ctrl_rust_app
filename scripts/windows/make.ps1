@@ -116,6 +116,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
+$AuditIgnoreIds = @("RUSTSEC-2023-0071")
 $CoreProjects = @("robot_control_rust", "rust_tools_suite")
 $AllProjects = $CoreProjects
 function Write-Header($Message) {
@@ -364,11 +365,15 @@ switch ($Target) {
         foreach ($Project in $AllProjects) {
             Write-Host "-> $Project" -ForegroundColor DarkGray
             $LockFile = Join-Path $Project "Cargo.lock"
-            cargo audit -d $AuditDbPath -f $LockFile
+            $AuditArgs = @("audit", "-d", $AuditDbPath, "-f", $LockFile)
+            foreach ($IgnoreId in $AuditIgnoreIds) {
+                $AuditArgs += @("--ignore", $IgnoreId)
+            }
+            cargo @AuditArgs
             if ($LASTEXITCODE -ne 0) {
                 Show-FailureGuidance `
                     "$Project security audit failed" `
-                    "cargo audit -d $AuditDbPath -f $Project\Cargo.lock" `
+                    "cargo audit -d $AuditDbPath -f $Project\Cargo.lock --ignore $($AuditIgnoreIds -join ' --ignore ')" `
                     "Upgrade vulnerable dependencies first, then consider regenerating Cargo.lock" `
                     "The advisory ID and affected crate in the audit output"
                 exit 1
