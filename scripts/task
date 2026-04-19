@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+
+UNAME_S=$(uname -s 2>/dev/null || echo unknown)
+
+run_make() {
+  if command -v make >/dev/null 2>&1; then
+    cd "$REPO_ROOT"
+    exec make -f "$SCRIPT_DIR/Makefile" "$@"
+  fi
+
+  if command -v mingw32-make >/dev/null 2>&1; then
+    cd "$REPO_ROOT"
+    exec mingw32-make -f "$SCRIPT_DIR/Makefile" "$@"
+  fi
+
+  if command -v mingw32-make.exe >/dev/null 2>&1; then
+    cd "$REPO_ROOT"
+    exec mingw32-make.exe -f "$SCRIPT_DIR/Makefile" "$@"
+  fi
+
+  echo "make command is required on Unix-like systems" >&2
+  exit 3
+}
+
+case "$UNAME_S" in
+  Linux*|Darwin*)
+    run_make "$@"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    has_make_style_arg=0
+    for arg in "$@"; do
+      case "$arg" in
+        *=*)
+          has_make_style_arg=1
+          break
+          ;;
+      esac
+    done
+
+    if [ "$has_make_style_arg" -eq 1 ]; then
+      run_make "$@"
+    fi
+
+    if command -v pwsh >/dev/null 2>&1; then
+      exec pwsh -NoProfile -File "$SCRIPT_DIR/make.ps1" "$@"
+    elif command -v powershell >/dev/null 2>&1; then
+      exec powershell -NoProfile -File "$SCRIPT_DIR/make.ps1" "$@"
+    else
+      run_make "$@"
+    fi
+    ;;
+  *)
+    run_make "$@"
+    ;;
+esac

@@ -24,8 +24,8 @@ cargo run --release --manifest-path rust_tools_suite/Cargo.toml
 ## 本地验证
 
 ```powershell
-.\make.ps1 workflow-seal
-.\make.ps1 check
+.\scripts\task.ps1 workflow-seal
+.\scripts\task.ps1 check
 cargo test --manifest-path robot_control_rust/Cargo.toml
 cargo test --manifest-path rust_tools_suite/Cargo.toml
 ```

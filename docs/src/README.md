@@ -37,7 +37,7 @@ Rust Serial 工作区是一个统一的、**极致性能与高度智能化**的 
 
 ### 🔄 智能 Git 工作流
 
-- `smart-bump.ps1` 支持 Semantic Versioning 自动升号与全量生成 Changelog
+- `rusktask smart-bump` 支持 Semantic Versioning 自动升号与全量生成 Changelog
 - 根目录脚本统一执行检查、发布审计与工作区守卫
 - 本地 Git Hooks 拦截性能退化
 
@@ -98,7 +98,7 @@ cargo clippy --all-targets
 cargo test
 
 # 一键预检 (Windows)
-.\make.ps1 preflight
+.\scripts\task.ps1 preflight
 ```
 
 ## 失败处理规范

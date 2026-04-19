@@ -40,7 +40,7 @@
 - [x] `cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings`
 - [x] `cargo clippy --manifest-path rust_tools_suite/Cargo.toml --all-targets -- -D warnings`
 - [x] `cargo test --manifest-path rust_tools_suite/Cargo.toml`
-- [x] `./make.ps1 check`
+- [x] `./scripts/task.ps1 check`
 - [x] Local smoke equivalent passed (`--version`, `--help`, `plain_start >= 2s`)
 - [ ] Remote release workflow passed for reissued `v0.1.7`
 - [ ] Remote assets verified (robot/suite/setup/checksums)

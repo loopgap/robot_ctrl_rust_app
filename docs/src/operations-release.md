@@ -11,14 +11,14 @@
 3. 本地质量门禁通过：
 
 ```powershell
-.\make.ps1 workflow-seal
-.\make.ps1 check
+.\scripts\task.ps1 workflow-seal
+.\scripts\task.ps1 check
 ```
 
 4. 发布状态一致性审计通过（tag/发布说明/归档）：
 
 ```powershell
-.\make.ps1 release-sync
+.\scripts\task.ps1 release-sync
 ```
 
 ## 标准发布流程
@@ -26,22 +26,28 @@
 1. 生成版本提交与 Tag：
 
 ```powershell
-.\scripts\smart-bump.ps1 -Part patch
+.\scripts\task.ps1 smart-bump -BumpPart patch
 ```
 
 2. 推送分支与 Tag（可按需要跳过本地 hook）：
 
 ```powershell
-.\scripts\smart-bump.ps1 -Part patch -Push -NoVerify
+.\scripts\task.ps1 smart-bump -BumpPart patch -BumpPush -BumpNoVerify
 ```
 
-3. 等待 Release 工作流完成，确认资产：
+3. 发布前对说明文件执行严格校验：
+
+```powershell
+.\scripts\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_vX.Y.Z.md -ReleaseNotesMode release
+```
+
+4. 等待 Release 工作流完成，确认资产：
 - robot_control_rust_windows_x64_portable.zip
 - rust_tools_suite_windows_x64_portable.zip
 - RobotControlSuite_Setup.exe
 - checksums-sha256.txt
 
-4. 确认远端 Release 正文与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 一致（正文以该文件为准）。
+5. 确认远端 Release 正文与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 一致（正文以该文件为准）。
 
 ## 目录约定
 
@@ -55,19 +61,19 @@
 标准升版脚本会自动更新发布索引；也可手动重建：
 
 ```powershell
-.\scripts\update-release-index.ps1
+.\scripts\task.ps1 release-index
 ```
 
 如需批量清理无效本地迭代残留并归一化：
 
 ```powershell
-.\make.ps1 release-sync-apply
+.\scripts\task.ps1 release-sync-apply
 ```
 
 每次发布前后建议执行一次过程文件清理与目录守卫：
 
 ```powershell
-.\make.ps1 workflow-seal
+.\scripts\task.ps1 workflow-seal
 ```
 
 治理策略来源：`scripts/workspace-governance.json`，用于统一约束目录结构与过程文件路径。
@@ -77,16 +83,19 @@
 默认会从统一目录读取发布说明和资产：
 
 ```powershell
-pwsh ./robot_control_rust/scripts/create_github_release.ps1 -Tag vX.Y.Z
+.\scripts\task.ps1 release-publish -ReleaseTag vX.Y.Z
 ```
 
 如需覆盖路径：
 
 ```powershell
-pwsh ./robot_control_rust/scripts/create_github_release.ps1 \
-	-Tag vX.Y.Z \
-	-BodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
-	-Assets release_artifacts/robot_control_rust_windows_x64_portable.zip,release_artifacts/rust_tools_suite_windows_x64_portable.zip,release_artifacts/RobotControlSuite_Setup.exe,release_artifacts/checksums-sha256.txt
+.\scripts\task.ps1 release-publish \
+	-ReleaseTag vX.Y.Z \
+	-ReleaseBodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
+	-ReleaseAsset release_artifacts/robot_control_rust_windows_x64_portable.zip \
+	-ReleaseAsset release_artifacts/rust_tools_suite_windows_x64_portable.zip \
+	-ReleaseAsset release_artifacts/RobotControlSuite_Setup.exe \
+	-ReleaseAsset release_artifacts/checksums-sha256.txt
 ```
 
 ## 质量门禁说明
@@ -98,6 +107,7 @@ Release 工作流会在发布前执行：
 3. Windows 构建 + smoke test（参数启动、超时、退出码）。
 4. 资产存在性校验。
 5. Release 正文文件存在性与非空校验。
+6. Release 正文结构与完成度校验（无占位文本、Verification 勾选完成）。
 
 ## 发布后验收
 

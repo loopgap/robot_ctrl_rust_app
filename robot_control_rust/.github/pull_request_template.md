@@ -9,7 +9,7 @@
 - [ ] 文档
 
 ## 本地验证（提交前）
-- [ ] 已执行 `scripts/preflight.ps1`（Windows）或 `scripts/preflight.sh`（Linux/macOS）
+- [ ] 已执行 `.\scripts\task.ps1 preflight`（Windows）或 `./scripts/task preflight`（Linux/macOS）
 - [ ] `cargo fmt --check` 通过
 - [ ] `cargo test` 与 `cargo test --release` 通过
 - [ ] `cargo clippy --all-targets -- -D warnings` 通过

@@ -86,9 +86,8 @@ robot_control_rust/
 ├── ARCHITECTURE_AND_USAGE.md          # 详细架构文档
 ├── .cargo/config.toml                 # 平台链接优化
 ├── scripts/
-│   ├── preflight.ps1                  # Windows 本地预检
 │   ├── preflight.sh                   # Linux/macOS 本地预检
-│   └── package_windows_x64_iexpress_installer.ps1
+│   └── (packaging 已迁移至 scripts/go/rusktask)
 ├── src/
 │   ├── main.rs                        # 入口 + egui 全局样式 + 动效 + 路由
 │   ├── app.rs                         # 状态中心 AppState / UiState
@@ -178,10 +177,10 @@ cargo fmt --check   # 代码格式检查
 
 ```powershell
 # Windows
-./scripts/preflight.ps1
+./scripts/task.ps1 preflight
 
 # Linux / macOS
-chmod +x ./scripts/preflight.sh && ./scripts/preflight.sh
+./scripts/task preflight
 ```
 
 ---
@@ -637,13 +636,14 @@ GitHub Actions 工作流 `.github/workflows/platform-validation.yml`：
 推荐一键脚本（Windows）：
 
 ```powershell
-./scripts/release_slim.ps1
+cd ../scripts/go/rusktask
+go run . build-release-slim
 ```
 
 可选参数：
 
-- `-SkipTests`：跳过测试（仅格式/可选clippy/构建）
-- `-SkipClippy`：跳过 clippy
+- `--skip-tests`：跳过测试（仅格式/可选clippy/构建）
+- `--skip-clippy`：跳过 clippy
 
 若仅需交付可运行 Release 版本，建议在构建后执行：
 
