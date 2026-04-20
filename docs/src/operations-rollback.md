@@ -19,27 +19,27 @@ $env:GITHUB_TOKEN = "<token>"
 ### 2) 删除错误 Tag（本地 + 远端）
 
 ```powershell
-.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -NoVerify
+.\scripts\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackDeleteRemoteTag -RollbackDeleteLocalTag -RollbackNoVerify
 ```
 
 ### 3) 回退最近版本提交（可选）
 
 ```powershell
-.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -RevertLastCommit -PushRevert -NoVerify
+.\scripts\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackRevertLastCommit -RollbackPushRevert -RollbackNoVerify
 ```
 
 ### 4) 一次性回滚（常用）
 
 ```powershell
-.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRelease -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
+.\scripts\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackDeleteRelease -RollbackDeleteRemoteTag -RollbackDeleteLocalTag -RollbackRevertLastCommit -RollbackPushRevert -RollbackNoVerify
 ```
 
 ## 回滚后检查
 
 1. 远端 Tag 不存在。
 2. Release 页面无对应版本或仅保留 draft 记录。
-3. main/master 分支版本号恢复到预期。
-4. 重新执行 .\make.ps1 check 后再发版。
+3. main 分支版本号恢复到预期。
+4. 重新执行 .\scripts\task.ps1 check 后再发版。
 
 ## 目录与审计说明
 
@@ -50,16 +50,16 @@ $env:GITHUB_TOKEN = "<token>"
 5. `release_artifacts/` 与 `smoke_logs/` 为流程临时产物，失败后可直接清理。
 
 ```powershell
-.\make.ps1 release-sync-apply
+.\scripts\task.ps1 release-sync-apply
 ```
 
 失败回滚后建议立即执行：
 
 ```powershell
-.\make.ps1 workflow-seal
+.\scripts\task.ps1 workflow-seal
 ```
 
-`smart-rollback.ps1` 默认会在执行前后运行过程文件清理与目录守卫，并刷新 `release_notes/RELEASE_INDEX.md`。
+`smart-rollback`（rusktask）默认会在执行前后运行过程文件清理与目录守卫，并刷新 `release_notes/RELEASE_INDEX.md`。
 
 ## 注意事项
 

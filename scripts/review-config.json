@@ -1,0 +1,68 @@
+﻿{
+  "version": "1.0.0",
+  "description": "Rust项目自动化审查配置",
+  "tools": {
+    "required": ["cargo", "rustfmt", "clippy"],
+    "optional": ["cargo-audit", "cargo-deny"]
+  },
+  "hooks": {
+    "pre-commit": {
+      "enabled": true,
+      "description": "提交前基础检查",
+      "checks": ["git-workflow", "rustfmt", "clippy-quick"]
+    },
+    "pre-push": {
+      "enabled": true,
+      "description": "推送前严格检查",
+      "checks": ["git-workflow", "rust-review-full", "release-build", "doc-check"]
+    },
+    "commit-msg": {
+      "enabled": true,
+      "description": "提交信息格式验证",
+      "pattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\\(.+\\))?!?: .{1,100}$"
+    }
+  },
+  "rust": {
+    "fmt": {
+      "check": true,
+      "fix": false
+    },
+    "clippy": {
+      "denyWarnings": true,
+      "pedantic": false,
+      "nursery": false
+    },
+    "test": {
+      "run": true,
+      "allFeatures": false
+    },
+    "audit": {
+      "run": true,
+      "failOnWarning": true
+    }
+  },
+  "git": {
+    "protectedBranches": ["main"],
+    "branchNaming": {
+      "patterns": [
+        "^main$",
+        "^develop$"
+      ]
+    },
+    "commitTypes": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]
+  },
+  "workspaceGovernance": {
+    "policyFile": "scripts/workspace-governance.json",
+    "sealCommand": ".\\scripts\\windows\\task.ps1 workflow-seal",
+    "requiredPreCommitChecks": [
+      "process-file-residue-audit",
+      "workspace-path-policy"
+    ],
+    "requiredPrePushChecks": [
+      "process-file-residue-audit",
+      "workspace-path-policy",
+      "git-workflow",
+      "rust-review-full"
+    ]
+  }
+}

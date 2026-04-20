@@ -13,7 +13,7 @@ ignore = [
 
 [bans]
 multiple-versions = "warn"
-wildcards = "warn"
+wildcards = "deny"
 highlight = "all"
 
 [sources]

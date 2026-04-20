@@ -1,0 +1,103 @@
+name: Platform Validation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: platform-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: platform-validation
+
+      - name: Install Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxkbcommon-dev \
+            libwayland-dev \
+            libgl1-mesa-dev \
+            libasound2-dev
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Build (debug)
+        run: cargo build
+
+      - name: Unit tests
+        run: cargo test
+
+      - name: Release tests
+        run: cargo test --release
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Release build
+        run: cargo build --release
+
+      - name: Collect release binary size
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci_artifacts
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            bin="target/release/robot_control_rust.exe"
+            label="robot_control_rust.exe"
+          else
+            bin="target/release/robot_control_rust"
+            label="robot_control_rust"
+          fi
+
+          if [ -f "$bin" ]; then
+            size=$(wc -c < "$bin" | tr -d '[:space:]')
+            echo "$label,$size" > ci_artifacts/release-size.txt
+          else
+            echo "binary_not_found" > ci_artifacts/release-size.txt
+            exit 1
+          fi
+
+      - name: Upload size artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-size-${{ matrix.os }}
+          path: ci_artifacts/release-size.txt

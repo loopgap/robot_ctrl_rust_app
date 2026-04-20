@@ -144,7 +144,8 @@ cargo test --no-fail-fast
 cargo fmt
 
 # 或使用审查脚本
-.\scripts\review.ps1 -Fix
+cd .\scripts\go\rusktask
+go run . review --quick --fix
 ```
 
 ## 应用功能问题
@@ -211,7 +212,7 @@ telnet <HOST> <PORT>
 
 ```powershell
 # 完整预检
-.\scripts\preflight.ps1
+.\scripts\task.ps1 preflight
 
 # 格式检查
 cargo fmt --check

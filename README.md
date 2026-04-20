@@ -14,7 +14,7 @@
 
 - **深度的双系统支持 (Win8+ & Ubuntu 20+)**：在主应用与工具套件中引入定制的 Wayland/X11 后端自动降级策略，并在文件 I/O 与串口枚举底层构建带回退重试的智能防呆机制，彻底消除死锁。
 - **无阻塞的并发通信基架 (Non-blocking I/O)**：通过 `ConnectionProvider` 统一收拢协议层，利用 `std::sync::mpsc` 与 `thread::spawn` 将计算与通信从 UI 渲染帧中完全剥离，界面响应刷新再创新高。
-- **智能 Git 工作流**：`smart-bump.ps1` 支持 SemVer 升号、annotated tag 和发布说明草稿生成。
+- **智能 Git 工作流**：`rusktask smart-bump` 支持 SemVer 升号、annotated tag 和发布说明草稿生成。
 - **极致性能 UI**：使用纯原生的 `egui` (即时模式渲染硬件加速) 提供流畅的实时桌面体验，减少内存占用。
 - **统一桌面工具套件**：`rust_tools_suite` 聚合 10 款高频工具，提供双语界面、响应式布局、文件导入导出与闭环流程面板。
 - **跨平台融合体验 (C-FFI)**：控制引擎协议解析导出为 C 动态库 (`.dll`/`.so`)，可被 Python/C++ 直接调用。
@@ -22,13 +22,17 @@
 
 ## 子目录导航
 
-- `robot_control_rust`
-  主应用，覆盖工业控制、协议调试、可视化与联调能力。
-  文档：[`robot_control_rust/README.md`](robot_control_rust/README.md)
+- `crates/robot_control`
+  机器人控制主应用源码（workspace crate）。
 
-- `rust_tools_suite`
-  当前工作区唯一保留的聚合式桌面工具目录，统一提供 10 款高频工具、双语支持和响应式工作流。
-  文档：[`rust_tools_suite/README.md`](rust_tools_suite/README.md)
+- `crates/tools_suite`
+  聚合工具套件源码（workspace crate）。
+
+- `crates/devtools`
+  工作区验证与发布辅助工具（workspace crate）。
+
+- `robot_control_rust`
+  历史兼容目录，保留补充说明文档与迁移参考。
 
 - `docs`
   使用 `mdBook` 生成的在线交互式说明站点，覆盖安装、操作、发布与排障。
@@ -40,22 +44,22 @@
 
 | 工作流 | 触发条件 | 智能特性概览 |
 |--------|----------|------|
-| **CI** | PR / push 到 `main`/`develop` | 格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
+| **CI** | PR / push 到 `main`/`develop` | Workspace 校验、格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | `cargo-audit` 与 `cargo-deny` 严格门禁 |
-| **Release** | push tag `v*` | 校验 tag 策略后发布可用 Windows 资产（`robot_control_rust_windows_x64_portable.zip`、`rust_tools_suite_windows_x64_portable.zip`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
+| **Release** | push tag `v*` | 校验 tag 策略后发布可用资产（`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
 
 ### 本地终端与交互测试
 
 ```powershell
 # Windows PowerShell
-.\make.ps1 check
-.\scripts\smart-bump.ps1 -Part patch
+.\scripts\task.ps1 check
+.\scripts\task.ps1 smart-bump -BumpPart patch
 
 # 在确认无误后推送分支和 tag（将触发 Release 工作流）
-.\scripts\smart-bump.ps1 -Part patch -Push
+.\scripts\task.ps1 smart-bump -BumpPart patch -BumpPush
 
 # 直接运行统一工具套件
-cargo run --release --manifest-path rust_tools_suite/Cargo.toml
+cargo run --release -p tools_suite
 ```
 
 ## 失败后的建议格式与智能修复
@@ -70,17 +74,29 @@ cargo run --release --manifest-path rust_tools_suite/Cargo.toml
 
 ## Git Hooks
 
-运行 `.\scripts\install-hooks.ps1` 安装本地钩子。钩子会在提交或推送前执行工作流校验和性能退化拦截。
+运行 `.\scripts\task.ps1 go-install-hooks` 安装本地钩子。卸载可执行 `cd scripts/go/rusktask; go run . install-hooks --uninstall`。
 
 ## 发布流程
 
-1. 在 `main/master` 分支完成并通过 `.\make.ps1 preflight`。
-2. 执行 `.\scripts\smart-bump.ps1 -Part patch` 生成版本提交与 tag。
+1. 在 `main` 分支完成并通过 `.\scripts\task.ps1 preflight`。
+2. 执行 `.\scripts\task.ps1 smart-bump -BumpPart patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
-4. 在 Release 页面验证四个必需资产：`robot_control_rust_windows_x64_portable.zip`、`rust_tools_suite_windows_x64_portable.zip`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`。
+4. 在 Release 页面验证必需资产：`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`。
+
+## Release v0.2.1 验证清单
+
+当发布标签为 `v0.2.1` 时，至少完成以下核验：
+
+1. 校验 Tag 归属：`v0.2.1` 必须可追溯到 `origin/main`。
+2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_v0.2.1.md` 结构校验。
+3. 校验资产完整性：
+  - `robot_control_suite_*_windows_x64-setup.exe`
+  - `robot_control_suite_*_amd64.deb`
+  - `checksums-sha256.txt`
+4. 下载并对比 SHA256，确保与 `checksums-sha256.txt` 一致。
 
 发布失败可用以下命令回滚：
 
 ```powershell
-.\scripts\smart-rollback.ps1 -Tag vX.Y.Z -DeleteRemoteTag -DeleteLocalTag -RevertLastCommit -PushRevert -NoVerify
+.\scripts\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackDeleteRemoteTag -RollbackDeleteLocalTag -RollbackRevertLastCommit -RollbackPushRevert -RollbackNoVerify
 ```
