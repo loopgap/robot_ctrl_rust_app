@@ -21,7 +21,7 @@ go run . preflight
 - `audit [--ignore <ID>]`: cargo-audit + cargo-deny checks.
 - `check`: fmt --check + clippy + test.
 - `preflight`: workspace cleanup + guard + check + release test/build + doc.
-- `git-check [--pre-push] [--commit-msg-file <path>]`: git workflow guard (branch policy, commit message format, staged-file policy, remote sync in pre-push mode).
+- `git-check [--pre-push] [--commit-msg-file <path>]`: git workflow guard (strictly allows only `main`/`develop`, commit message format, staged-file policy, remote sync in pre-push mode).
 - `rust-review [--fix] [--skip-tests] [--skip-audit] [--project <name>]...`: Rust review pipeline per selected project(s).
 - `review [--quick] [--fix] [--before-push] [--skip-tests] [--skip-audit] [--project <name>]...`: combined review orchestration.
 - `install-hooks [--uninstall] [--force]`: install/uninstall managed Git hooks that call rusktask directly.
@@ -30,7 +30,7 @@ go run . preflight
 - `pr-helper [--check|--create|--merge] [--draft] [--title <text>] [--body <text>] [--base <branch>] [--head <branch>] [--auto-fill]`: pull request readiness/create/merge helper.
 - `docs-bundle [--output-root <dir>] [--create-zip]`: build mdBook + help bundle for offline distribution.
 - `release-publish [--owner <owner>] [--repo <repo>] --tag <tag> [--release-name <name>] [--body-file <path>] [--asset <path>]... [--prerelease] [--draft] [--prune-extra-assets]`: create/update GitHub release and upload assets.
-- `build-release-slim [--skip-tests] [--skip-clippy]`: run slim release pipeline for `robot_control_rust` and trim transient target directories.
+- `build-release-slim [--skip-tests] [--skip-clippy]`: run slim release pipeline for workspace crate `robot_control` and trim transient target directories.
 - `release-sync [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote] [--strict]`: release tags/notes state audit and normalization.
 - `workflow-seal [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote]`: one-command workflow seal pipeline.
 - `update-release-index [--skip-remote]`: rebuild release_notes/RELEASE_INDEX.md.

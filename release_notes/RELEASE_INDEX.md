@@ -2,6 +2,8 @@
 
 此文件由 scripts/go/rusktask update-release-index 生成，用于记录版本、Tag、本地/远端 Tag 状态与归档状态。
 
+发布 `v0.2.1` 时，请额外核验：Tag 祖先归属 `origin/main`、`RELEASE_NOTES_v0.2.1.md` 通过结构校验、并确认 `.exe/.deb/checksums-sha256.txt` 资产齐全。
+
 | Version | Tag | Local Tag Status | Remote Tag Status | Release Notes | Local Archive Status | Local Archive Path |
 |---|---|---|---|---|---|---|
 | 0.2.0 | v0.2.0 | present | unknown | - | not-archived | - |

@@ -1,5 +1,8 @@
 # Robot Control Rust
 
+> 迁移说明：运行时代码已迁移到 workspace crate `crates/robot_control`。
+> 当前目录保留文档与历史兼容说明，构建/运行请在仓库根目录执行 `cargo run -p robot_control`。
+
 > 纯 Rust 实现的工业级机器人控制与多协议调试平台
 >
 > Pure-Rust industrial robot control & multi-protocol debugging platform

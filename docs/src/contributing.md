@@ -35,21 +35,18 @@ cd robot_ctrl_rust_app
 git remote add upstream https://github.com/loopgap/robot_ctrl_rust_app.git
 ```
 
-### 4. 创建功能分支
+### 4. 切换到开发分支
 
 ```powershell
-# 根据要做的贡献选择分支类型
-git checkout -b feature/your-feature    # 新功能
-git checkout -b fix/your-fix           # Bug 修复
-git checkout -b docs/your-docs         # 文档更新
-git checkout -b refactor/your-refactor # 代码重构
+git checkout develop
+git pull --ff-only origin develop
 ```
 
 ### 5. 进行开发
 
 ```powershell
-# 确保在正确的分支上开发
-git checkout feature/your-feature
+# 确保在 develop 上开发
+git checkout develop
 
 # 进行代码修改
 # ... 修改代码 ...
@@ -84,18 +81,16 @@ git fetch upstream
 # 合并到 main
 git merge upstream/main
 
-# 切换回功能分支
-git checkout feature/your-feature
-
-# 将 main 的变更 rebase 到功能分支
-git rebase main
+# 将 main 的变更合并到 develop（如需同步）
+git checkout develop
+git merge main
 ```
 
 ### 8. 推送分支
 
 ```powershell
-# 推送分支到你的 Fork
-git push origin feature/your-feature
+# 推送 develop
+git push origin develop
 ```
 
 ### 9. 创建 Pull Request
@@ -105,17 +100,11 @@ git push origin feature/your-feature
 3. 填写 PR 描述
 4. 提交 PR
 
-## 分支命名规范
+## 分支使用规范
 
-| 前缀 | 用途 | 示例 |
-|------|------|------|
-| `feature/` | 新功能 | `feature/pid-auto-tuning` |
-| `fix/` | Bug 修复 | `fix/serial-timeout` |
-| `docs/` | 文档更新 | `docs/update-api` |
-| `refactor/` | 代码重构 | `refactor/connection-manager` |
-| `test/` | 测试相关 | `test/add-integration` |
-| `chore/` | 构建/工具 | `chore/update-deps` |
-| `perf/` | 性能优化 | `perf/reduce-memory` |
+- 仅允许 `develop` 与 `main` 两个分支。
+- 日常开发与集成在 `develop`，发布相关操作在 `main`。
+- 不允许创建 `feature/*`、`fix/*`、`release/*`、`master` 等其他分支。
 
 ## 提交信息规范
 

@@ -42,26 +42,18 @@
     }
   },
   "git": {
-    "protectedBranches": ["main", "master", "release/*"],
+    "protectedBranches": ["main"],
     "branchNaming": {
       "patterns": [
-        "^feature/",
-        "^fix/",
-        "^docs/",
-        "^refactor/",
-        "^test/",
-        "^chore/",
         "^main$",
-        "^master$",
-        "^develop$",
-        "^release/"
+        "^develop$"
       ]
     },
     "commitTypes": ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"]
   },
   "workspaceGovernance": {
     "policyFile": "scripts/workspace-governance.json",
-    "sealCommand": ".\\make.ps1 workflow-seal",
+    "sealCommand": ".\\scripts\\windows\\task.ps1 workflow-seal",
     "requiredPreCommitChecks": [
       "process-file-residue-audit",
       "workspace-path-policy"

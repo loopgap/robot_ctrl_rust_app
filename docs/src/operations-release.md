@@ -6,7 +6,7 @@
 
 ## 前置条件
 
-1. 当前分支为 main 或 master。
+1. 当前分支为 main。
 2. 本地工作区干净。
 3. 本地质量门禁通过：
 
@@ -42,9 +42,8 @@
 ```
 
 4. 等待 Release 工作流完成，确认资产：
-- robot_control_rust_windows_x64_portable.zip
-- rust_tools_suite_windows_x64_portable.zip
-- RobotControlSuite_Setup.exe
+- robot_control_suite_*_windows_x64-setup.exe
+- robot_control_suite_*_amd64.deb
 - checksums-sha256.txt
 
 5. 确认远端 Release 正文与本地 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 一致（正文以该文件为准）。
@@ -111,6 +110,12 @@ Release 工作流会在发布前执行：
 
 ## 发布后验收
 
-1. 校验 Release 页面包含 4 个必需资产。
-2. 下载 checksums-sha256.txt 对 portable zip 与 setup 做 SHA256 校验。
+1. 校验 Release 页面包含必需资产（Windows 安装包、Linux deb、checksums）。
+2. 下载 checksums-sha256.txt 并对 .exe/.deb 做 SHA256 校验。
 3. 记录发布链接和版本号到变更日志。
+
+## v0.2.1 专项验证
+
+1. `v0.2.1` Tag 需通过分支祖先校验（可追溯到 `origin/main`）。
+2. `release_notes/RELEASE_NOTES_v0.2.1.md` 必须存在且通过结构校验。
+3. 校验 `checksums-sha256.txt` 包含 .exe 与 .deb 两类资产散列值。
