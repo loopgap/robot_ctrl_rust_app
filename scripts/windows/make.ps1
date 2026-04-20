@@ -117,8 +117,68 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
 $AuditIgnoreIds = @("RUSTSEC-2023-0071")
-$CoreProjects = @("crates\robot_control", "crates\tools_suite")
-$AllProjects = @($CoreProjects + @("crates\robot_core", "crates\devtools"))
+
+function Resolve-ProjectPath {
+    param(
+        [string[]]$Candidates,
+        [bool]$Required = $true
+    )
+
+    foreach ($Candidate in $Candidates) {
+        $manifestPath = Join-Path $RepoRoot "$Candidate\Cargo.toml"
+        if (Test-Path $manifestPath) {
+            return $Candidate
+        }
+    }
+
+    if ($Required) {
+        throw "No valid project manifest found for candidates: $($Candidates -join ', ')"
+    }
+
+    return $null
+}
+
+$CoreProjects = @(
+    (Resolve-ProjectPath -Candidates @("crates\robot_control", "robot_control_rust")),
+    (Resolve-ProjectPath -Candidates @("crates\tools_suite", "rust_tools_suite"))
+)
+
+$AllProjects = @($CoreProjects)
+$OptionalRobotCore = Resolve-ProjectPath -Candidates @("crates\robot_core") -Required $false
+if ($OptionalRobotCore) {
+    $AllProjects += $OptionalRobotCore
+}
+$OptionalDevtools = Resolve-ProjectPath -Candidates @("crates\devtools") -Required $false
+if ($OptionalDevtools) {
+    $AllProjects += $OptionalDevtools
+}
+
+$AuditLockFiles = @()
+$RootLockFile = Join-Path $RepoRoot "Cargo.lock"
+if (Test-Path $RootLockFile) {
+    $AuditLockFiles += $RootLockFile
+}
+foreach ($Project in $CoreProjects) {
+    $ProjectLockFile = Join-Path $RepoRoot "$Project\Cargo.lock"
+    if (Test-Path $ProjectLockFile) {
+        $AuditLockFiles += $ProjectLockFile
+    }
+}
+$AuditLockFiles = @($AuditLockFiles | Select-Object -Unique)
+
+$DenyManifestPaths = @()
+$RootManifest = Join-Path $RepoRoot "Cargo.toml"
+if (Test-Path $RootManifest) {
+    $DenyManifestPaths += $RootManifest
+}
+foreach ($Project in $CoreProjects) {
+    $ProjectManifest = Join-Path $RepoRoot "$Project\Cargo.toml"
+    if (Test-Path $ProjectManifest) {
+        $DenyManifestPaths += $ProjectManifest
+    }
+}
+$DenyManifestPaths = @($DenyManifestPaths | Select-Object -Unique)
+
 function Write-Header($Message) {
     Write-Host "`n== $Message ==" -ForegroundColor Cyan
 }
@@ -345,30 +405,59 @@ switch ($Target) {
     }
     "audit" {
         Write-Header "Run cargo-audit and cargo-deny"
-        Write-Host "-> workspace" -ForegroundColor DarkGray
-        $LockFile = Join-Path $RepoRoot "Cargo.lock"
-        $AuditArgs = @("audit", "-d", $AuditDbPath, "-f", $LockFile)
-        foreach ($IgnoreId in $AuditIgnoreIds) {
-            $AuditArgs += @("--ignore", $IgnoreId)
-        }
-        cargo @AuditArgs
-        if ($LASTEXITCODE -ne 0) {
+        if ($AuditLockFiles.Count -eq 0) {
             Show-FailureGuidance `
-                "workspace security audit failed" `
-                "cargo audit -d $AuditDbPath -f Cargo.lock --ignore $($AuditIgnoreIds -join ' --ignore ')" `
-                "Upgrade vulnerable dependencies first, then consider regenerating Cargo.lock" `
-                "The advisory ID and affected crate in the audit output"
+                "no Cargo.lock file found for security audit" `
+                "cargo audit -d $AuditDbPath -f <path-to-Cargo.lock>" `
+                "Ensure at least one project lockfile exists before running audit" `
+                "Project root and each core project directory"
             exit 1
         }
 
-        cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
-        if ($LASTEXITCODE -ne 0) {
+        foreach ($LockFile in $AuditLockFiles) {
+            Write-Host "-> lock: $LockFile" -ForegroundColor DarkGray
+            $AuditArgs = @("audit", "-d", $AuditDbPath, "-f", $LockFile)
+            foreach ($IgnoreId in $AuditIgnoreIds) {
+                $AuditArgs += @("--ignore", $IgnoreId)
+            }
+            cargo @AuditArgs
+            if ($LASTEXITCODE -ne 0) {
+                Show-FailureGuidance `
+                    "security audit failed for lockfile: $LockFile" `
+                    "cargo audit -d $AuditDbPath -f $LockFile --ignore $($AuditIgnoreIds -join ' --ignore ')" `
+                    "Upgrade vulnerable dependencies first, then regenerate the failing lockfile" `
+                    "The advisory ID and affected crate in the audit output"
+                exit 1
+            }
+        }
+
+        if ($DenyManifestPaths.Count -eq 0) {
             Show-FailureGuidance `
-                "workspace dependency policy check failed" `
-                "cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
-                "Review source policy, advisories, and duplicate dependency bans" `
-                "The first cargo-deny error"
+                "no Cargo.toml manifest found for dependency policy check" `
+                "cargo deny check advisories bans sources --manifest-path <path> --config $RepoRoot\deny.toml" `
+                "Ensure at least one project manifest exists before running cargo-deny" `
+                "Project root and each core project directory"
             exit 1
+        }
+
+        foreach ($ManifestPath in $DenyManifestPaths) {
+            Write-Host "-> manifest: $ManifestPath" -ForegroundColor DarkGray
+            $ManifestDir = Split-Path -Parent $ManifestPath
+            Push-Location $ManifestDir
+            try {
+                cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
+                if ($LASTEXITCODE -ne 0) {
+                    Show-FailureGuidance `
+                        "dependency policy check failed for manifest: $ManifestPath" `
+                        "cd $ManifestDir; cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
+                        "Review source policy, advisories, and duplicate dependency bans" `
+                        "The first cargo-deny error"
+                    exit 1
+                }
+            }
+            finally {
+                Pop-Location
+            }
         }
     }
     "clean" {

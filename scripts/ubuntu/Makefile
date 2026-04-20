@@ -20,8 +20,12 @@ AUDIT_IGNORE_FLAGS := $(foreach id,$(AUDIT_IGNORE_IDS),--ignore $(id))
 RUSKTASK := cd scripts/go/rusktask && go run .
 SELF_MAKE := $(MAKE) -f $(abspath $(lastword $(MAKEFILE_LIST)))
 
-CORE_PROJECTS = crates/robot_control crates/tools_suite
-ALL_PROJECTS := $(CORE_PROJECTS) crates/robot_core crates/devtools
+ROBOT_CONTROL_PROJECT := $(if $(wildcard crates/robot_control/Cargo.toml),crates/robot_control,robot_control_rust)
+TOOLS_SUITE_PROJECT := $(if $(wildcard crates/tools_suite/Cargo.toml),crates/tools_suite,rust_tools_suite)
+CORE_PROJECTS = $(ROBOT_CONTROL_PROJECT) $(TOOLS_SUITE_PROJECT)
+ALL_PROJECTS := $(CORE_PROJECTS) $(if $(wildcard crates/robot_core/Cargo.toml),crates/robot_core,) $(if $(wildcard crates/devtools/Cargo.toml),crates/devtools,)
+AUDIT_LOCK_FILES := $(strip $(if $(wildcard Cargo.lock),Cargo.lock,) $(if $(wildcard $(ROBOT_CONTROL_PROJECT)/Cargo.lock),$(ROBOT_CONTROL_PROJECT)/Cargo.lock,) $(if $(wildcard $(TOOLS_SUITE_PROJECT)/Cargo.lock),$(TOOLS_SUITE_PROJECT)/Cargo.lock,))
+DENY_MANIFESTS := $(strip $(if $(wildcard Cargo.toml),Cargo.toml,) $(if $(wildcard $(ROBOT_CONTROL_PROJECT)/Cargo.toml),$(ROBOT_CONTROL_PROJECT)/Cargo.toml,) $(if $(wildcard $(TOOLS_SUITE_PROJECT)/Cargo.toml),$(TOOLS_SUITE_PROJECT)/Cargo.toml,))
 RELEASE_NOTES_FILE ?=
 RELEASE_NOTES_MODE ?= release
 PACKAGE_VERSION ?=
@@ -184,23 +188,45 @@ doc:
 
 audit:
 	@echo "== Security audit =="
-	@echo "-> workspace"
-	@if ! cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f Cargo.lock; then \
+	@if [ -z "$(AUDIT_LOCK_FILES)" ]; then \
 		echo ""; \
-		echo "Problem: workspace security audit failed"; \
-		echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f Cargo.lock"; \
-		echo "Fix direction: upgrade vulnerable dependencies and regenerate lock if needed"; \
-		echo "Inspect first: advisory ID and affected crate in audit output"; \
+		echo "Problem: no Cargo.lock file found for security audit"; \
+		echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f <path-to-Cargo.lock>"; \
+		echo "Fix direction: ensure at least one project lockfile exists before running audit"; \
+		echo "Inspect first: workspace root and core project directories"; \
 		exit 1; \
 	fi
-	@if ! cargo deny check advisories bans sources --config $(CURDIR)/deny.toml; then \
+	@for lock in $(AUDIT_LOCK_FILES); do \
+		echo "-> lock: $$lock"; \
+		if ! cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $$lock; then \
+			echo ""; \
+			echo "Problem: security audit failed for lockfile $$lock"; \
+			echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $$lock"; \
+			echo "Fix direction: upgrade vulnerable dependencies and regenerate the failing lockfile"; \
+			echo "Inspect first: advisory ID and affected crate in audit output"; \
+			exit 1; \
+		fi; \
+	done
+	@if [ -z "$(DENY_MANIFESTS)" ]; then \
 		echo ""; \
-		echo "Problem: workspace dependency policy check failed"; \
-		echo "Suggested command: cargo deny check advisories bans sources --config $(CURDIR)/deny.toml"; \
-		echo "Fix direction: review advisories, source policy, and bans rules"; \
-		echo "Inspect first: first cargo-deny error"; \
+		echo "Problem: no Cargo.toml manifest found for dependency policy check"; \
+		echo "Suggested command: cargo deny check advisories bans sources --manifest-path <path> --config $(CURDIR)/deny.toml"; \
+		echo "Fix direction: ensure at least one project manifest exists before running cargo-deny"; \
+		echo "Inspect first: workspace root and core project directories"; \
 		exit 1; \
 	fi
+	@for manifest in $(DENY_MANIFESTS); do \
+		echo "-> manifest: $$manifest"; \
+		manifest_dir=$$(dirname "$$manifest"); \
+		if ! (cd "$$manifest_dir" && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml); then \
+			echo ""; \
+			echo "Problem: dependency policy check failed for manifest $$manifest"; \
+			echo "Suggested command: cd $$manifest_dir && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml"; \
+			echo "Fix direction: review advisories, source policy, and bans rules"; \
+			echo "Inspect first: first cargo-deny error"; \
+			exit 1; \
+		fi; \
+	done
 
 clean:
 	@echo "══ 清理构建产物 ══"
