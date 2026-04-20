@@ -64,6 +64,83 @@ var allProjects = []projectDef{
 	},
 }
 
+func resolveProjectCandidate(repoRoot string, required bool, candidates ...projectDef) (projectDef, bool) {
+	for _, candidate := range candidates {
+		manifestPath := filepath.Join(repoRoot, candidate.CargoToml)
+		if fileExists(manifestPath) {
+			return candidate, true
+		}
+	}
+
+	if required && len(candidates) > 0 {
+		return candidates[0], true
+	}
+
+	return projectDef{}, false
+}
+
+func resolvedAllProjects(repoRoot string) []projectDef {
+	projects := make([]projectDef, 0, 4)
+
+	if project, ok := resolveProjectCandidate(repoRoot, true,
+		projectDef{
+			Name:       "robot_control",
+			DirRelPath: filepath.FromSlash("crates/robot_control"),
+			CargoToml:  filepath.FromSlash("crates/robot_control/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("Cargo.lock"),
+		},
+		projectDef{
+			Name:       "robot_control",
+			DirRelPath: filepath.FromSlash("robot_control_rust"),
+			CargoToml:  filepath.FromSlash("robot_control_rust/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("robot_control_rust/Cargo.lock"),
+		},
+	); ok {
+		projects = append(projects, project)
+	}
+
+	if project, ok := resolveProjectCandidate(repoRoot, true,
+		projectDef{
+			Name:       "tools_suite",
+			DirRelPath: filepath.FromSlash("crates/tools_suite"),
+			CargoToml:  filepath.FromSlash("crates/tools_suite/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("Cargo.lock"),
+		},
+		projectDef{
+			Name:       "tools_suite",
+			DirRelPath: filepath.FromSlash("rust_tools_suite"),
+			CargoToml:  filepath.FromSlash("rust_tools_suite/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("rust_tools_suite/Cargo.lock"),
+		},
+	); ok {
+		projects = append(projects, project)
+	}
+
+	if project, ok := resolveProjectCandidate(repoRoot, false,
+		projectDef{
+			Name:       "robot_core",
+			DirRelPath: filepath.FromSlash("crates/robot_core"),
+			CargoToml:  filepath.FromSlash("crates/robot_core/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("Cargo.lock"),
+		},
+	); ok {
+		projects = append(projects, project)
+	}
+
+	if project, ok := resolveProjectCandidate(repoRoot, false,
+		projectDef{
+			Name:       "devtools",
+			DirRelPath: filepath.FromSlash("crates/devtools"),
+			CargoToml:  filepath.FromSlash("crates/devtools/Cargo.toml"),
+			CargoLock:  filepath.FromSlash("Cargo.lock"),
+		},
+	); ok {
+		projects = append(projects, project)
+	}
+
+	return projects
+}
+
 var defaultAuditIgnores = []string{"RUSTSEC-2023-0071"}
 var errStopWalk = errors.New("stop-walk")
 
@@ -224,8 +301,9 @@ func runFmt(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		cargoArgs := []string{"fmt"}
 		if *check {
 			cargoArgs = append(cargoArgs, "--check")
@@ -251,8 +329,9 @@ func runClippy(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		cargoArgs := []string{
 			"clippy",
 			"--manifest-path", filepath.Join(repoRoot, project.CargoToml),
@@ -282,8 +361,9 @@ func runTest(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		cargoArgs := []string{"test"}
 		if *release {
 			cargoArgs = append(cargoArgs, "--release")
@@ -311,8 +391,9 @@ func runBuild(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		cargoArgs := []string{"build"}
 		if *release {
 			cargoArgs = append(cargoArgs, "--release")
@@ -338,8 +419,9 @@ func runDoc(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		cargoArgs := []string{
 			"doc",
 			"--no-deps",
@@ -382,11 +464,12 @@ func runAudit(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
+	projects := resolvedAllProjects(repoRoot)
 
 	denyConfig := filepath.Join(repoRoot, "deny.toml")
 	auditDB := filepath.Join(repoRoot, ".cargo-advisory-db")
 
-	for _, project := range allProjects {
+	for _, project := range projects {
 		auditArgs := []string{"audit", "-d", auditDB, "-f", filepath.Join(repoRoot, project.CargoLock)}
 		for _, id := range ignoreIDs {
 			auditArgs = append(auditArgs, "--ignore", id)
@@ -526,7 +609,7 @@ func runRustReview(args []string) int {
 		return code
 	}
 
-	selectedProjects, err := resolveSelectedProjects(projectNames)
+	selectedProjects, err := resolveSelectedProjects(repoRoot, projectNames)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitUsage
@@ -613,7 +696,7 @@ func runReview(args []string) int {
 		return code
 	}
 
-	selectedProjects, err := resolveSelectedProjects(projectNames)
+	selectedProjects, err := resolveSelectedProjects(repoRoot, projectNames)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitUsage
@@ -1839,9 +1922,11 @@ func checkRemoteSync(repoRoot string) error {
 	return fmt.Errorf("local branch has diverged from %s", remoteRef)
 }
 
-func resolveSelectedProjects(projectNames []string) ([]projectDef, error) {
+func resolveSelectedProjects(repoRoot string, projectNames []string) ([]projectDef, error) {
+	projects := resolvedAllProjects(repoRoot)
+
 	if len(projectNames) == 0 {
-		return append([]projectDef(nil), allProjects...), nil
+		return append([]projectDef(nil), projects...), nil
 	}
 
 	selected := make([]projectDef, 0, len(projectNames))
@@ -1856,7 +1941,7 @@ func resolveSelectedProjects(projectNames []string) ([]projectDef, error) {
 
 		normalized := filepath.ToSlash(strings.TrimPrefix(name, "./"))
 		matched := false
-		for _, project := range allProjects {
+		for _, project := range projects {
 			if normalized != project.Name && normalized != filepath.ToSlash(project.DirRelPath) {
 				continue
 			}
