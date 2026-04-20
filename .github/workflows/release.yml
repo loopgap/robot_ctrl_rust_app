@@ -195,7 +195,7 @@ jobs:
           notes_file="release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md"
           test -f "$notes_file"
           test -s "$notes_file"
-          ./scripts/task release-notes-validate RELEASE_NOTES_FILE="$notes_file" RELEASE_NOTES_MODE="release"
+          ./scripts/ubuntu/task.sh release-notes-validate RELEASE_NOTES_FILE="$notes_file" RELEASE_NOTES_MODE="release"
       - uses: actions/download-artifact@v4
         with:
           name: windows-installer

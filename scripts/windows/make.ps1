@@ -2,7 +2,7 @@
 .SYNOPSIS
     Unified task runner for the rust_serial workspace.
 .DESCRIPTION
-    PowerShell entrypoint equivalent to the root Makefile.
+    Canonical Windows implementation aligned with scripts/ubuntu/Makefile task surface.
 #>
 param(
     [Parameter(Position = 0)]
@@ -251,7 +251,7 @@ switch ($Target) {
                 Show-FailureGuidance `
                     "$Project contains unformatted Rust code" `
                     "cargo fmt --manifest-path $Project\Cargo.toml" `
-                    "Format this project, then rerun .\scripts\task.ps1 fmt-check" `
+                    "Format this project, then rerun .\scripts\windows\task.ps1 fmt-check" `
                     "Recently edited .rs files under $Project"
             }
         }
@@ -820,7 +820,7 @@ switch ($Target) {
   rust_serial unified task runner
   =======================================
 
-    Usage: .\scripts\task.ps1 <target> [-ReleaseNotesFile <path>] [-ReleaseNotesMode <draft|release>] [-PackageVersion <X.Y.Z>] [-PackageBuildTag <yyyymmdd>] [-PackageOutputDir <path>] [-PackageSkipBuild]
+    Usage: .\scripts\windows\task.ps1 <target> [-ReleaseNotesFile <path>] [-ReleaseNotesMode <draft|release>] [-PackageVersion <X.Y.Z>] [-PackageBuildTag <yyyymmdd>] [-PackageOutputDir <path>] [-PackageSkipBuild]
 
   Targets:
     all          fmt-check + clippy + test + build

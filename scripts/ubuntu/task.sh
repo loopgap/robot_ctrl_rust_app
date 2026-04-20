@@ -2,9 +2,7 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-
-UNAME_S=$(uname -s 2>/dev/null || echo unknown)
+REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
 
 run_make() {
   if command -v make >/dev/null 2>&1; then
@@ -22,10 +20,11 @@ run_make() {
     exec mingw32-make.exe -f "$SCRIPT_DIR/Makefile" "$@"
   fi
 
-  echo "make command is required on Unix-like systems" >&2
+  echo "make command is required for scripts/ubuntu/task.sh" >&2
   exit 3
 }
 
+UNAME_S=$(uname -s 2>/dev/null || echo unknown)
 case "$UNAME_S" in
   Linux*|Darwin*)
     run_make "$@"
@@ -46,9 +45,9 @@ case "$UNAME_S" in
     fi
 
     if command -v pwsh >/dev/null 2>&1; then
-      exec pwsh -NoProfile -File "$SCRIPT_DIR/make.ps1" "$@"
+      exec pwsh -NoProfile -File "$SCRIPT_DIR/../windows/task.ps1" "$@"
     elif command -v powershell >/dev/null 2>&1; then
-      exec powershell -NoProfile -File "$SCRIPT_DIR/make.ps1" "$@"
+      exec powershell -NoProfile -File "$SCRIPT_DIR/../windows/task.ps1" "$@"
     else
       run_make "$@"
     fi

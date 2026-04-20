@@ -1,16 +1,16 @@
 # ============================================================
 # rust_serial Workspace — 统一构建自动化
 # ============================================================
-# 用法:  ./scripts/task <target>（或 make -f scripts/Makefile <target>）
-#   ./scripts/task check      — 格式 + clippy + 测试（快速校验）
-#   ./scripts/task build      — Debug 构建正式发布项目
-#   ./scripts/task release    — Release 构建正式发布项目
-#   ./scripts/task clean      — 清理所有 target/
-#   ./scripts/task fmt        — 自动格式化
-#   ./scripts/task test       — 运行全部测试
-#   ./scripts/task audit      — 安全审计
-#   ./scripts/task doc        — 生成文档
-#   ./scripts/task preflight  — 发布前完整校验
+# 用法:  ./scripts/ubuntu/task.sh <target>（或 make -f scripts/ubuntu/Makefile <target>）
+#   ./scripts/ubuntu/task.sh check      — 格式 + clippy + 测试（快速校验）
+#   ./scripts/ubuntu/task.sh build      — Debug 构建正式发布项目
+#   ./scripts/ubuntu/task.sh release    — Release 构建正式发布项目
+#   ./scripts/ubuntu/task.sh clean      — 清理所有 target/
+#   ./scripts/ubuntu/task.sh fmt        — 自动格式化
+#   ./scripts/ubuntu/task.sh test       — 运行全部测试
+#   ./scripts/ubuntu/task.sh audit      — 安全审计
+#   ./scripts/ubuntu/task.sh doc        — 生成文档
+#   ./scripts/ubuntu/task.sh preflight  — 发布前完整校验
 # ============================================================
 
 SHELL := /bin/bash
@@ -88,7 +88,7 @@ fmt-check:
 			echo ""; \
 			echo "Problem: $$p has formatting issues"; \
 			echo "Suggested command: cargo fmt --manifest-path $${p}/Cargo.toml"; \
-			echo "Fix direction: format first, then rerun ./scripts/task fmt-check"; \
+			echo "Fix direction: format first, then rerun ./scripts/ubuntu/task.sh fmt-check"; \
 			echo "Inspect first: recently changed .rs files in $$p"; \
 			exit 1; \
 		fi; \
@@ -412,58 +412,58 @@ go-install-hooks:
 
 help:
 	@echo "可用目标:"
-	@echo "  ./scripts/task check      格式 + clippy + 测试（快速校验）"
-	@echo "  ./scripts/task fmt        自动格式化全部代码"
-	@echo "  ./scripts/task fmt-check  检查格式（不修改）"
-	@echo "  ./scripts/task clippy     Clippy 静态分析"
-	@echo "  ./scripts/task test       运行全部测试"
-	@echo "  ./scripts/task test-release Release 模式测试"
-	@echo "  ./scripts/task build      Debug 构建正式发布项目"
-	@echo "  ./scripts/task release    Release 构建正式发布项目"
-	@echo "  ./scripts/task doc        生成文档"
-	@echo "  ./scripts/task audit      安全审计"
-	@echo "  ./scripts/task preflight  发布前完整校验"
-	@echo "  ./scripts/task ci-local  本地 CI 核心链路（governance + fmt/clippy/test/doc）"
-	@echo "  ./scripts/task ci-local-full  本地 CI 完整链路（ci-local + audit）"
-	@echo "  ./scripts/task release-sync  审计本地 release 状态一致性"
-	@echo "  ./scripts/task release-sync-apply  自动归一化本地 release 状态"
-	@echo "  ./scripts/task release-index  重建 release 索引表"
-	@echo "  ./scripts/task workflow-seal  一键执行清理+结构守卫+发布状态审计"
-	@echo "  ./scripts/task workflow-seal-apply  自动归一化并固化工作区状态"
-	@echo "  ./scripts/task workspace-guard  校验目录结构与路径策略"
-	@echo "  ./scripts/task workspace-cleanup  清理过程产物目录"
-	@echo "  ./scripts/task release-notes-validate RELEASE_NOTES_FILE=... RELEASE_NOTES_MODE=release|draft"
-	@echo "  ./scripts/task smart-bump BUMP_PART=patch BUMP_PUSH=1"
-	@echo "  ./scripts/task smart-rollback ROLLBACK_TAG=vX.Y.Z ROLLBACK_DELETE_REMOTE_TAG=1 ROLLBACK_DELETE_LOCAL_TAG=1"
-	@echo "  ./scripts/task pr-helper PR_CHECK=1"
-	@echo "  ./scripts/task git-check  Git 工作流校验"
-	@echo "  ./scripts/task git-review-before-push  推送前完整审查"
-	@echo "  ./scripts/task git-hooks-install|git-hooks-uninstall"
-	@echo "  ./scripts/task git-pr-check PR_BASE=main PR_HEAD=<branch>"
-	@echo "  ./scripts/task git-pr-create PR_BASE=main PR_HEAD=<branch> PR_TITLE='...'"
-	@echo "  ./scripts/task git-pr-merge PR_BASE=main PR_HEAD=<branch>"
-	@echo "  ./scripts/task docs-bundle DOCS_OUTPUT_ROOT=release_artifacts/docs-bundle DOCS_CREATE_ZIP=1"
-	@echo "  ./scripts/task release-publish RELEASE_TAG=vX.Y.Z RELEASE_OWNER=... RELEASE_REPO=..."
-	@echo "  ./scripts/task build-release-slim"
-	@echo "  ./scripts/task package-windows-installer PACKAGE_VERSION=X.Y.Z PACKAGE_BUILD_TAG=yyyymmdd PACKAGE_SKIP_BUILD=1"
-	@echo "  ./scripts/task package-windows-assets PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts PACKAGE_SKIP_BUILD=1"
-	@echo "  ./scripts/task package-windows-portable-installer PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts/windows-x64/installer PACKAGE_SKIP_BUILD=1"
-	@echo "  ./scripts/task release-local-windows PACKAGE_VERSION=X.Y.Z"
-	@echo "  ./scripts/task release-local-linux PACKAGE_VERSION=X.Y.Z"
-	@echo "  ./scripts/task release-local-dual PACKAGE_VERSION=X.Y.Z"
-	@echo "  ./scripts/task go-check  通过 Go 编排执行 check"
-	@echo "  ./scripts/task go-preflight  通过 Go 编排执行 preflight"
-	@echo "  ./scripts/task go-build  通过 Go 编排执行 build"
-	@echo "  ./scripts/task go-test  通过 Go 编排执行 test"
-	@echo "  ./scripts/task go-doc  通过 Go 编排执行 doc"
-	@echo "  ./scripts/task go-audit  通过 Go 编排执行 audit"
-	@echo "  ./scripts/task go-release-sync  通过 Go 编排执行 release-sync audit"
-	@echo "  ./scripts/task go-workflow-seal  通过 Go 编排执行 workflow-seal audit"
-	@echo "  ./scripts/task go-git-check  通过 Go 编排执行 git-check"
-	@echo "  ./scripts/task go-rust-review  通过 Go 编排执行 rust-review"
-	@echo "  ./scripts/task go-review  通过 Go 编排执行 review"
-	@echo "  ./scripts/task go-install-hooks  通过 Go 编排安装 Git hooks"
-	@echo "  ./scripts/task clean      清理所有 target/"
-	@echo "  ./scripts/task help       显示此帮助"
+	@echo "  ./scripts/ubuntu/task.sh check      格式 + clippy + 测试（快速校验）"
+	@echo "  ./scripts/ubuntu/task.sh fmt        自动格式化全部代码"
+	@echo "  ./scripts/ubuntu/task.sh fmt-check  检查格式（不修改）"
+	@echo "  ./scripts/ubuntu/task.sh clippy     Clippy 静态分析"
+	@echo "  ./scripts/ubuntu/task.sh test       运行全部测试"
+	@echo "  ./scripts/ubuntu/task.sh test-release Release 模式测试"
+	@echo "  ./scripts/ubuntu/task.sh build      Debug 构建正式发布项目"
+	@echo "  ./scripts/ubuntu/task.sh release    Release 构建正式发布项目"
+	@echo "  ./scripts/ubuntu/task.sh doc        生成文档"
+	@echo "  ./scripts/ubuntu/task.sh audit      安全审计"
+	@echo "  ./scripts/ubuntu/task.sh preflight  发布前完整校验"
+	@echo "  ./scripts/ubuntu/task.sh ci-local  本地 CI 核心链路（governance + fmt/clippy/test/doc）"
+	@echo "  ./scripts/ubuntu/task.sh ci-local-full  本地 CI 完整链路（ci-local + audit）"
+	@echo "  ./scripts/ubuntu/task.sh release-sync  审计本地 release 状态一致性"
+	@echo "  ./scripts/ubuntu/task.sh release-sync-apply  自动归一化本地 release 状态"
+	@echo "  ./scripts/ubuntu/task.sh release-index  重建 release 索引表"
+	@echo "  ./scripts/ubuntu/task.sh workflow-seal  一键执行清理+结构守卫+发布状态审计"
+	@echo "  ./scripts/ubuntu/task.sh workflow-seal-apply  自动归一化并固化工作区状态"
+	@echo "  ./scripts/ubuntu/task.sh workspace-guard  校验目录结构与路径策略"
+	@echo "  ./scripts/ubuntu/task.sh workspace-cleanup  清理过程产物目录"
+	@echo "  ./scripts/ubuntu/task.sh release-notes-validate RELEASE_NOTES_FILE=... RELEASE_NOTES_MODE=release|draft"
+	@echo "  ./scripts/ubuntu/task.sh smart-bump BUMP_PART=patch BUMP_PUSH=1"
+	@echo "  ./scripts/ubuntu/task.sh smart-rollback ROLLBACK_TAG=vX.Y.Z ROLLBACK_DELETE_REMOTE_TAG=1 ROLLBACK_DELETE_LOCAL_TAG=1"
+	@echo "  ./scripts/ubuntu/task.sh pr-helper PR_CHECK=1"
+	@echo "  ./scripts/ubuntu/task.sh git-check  Git 工作流校验"
+	@echo "  ./scripts/ubuntu/task.sh git-review-before-push  推送前完整审查"
+	@echo "  ./scripts/ubuntu/task.sh git-hooks-install|git-hooks-uninstall"
+	@echo "  ./scripts/ubuntu/task.sh git-pr-check PR_BASE=main PR_HEAD=<branch>"
+	@echo "  ./scripts/ubuntu/task.sh git-pr-create PR_BASE=main PR_HEAD=<branch> PR_TITLE='...'"
+	@echo "  ./scripts/ubuntu/task.sh git-pr-merge PR_BASE=main PR_HEAD=<branch>"
+	@echo "  ./scripts/ubuntu/task.sh docs-bundle DOCS_OUTPUT_ROOT=release_artifacts/docs-bundle DOCS_CREATE_ZIP=1"
+	@echo "  ./scripts/ubuntu/task.sh release-publish RELEASE_TAG=vX.Y.Z RELEASE_OWNER=... RELEASE_REPO=..."
+	@echo "  ./scripts/ubuntu/task.sh build-release-slim"
+	@echo "  ./scripts/ubuntu/task.sh package-windows-installer PACKAGE_VERSION=X.Y.Z PACKAGE_BUILD_TAG=yyyymmdd PACKAGE_SKIP_BUILD=1"
+	@echo "  ./scripts/ubuntu/task.sh package-windows-assets PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts PACKAGE_SKIP_BUILD=1"
+	@echo "  ./scripts/ubuntu/task.sh package-windows-portable-installer PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts/windows-x64/installer PACKAGE_SKIP_BUILD=1"
+	@echo "  ./scripts/ubuntu/task.sh release-local-windows PACKAGE_VERSION=X.Y.Z"
+	@echo "  ./scripts/ubuntu/task.sh release-local-linux PACKAGE_VERSION=X.Y.Z"
+	@echo "  ./scripts/ubuntu/task.sh release-local-dual PACKAGE_VERSION=X.Y.Z"
+	@echo "  ./scripts/ubuntu/task.sh go-check  通过 Go 编排执行 check"
+	@echo "  ./scripts/ubuntu/task.sh go-preflight  通过 Go 编排执行 preflight"
+	@echo "  ./scripts/ubuntu/task.sh go-build  通过 Go 编排执行 build"
+	@echo "  ./scripts/ubuntu/task.sh go-test  通过 Go 编排执行 test"
+	@echo "  ./scripts/ubuntu/task.sh go-doc  通过 Go 编排执行 doc"
+	@echo "  ./scripts/ubuntu/task.sh go-audit  通过 Go 编排执行 audit"
+	@echo "  ./scripts/ubuntu/task.sh go-release-sync  通过 Go 编排执行 release-sync audit"
+	@echo "  ./scripts/ubuntu/task.sh go-workflow-seal  通过 Go 编排执行 workflow-seal audit"
+	@echo "  ./scripts/ubuntu/task.sh go-git-check  通过 Go 编排执行 git-check"
+	@echo "  ./scripts/ubuntu/task.sh go-rust-review  通过 Go 编排执行 rust-review"
+	@echo "  ./scripts/ubuntu/task.sh go-review  通过 Go 编排执行 review"
+	@echo "  ./scripts/ubuntu/task.sh go-install-hooks  通过 Go 编排安装 Git hooks"
+	@echo "  ./scripts/ubuntu/task.sh clean      清理所有 target/"
+	@echo "  ./scripts/ubuntu/task.sh help       显示此帮助"
 
 

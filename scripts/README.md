@@ -17,19 +17,19 @@
 ### 1) 根目录统一入口（Windows）
 
 ```powershell
-.\scripts\task.ps1 go-install-hooks
-.\scripts\task.ps1 go-review
-.\scripts\task.ps1 workflow-seal
-.\scripts\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_vX.Y.Z.md -ReleaseNotesMode release
-.\scripts\task.ps1 docs-bundle -DocsCreateZip
-.\scripts\task.ps1 smart-bump -BumpPart patch
-.\scripts\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackDeleteRemoteTag -RollbackDeleteLocalTag
-.\scripts\task.ps1 pr-helper -PrCheck
-.\scripts\task.ps1 build-release-slim
-.\scripts\task.ps1 package-windows-installer -PackageVersion X.Y.Z
-.\scripts\task.ps1 package-windows-assets -PackageVersion X.Y.Z -PackageOutputDir release_artifacts
-.\scripts\task.ps1 package-windows-portable-installer -PackageVersion X.Y.Z
-.\scripts\task.ps1 release-publish -ReleaseTag vX.Y.Z
+.\scripts\windows\task.ps1 go-install-hooks
+.\scripts\windows\task.ps1 go-review
+.\scripts\windows\task.ps1 workflow-seal
+.\scripts\windows\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_vX.Y.Z.md -ReleaseNotesMode release
+.\scripts\windows\task.ps1 docs-bundle -DocsCreateZip
+.\scripts\windows\task.ps1 smart-bump -BumpPart patch
+.\scripts\windows\task.ps1 smart-rollback -RollbackTag vX.Y.Z -RollbackDeleteRemoteTag -RollbackDeleteLocalTag
+.\scripts\windows\task.ps1 pr-helper -PrCheck
+.\scripts\windows\task.ps1 build-release-slim
+.\scripts\windows\task.ps1 package-windows-installer -PackageVersion X.Y.Z
+.\scripts\windows\task.ps1 package-windows-assets -PackageVersion X.Y.Z -PackageOutputDir release_artifacts
+.\scripts\windows\task.ps1 package-windows-portable-installer -PackageVersion X.Y.Z
+.\scripts\windows\task.ps1 release-publish -ReleaseTag vX.Y.Z
 ```
 
 ### 2) 直接调用 Go 编排器
@@ -51,19 +51,19 @@ go run . build-release-slim
 go run . release-publish --tag vX.Y.Z
 ```
 
-PowerShell 推荐入口为 `./scripts/task.ps1`，用于 Windows 下的统一任务调用体验。
+PowerShell 推荐入口为 `./scripts/windows/task.ps1`，用于 Windows 下的统一任务调用体验。
 
 ## Release v0.2.1 验证建议
 
 ```powershell
 # 1) 在 main 上执行发布前校验
 git checkout main
-.\scripts\task.ps1 workflow-seal
-.\scripts\task.ps1 check
+.\scripts\windows\task.ps1 workflow-seal
+.\scripts\windows\task.ps1 check
 
 # 2) 校验发布说明并发布
-.\scripts\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_v0.2.1.md -ReleaseNotesMode release
-.\scripts\task.ps1 smart-bump -BumpPart patch -BumpPush
+.\scripts\windows\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_v0.2.1.md -ReleaseNotesMode release
+.\scripts\windows\task.ps1 smart-bump -BumpPart patch -BumpPush
 
 # 3) 发布后手动核验远端资产与 checksums
 ```
