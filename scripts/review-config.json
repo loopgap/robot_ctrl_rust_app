@@ -53,7 +53,7 @@
   },
   "workspaceGovernance": {
     "policyFile": "scripts/workspace-governance.json",
-    "sealCommand": ".\\make.ps1 workflow-seal",
+    "sealCommand": ".\\scripts\\task.ps1 workflow-seal",
     "requiredPreCommitChecks": [
       "process-file-residue-audit",
       "workspace-path-policy"

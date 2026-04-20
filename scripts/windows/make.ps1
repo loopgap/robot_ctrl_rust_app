@@ -117,8 +117,8 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
 $AuditIgnoreIds = @("RUSTSEC-2023-0071")
-$CoreProjects = @("robot_control_rust", "rust_tools_suite")
-$AllProjects = $CoreProjects
+$CoreProjects = @("crates\robot_control", "crates\tools_suite")
+$AllProjects = @($CoreProjects + @("crates\robot_core", "crates\devtools"))
 function Write-Header($Message) {
     Write-Host "`n== $Message ==" -ForegroundColor Cyan
 }
@@ -210,24 +210,7 @@ function Invoke-LinuxDebPackage {
         throw "bash is required for Linux packaging. Install Git Bash/WSL and retry."
     }
 
-    $scriptPathNative = Join-Path $RepoRoot "rust_tools_suite\packaging\package_deb.sh"
-    if (-not (Test-Path $scriptPathNative)) {
-        throw "Linux package script not found: $scriptPathNative"
-    }
-
-    $scriptPathBash = $scriptPathNative -replace '\\', '/'
-    $args = @($scriptPathBash)
-    if (-not [string]::IsNullOrWhiteSpace($PackageVersion)) {
-        $args += @("--version", $PackageVersion)
-    }
-    if ($PackageSkipBuild) {
-        $args += "--skip-build"
-    }
-
-    & $bash.Source @args
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
-    }
+    throw "Local Linux .deb packaging script was removed in workspace v0.2.x. Use GitHub release workflow on Ubuntu runner for .deb artifacts."
 }
 
 function Invoke-MakeSubTarget {
@@ -338,9 +321,9 @@ switch ($Target) {
             }
         }
         Write-Header "Build artifacts"
-        Get-ChildItem "robot_control_rust\target\release\robot_control_rust*" -ErrorAction SilentlyContinue |
+        Get-ChildItem "target\release\robot_control*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
-        Get-ChildItem "rust_tools_suite\target\release\rust_tools_suite*" -ErrorAction SilentlyContinue |
+        Get-ChildItem "target\release\tools_suite*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
     }
     "doc" {
@@ -362,34 +345,30 @@ switch ($Target) {
     }
     "audit" {
         Write-Header "Run cargo-audit and cargo-deny"
-        foreach ($Project in $AllProjects) {
-            Write-Host "-> $Project" -ForegroundColor DarkGray
-            $LockFile = Join-Path $Project "Cargo.lock"
-            $AuditArgs = @("audit", "-d", $AuditDbPath, "-f", $LockFile)
-            foreach ($IgnoreId in $AuditIgnoreIds) {
-                $AuditArgs += @("--ignore", $IgnoreId)
-            }
-            cargo @AuditArgs
-            if ($LASTEXITCODE -ne 0) {
-                Show-FailureGuidance `
-                    "$Project security audit failed" `
-                    "cargo audit -d $AuditDbPath -f $Project\Cargo.lock --ignore $($AuditIgnoreIds -join ' --ignore ')" `
-                    "Upgrade vulnerable dependencies first, then consider regenerating Cargo.lock" `
-                    "The advisory ID and affected crate in the audit output"
-                exit 1
-            }
-            Push-Location $Project
-            cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
-            $DenyExit = $LASTEXITCODE
-            Pop-Location
-            if ($DenyExit -ne 0) {
-                Show-FailureGuidance `
-                    "$Project dependency policy check failed" `
-                    "cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
-                    "Review source policy, advisories, and duplicate dependency bans" `
-                    "The first cargo-deny error for the current project"
-                exit 1
-            }
+        Write-Host "-> workspace" -ForegroundColor DarkGray
+        $LockFile = Join-Path $RepoRoot "Cargo.lock"
+        $AuditArgs = @("audit", "-d", $AuditDbPath, "-f", $LockFile)
+        foreach ($IgnoreId in $AuditIgnoreIds) {
+            $AuditArgs += @("--ignore", $IgnoreId)
+        }
+        cargo @AuditArgs
+        if ($LASTEXITCODE -ne 0) {
+            Show-FailureGuidance `
+                "workspace security audit failed" `
+                "cargo audit -d $AuditDbPath -f Cargo.lock --ignore $($AuditIgnoreIds -join ' --ignore ')" `
+                "Upgrade vulnerable dependencies first, then consider regenerating Cargo.lock" `
+                "The advisory ID and affected crate in the audit output"
+            exit 1
+        }
+
+        cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
+        if ($LASTEXITCODE -ne 0) {
+            Show-FailureGuidance `
+                "workspace dependency policy check failed" `
+                "cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
+                "Review source policy, advisories, and duplicate dependency bans" `
+                "The first cargo-deny error"
+            exit 1
         }
     }
     "clean" {
@@ -878,7 +857,7 @@ switch ($Target) {
     git-pr-merge merge pull request
     docs-bundle build docs/help bundle via Go
     release-publish create/update GitHub release via Go (requires GITHUB_TOKEN)
-    build-release-slim build robot_control_rust slim release target
+    build-release-slim build robot_control slim release target
     package-windows-installer package installer via Go (Inno/iExpress fallback)
     package-windows-assets package portable zips via Go
     package-windows-portable-installer package portable installer bundle via Go

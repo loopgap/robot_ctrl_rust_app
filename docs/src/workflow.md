@@ -4,24 +4,20 @@
 
 ## Git 工作流规范
 
-### 分支命名规范
+### 分支策略规范
 
-| 前缀 | 用途 | 示例 |
-|------|------|------|
-| `feature/` | 新功能开发 | `feature/pid-tuning-ui` |
-| `fix/` | Bug 修复 | `fix/serial-timeout` |
-| `docs/` | 文档更新 | `docs/update-api` |
-| `refactor/` | 代码重构 | `refactor/connection-manager` |
-| `test/` | 测试相关 | `test/add-integration-tests` |
-| `chore/` | 构建/工具/杂项 | `chore/update-deps` |
+仅允许以下分支存在并用于开发流转：
+
+- `develop`：日常开发与集成分支
+- `main`：发布与稳定分支
 
 ### 受保护分支
 
 以下分支不允许直接推送，必须通过 Pull Request：
 
 - `main`
-- `master`
-- `release/*`
+
+说明：`master` 与 `release/*` 已废弃，不再作为有效工作流分支。
 
 ### 提交信息格式
 
@@ -69,7 +65,7 @@ docs(readme): 更新安装说明
 **执行时间**: 约 5-15 秒
 
 检查项目：
-- Git 工作流验证（分支命名、暂存区文件）
+- Git 工作流验证（分支白名单、暂存区文件）
 - `cargo fmt` 代码格式检查
 - `cargo clippy --fix` 快速静态分析
 
@@ -153,7 +149,7 @@ go run . review --project robot_control_rust
 
 | 工作流 | 触发条件 | 核心能力 |
 |--------|----------|----------|
-| **CI** | PR / push 到 main/develop | 格式检查、Clippy、测试、文档阻断 |
+| **CI** | PR / push 到 main/develop | Workspace 校验、格式检查、Clippy、测试、文档阻断 |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | cargo-audit 与 cargo-deny 门禁 |
 | **Release** | push tag v* | Tag 校验、质量门禁、Windows 资产发布（exe/setup/checksums） |
 
@@ -219,7 +215,7 @@ git push --no-verify
 └─────────────────────────────────────────────────────────────┘
 
 1. 创建功能分支
-   git checkout -b feature/your-feature
+  git checkout develop
 
 2. 开发与提交
    ┌─────────────┐    ┌──────────────┐    ┌─────────────┐

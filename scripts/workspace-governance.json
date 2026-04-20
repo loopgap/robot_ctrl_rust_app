@@ -5,11 +5,14 @@
       ".git",
       ".github",
       ".gitignore",
+      ".cargo",
+      "Cargo.toml",
+      "Cargo.lock",
+      "crates",
+      "target",
       "deny.toml",
       "docs",
       "LICENSE",
-      "make.ps1",
-      "Makefile",
       "README.md",
       "release_notes",
       "robot_control_rust",
@@ -76,8 +79,10 @@
       "docs",
       "scripts",
       "release_notes",
-      "robot_control_rust/src",
-      "rust_tools_suite/src"
+      "crates/robot_control/src",
+      "crates/tools_suite/src",
+      "crates/robot_core/src",
+      "crates/devtools/src"
     ]
   }
 }

@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Robot Control Rust
-Comment=Robot control and protocol debugging desktop application
-Exec=robot_control_rust
-Icon=robot-control-rust
-Terminal=false
-Categories=Development;Science;Utility;

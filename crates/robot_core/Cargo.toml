@@ -1,0 +1,25 @@
+[package]
+name = "robot_core"
+version = "0.1.0"
+edition = "2021"
+description = "Robot Control Core - Shared Abstractions"
+
+[features]
+default = ["serde"]
+serial = ["dep:serialport"]
+tcp = ["dep:tokio", "tokio/rt"]
+udp = ["dep:tokio", "tokio/rt"]
+llm = ["dep:ureq"]
+serde = ["dep:serde", "dep:serde_json"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+anyhow = "1"
+thiserror = "2"
+serialport = { version = "4.8", optional = true }
+tokio = { version = "1", optional = true }
+ureq = { version = "3", optional = true }
+
+[dev-dependencies]
+tempfile = "3"

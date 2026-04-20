@@ -20,8 +20,8 @@ AUDIT_IGNORE_FLAGS := $(foreach id,$(AUDIT_IGNORE_IDS),--ignore $(id))
 RUSKTASK := cd scripts/go/rusktask && go run .
 SELF_MAKE := $(MAKE) -f $(abspath $(lastword $(MAKEFILE_LIST)))
 
-CORE_PROJECTS = robot_control_rust rust_tools_suite
-ALL_PROJECTS := $(CORE_PROJECTS)
+CORE_PROJECTS = crates/robot_control crates/tools_suite
+ALL_PROJECTS := $(CORE_PROJECTS) crates/robot_core crates/devtools
 RELEASE_NOTES_FILE ?=
 RELEASE_NOTES_MODE ?= release
 PACKAGE_VERSION ?=
@@ -165,8 +165,8 @@ release:
 	done
 	@echo ""
 	@echo "== Build artifacts =="
-	@ls -lh robot_control_rust/target/release/robot_control_rust* 2>/dev/null || true
-	@ls -lh rust_tools_suite/target/release/rust_tools_suite* 2>/dev/null || true
+	@ls -lh target/release/robot_control* 2>/dev/null || true
+	@ls -lh target/release/tools_suite* 2>/dev/null || true
 
 doc:
 	@echo "== Build docs =="
@@ -184,25 +184,23 @@ doc:
 
 audit:
 	@echo "== Security audit =="
-	@for p in $(ALL_PROJECTS); do \
-		echo "-> $$p"; \
-		if ! cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $${p}/Cargo.lock; then \
-			echo ""; \
-			echo "Problem: $$p security audit failed"; \
-			echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f $${p}/Cargo.lock"; \
-			echo "Fix direction: upgrade vulnerable dependencies and regenerate lock if needed"; \
-			echo "Inspect first: advisory ID and affected crate in audit output"; \
-			exit 1; \
-		fi; \
-		if ! (cd $$p && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml); then \
-			echo ""; \
-			echo "Problem: $$p dependency policy check failed"; \
-			echo "Suggested command: (cd $$p && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml)"; \
-			echo "Fix direction: review advisories, source policy, and bans rules"; \
-			echo "Inspect first: first cargo-deny error"; \
-			exit 1; \
-		fi; \
-	done
+	@echo "-> workspace"
+	@if ! cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f Cargo.lock; then \
+		echo ""; \
+		echo "Problem: workspace security audit failed"; \
+		echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f Cargo.lock"; \
+		echo "Fix direction: upgrade vulnerable dependencies and regenerate lock if needed"; \
+		echo "Inspect first: advisory ID and affected crate in audit output"; \
+		exit 1; \
+	fi
+	@if ! cargo deny check advisories bans sources --config $(CURDIR)/deny.toml; then \
+		echo ""; \
+		echo "Problem: workspace dependency policy check failed"; \
+		echo "Suggested command: cargo deny check advisories bans sources --config $(CURDIR)/deny.toml"; \
+		echo "Fix direction: review advisories, source policy, and bans rules"; \
+		echo "Inspect first: first cargo-deny error"; \
+		exit 1; \
+	fi
 
 clean:
 	@echo "══ 清理构建产物 ══"
@@ -357,7 +355,7 @@ release-local-windows:
 release-local-linux:
 	@echo "══ 本地 Linux Release 流程 ══"
 	@$(SELF_MAKE) ci-local
-	@bash rust_tools_suite/packaging/package_deb.sh $(if $(PACKAGE_VERSION),--version "$(PACKAGE_VERSION)",) $(if $(filter 1,$(PACKAGE_SKIP_BUILD)),--skip-build,)
+	@echo "Linux .deb 本地打包脚本已在 v0.2.x 工作区移除，请改用 GitHub Release workflow 生成 .deb 产物" && exit 2
 
 release-local-dual:
 	@echo "══ 本地双系统 Release 流程 ══"
@@ -444,12 +442,12 @@ help:
 	@echo "  ./scripts/task git-pr-check PR_BASE=main PR_HEAD=<branch>"
 	@echo "  ./scripts/task git-pr-create PR_BASE=main PR_HEAD=<branch> PR_TITLE='...'"
 	@echo "  ./scripts/task git-pr-merge PR_BASE=main PR_HEAD=<branch>"
-	@echo "  ./scripts/task docs-bundle DOCS_OUTPUT_ROOT=robot_control_rust/dist/windows-x64/docs-bundle DOCS_CREATE_ZIP=1"
+	@echo "  ./scripts/task docs-bundle DOCS_OUTPUT_ROOT=release_artifacts/docs-bundle DOCS_CREATE_ZIP=1"
 	@echo "  ./scripts/task release-publish RELEASE_TAG=vX.Y.Z RELEASE_OWNER=... RELEASE_REPO=..."
 	@echo "  ./scripts/task build-release-slim"
 	@echo "  ./scripts/task package-windows-installer PACKAGE_VERSION=X.Y.Z PACKAGE_BUILD_TAG=yyyymmdd PACKAGE_SKIP_BUILD=1"
 	@echo "  ./scripts/task package-windows-assets PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts PACKAGE_SKIP_BUILD=1"
-	@echo "  ./scripts/task package-windows-portable-installer PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=robot_control_rust/dist/windows-x64/installer PACKAGE_SKIP_BUILD=1"
+	@echo "  ./scripts/task package-windows-portable-installer PACKAGE_VERSION=X.Y.Z PACKAGE_OUTPUT_DIR=release_artifacts/windows-x64/installer PACKAGE_SKIP_BUILD=1"
 	@echo "  ./scripts/task release-local-windows PACKAGE_VERSION=X.Y.Z"
 	@echo "  ./scripts/task release-local-linux PACKAGE_VERSION=X.Y.Z"
 	@echo "  ./scripts/task release-local-dual PACKAGE_VERSION=X.Y.Z"

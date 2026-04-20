@@ -6,6 +6,12 @@
 - 已删除历史兼容脚本（如 `review.ps1`、`install-hooks.ps1`、`sync-release-state.ps1`、`workflow-seal.ps1` 等）。
 - 版本升级、发布回滚、PR 辅助也已迁移为 Go 子命令（`smart-bump`、`smart-rollback`、`pr-helper`）。
 
+## 分支策略
+
+- 仅允许 `main` 与 `develop` 分支。
+- `main` 为受保护发布分支，不允许直接 push。
+- 其他分支（如 `feature/*`、`release/*`、`master`）已废弃。
+
 ## 推荐使用方式
 
 ### 1) 根目录统一入口（Windows）
@@ -45,4 +51,19 @@ go run . build-release-slim
 go run . release-publish --tag vX.Y.Z
 ```
 
-PowerShell 仅保留根入口 `make.ps1`，用于 Windows 下的统一任务调用体验。
+PowerShell 推荐入口为 `./scripts/task.ps1`，用于 Windows 下的统一任务调用体验。
+
+## Release v0.2.1 验证建议
+
+```powershell
+# 1) 在 main 上执行发布前校验
+git checkout main
+.\scripts\task.ps1 workflow-seal
+.\scripts\task.ps1 check
+
+# 2) 校验发布说明并发布
+.\scripts\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_v0.2.1.md -ReleaseNotesMode release
+.\scripts\task.ps1 smart-bump -BumpPart patch -BumpPush
+
+# 3) 发布后手动核验远端资产与 checksums
+```

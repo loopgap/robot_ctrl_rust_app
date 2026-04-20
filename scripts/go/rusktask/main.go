@@ -39,16 +39,28 @@ type projectDef struct {
 
 var allProjects = []projectDef{
 	{
-		Name:       "robot_control_rust",
-		DirRelPath: filepath.FromSlash("robot_control_rust"),
-		CargoToml:  filepath.FromSlash("robot_control_rust/Cargo.toml"),
-		CargoLock:  filepath.FromSlash("robot_control_rust/Cargo.lock"),
+		Name:       "robot_control",
+		DirRelPath: filepath.FromSlash("crates/robot_control"),
+		CargoToml:  filepath.FromSlash("crates/robot_control/Cargo.toml"),
+		CargoLock:  filepath.FromSlash("Cargo.lock"),
 	},
 	{
-		Name:       "rust_tools_suite",
-		DirRelPath: filepath.FromSlash("rust_tools_suite"),
-		CargoToml:  filepath.FromSlash("rust_tools_suite/Cargo.toml"),
-		CargoLock:  filepath.FromSlash("rust_tools_suite/Cargo.lock"),
+		Name:       "tools_suite",
+		DirRelPath: filepath.FromSlash("crates/tools_suite"),
+		CargoToml:  filepath.FromSlash("crates/tools_suite/Cargo.toml"),
+		CargoLock:  filepath.FromSlash("Cargo.lock"),
+	},
+	{
+		Name:       "robot_core",
+		DirRelPath: filepath.FromSlash("crates/robot_core"),
+		CargoToml:  filepath.FromSlash("crates/robot_core/Cargo.toml"),
+		CargoLock:  filepath.FromSlash("Cargo.lock"),
+	},
+	{
+		Name:       "devtools",
+		DirRelPath: filepath.FromSlash("crates/devtools"),
+		CargoToml:  filepath.FromSlash("crates/devtools/Cargo.toml"),
+		CargoLock:  filepath.FromSlash("Cargo.lock"),
 	},
 }
 
@@ -825,11 +837,11 @@ func runSmartBump(args []string) int {
 		}
 
 		manifestRelPaths := []string{
-			filepath.ToSlash("robot_control_rust/Cargo.toml"),
-			filepath.ToSlash("rust_tools_suite/Cargo.toml"),
+			filepath.ToSlash("crates/robot_control/Cargo.toml"),
+			filepath.ToSlash("crates/tools_suite/Cargo.toml"),
 		}
 
-		anchorManifest := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/Cargo.toml"))
+		anchorManifest := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
 		currentVersion, err := parseManifestVersion(anchorManifest)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -4427,20 +4439,35 @@ func validateReleaseNotes(content string, mode string) error {
 }
 
 func sectionBullets(content string, section string) []string {
-	rx := regexp.MustCompile(`(?ms)^##\s+` + regexp.QuoteMeta(section) + `\s*$\r?\n(.*?)(?=^##\s|\z)`)
-	m := rx.FindStringSubmatch(content)
-	if len(m) < 2 {
-		return nil
-	}
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	sectionHeader := regexp.MustCompile(`^##\s+` + regexp.QuoteMeta(section) + `\s*$`)
 
-	lines := strings.Split(m[1], "\n")
-	bullets := make([]string, 0, len(lines))
+	inSection := false
+	bullets := make([]string, 0)
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
+
+		if !inSection {
+			if sectionHeader.MatchString(trimmed) {
+				inSection = true
+			}
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "## ") {
+			break
+		}
+
 		if strings.HasPrefix(trimmed, "- ") {
 			bullets = append(bullets, trimmed)
 		}
 	}
+
+	if !inSection {
+		return nil
+	}
+
 	return bullets
 }
 

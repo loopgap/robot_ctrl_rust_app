@@ -38,7 +38,7 @@ $env:GITHUB_TOKEN = "<token>"
 
 1. 远端 Tag 不存在。
 2. Release 页面无对应版本或仅保留 draft 记录。
-3. main/master 分支版本号恢复到预期。
+3. main 分支版本号恢复到预期。
 4. 重新执行 .\scripts\task.ps1 check 后再发版。
 
 ## 目录与审计说明
