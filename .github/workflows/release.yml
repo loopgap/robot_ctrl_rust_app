@@ -127,8 +127,8 @@ jobs:
           $version = "$env:VERSION" -replace '^v', ''
           $zipName = "robot_control_suite_${version}_windows_x64_portable.zip"
           $files = @(
-            "target/release/robot_control_rust.exe",
-            "target/release/rust_tools_suite.exe",
+            "robot_control_rust/target/release/robot_control_rust.exe",
+            "rust_tools_suite/target/release/rust_tools_suite.exe",
             "docs/help/index.html",
             "robot_control_rust/ARCHITECTURE_AND_USAGE.md"
           )
@@ -178,8 +178,8 @@ jobs:
           mkdir -p "$pkg_dir/usr/local/bin"
           mkdir -p "$pkg_dir/usr/local/share/applications"
 
-          cp target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
-          cp target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
+          cp robot_control_rust/target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
+          cp rust_tools_suite/target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
 
           mkdir -p "$pkg_dir/DEBIAN"
           printf '%s\n' \
