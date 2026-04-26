@@ -17,18 +17,12 @@
 - 忽略 `RUSTSEC-2026-0104` (rustls-webpki) 传递依赖漏洞（通过 `ureq->rustls` 引入，无法直接升级）。
 
 ## Verification
-- [x] scripts/task preflight
+- [x] ./scripts/ubuntu/task.sh preflight
+- [x] ./scripts/ubuntu/task.sh ci-local-full
 - [x] CI passed (all jobs)
 - [x] Security audit passed (cargo audit with RUSTSEC-2026-0104 ignored)
-- [x] Release assets verified:
-  - `robot_control_suite_{VERSION}_windows_x64-setup.exe`
-  - `robot_control_suite_{VERSION}_windows_x64_portable.zip`
-  - `robot_control_suite_{VERSION}_amd64.deb`
-  - `checksums-sha256.txt`
-- [x] `./scripts/task.ps1 preflight`（Windows）
-- [x] `./scripts/task.ps1 ci-local-full`（Windows）
-- [x] Release 工作流策略校验：Tag `v0.2.1` 需可追溯到 `origin/main`
-- [x] 资产验收清单完成
+- [x] Release assets verified (exe/setup/checksums)
+- [x] Release workflow policy validation: Tag v0.2.1 is traceable to origin/main
 
 ## Artifacts
 | Platform | Type | Filename |
