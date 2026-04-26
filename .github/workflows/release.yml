@@ -97,9 +97,8 @@ jobs:
       - name: Build binaries
         shell: pwsh
         run: |
-          cargo build --release -p robot_control
-          cargo build --release -p tools_suite
-          cargo build --release -p devtools
+          cargo build --release --manifest-path robot_control_rust/Cargo.toml
+          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
       - name: Create Windows installer
         shell: pwsh
         env:
@@ -128,9 +127,8 @@ jobs:
           $version = "$env:VERSION" -replace '^v', ''
           $zipName = "robot_control_suite_${version}_windows_x64_portable.zip"
           $files = @(
-            "target/release/robot_control.exe",
-            "target/release/tools_suite.exe",
-            "target/release/devtools.exe",
+            "target/release/robot_control_rust.exe",
+            "target/release/rust_tools_suite.exe",
             "docs/help/index.html",
             "robot_control_rust/ARCHITECTURE_AND_USAGE.md"
           )
@@ -161,9 +159,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build binaries
         run: |
-          cargo build --release -p robot_control
-          cargo build --release -p tools_suite
-          cargo build --release -p devtools
+          cargo build --release --manifest-path robot_control_rust/Cargo.toml
+          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
       - name: Create Debian package
         shell: bash
         env:
@@ -181,9 +178,8 @@ jobs:
           mkdir -p "$pkg_dir/usr/local/bin"
           mkdir -p "$pkg_dir/usr/local/share/applications"
 
-          cp target/release/robot_control "$pkg_dir/usr/local/bin/"
-          cp target/release/tools_suite "$pkg_dir/usr/local/bin/"
-          cp target/release/devtools "$pkg_dir/usr/local/bin/"
+          cp target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
+          cp target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
 
           mkdir -p "$pkg_dir/DEBIAN"
           printf '%s\n' \
