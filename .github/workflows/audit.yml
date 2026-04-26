@@ -35,8 +35,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 -f robot_control_rust/Cargo.lock
-          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 -f rust_tools_suite/Cargo.lock
+          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0104 -f robot_control_rust/Cargo.lock
+          cargo audit -d "$AUDIT_DB_PATH" --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2026-0104 -f rust_tools_suite/Cargo.lock
 
       - name: Run dependency policy checks across products
         shell: bash

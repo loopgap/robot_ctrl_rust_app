@@ -8,7 +8,10 @@ yanked = "deny"
 ignore = [
     # Known indirect dependencies that cannot be upgraded yet
     # Add specific advisory IDs as needed: { id = "RUSTSEC-XXXX-XXXX" }
-    "RUSTSEC-2023-0071"
+    "RUSTSEC-2023-0071",
+    # rustls-webpki 0.103.12 - transitive through ureq->rustls
+    # Panic requires specific malformed CRL input (low severity, dev HTTP library)
+    { id = "RUSTSEC-2026-0104", reason = "transitive dependency via ureq->rustls, no fix available" }
 ]
 
 [bans]
