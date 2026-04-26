@@ -1,0 +1,69 @@
+name: Release Validate
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        description: "Tag name to validate (e.g., v1.0.0)"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify-tag:
+    name: Verify Tag Policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate tag format and branch ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.tag_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Invalid tag format: $TAG"
+            exit 1
+          fi
+
+          git fetch origin main --quiet || true
+
+          if ! git show-ref --verify --quiet refs/remotes/origin/main; then
+            echo "::error::origin/main does not exist; cannot verify tag ancestry"
+            exit 1
+          fi
+
+          if git merge-base --is-ancestor HEAD origin/main; then
+            echo "::notice::Tag commit is reachable from origin/main"
+          else
+            echo "::error::Tag commit must be reachable from origin/main"
+            exit 1
+          fi
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: verify-tag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+      - name: Run quality gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps

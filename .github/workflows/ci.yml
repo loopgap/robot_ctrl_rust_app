@@ -126,3 +126,55 @@ jobs:
           set -euo pipefail
           cargo doc --no-deps --manifest-path robot_control_rust/Cargo.toml
           cargo doc --no-deps --manifest-path rust_tools_suite/Cargo.toml
+
+  release-workflow-smoke-test:
+    name: Release Workflow Smoke Test
+    runs-on: ubuntu-latest
+    needs: workspace-governance
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release-related files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1. 验证 Cargo.toml 存在
+          if [ ! -f "Cargo.toml" ]; then
+            echo "❌ ERROR: Cargo.toml 不存在"
+            exit 1
+          fi
+          echo "✅ Cargo.toml 存在"
+
+          # 2. 验证 Cargo.toml 包含 workspace members
+          if ! grep -q 'robot_control_rust' Cargo.toml || ! grep -q 'rust_tools_suite' Cargo.toml; then
+            echo "❌ ERROR: Cargo.toml 缺少 workspace members (robot_control_rust, rust_tools_suite)"
+            exit 1
+          fi
+          echo "✅ Cargo.toml 包含 robot_control_rust 和 rust_tools_suite members"
+
+          # 3. 验证 installer.nsi 存在
+          if [ ! -f ".github/workflows/installer.nsi" ]; then
+            echo "❌ ERROR: .github/workflows/installer.nsi 不存在"
+            exit 1
+          fi
+          echo "✅ .github/workflows/installer.nsi 存在"
+
+          # 4. 验证 release_notes/ 目录存在且包含 RELEASE_NOTES_*.md 文件
+          if [ ! -d "release_notes" ]; then
+            echo "❌ ERROR: release_notes/ 目录不存在"
+            exit 1
+          fi
+          echo "✅ release_notes/ 目录存在"
+
+          RELEASE_NOTES_FILES=$(ls release_notes/RELEASE_NOTES_*.md 2>/dev/null || true)
+          if [ -z "$RELEASE_NOTES_FILES" ]; then
+            echo "❌ ERROR: release_notes/ 目录中未找到 RELEASE_NOTES_*.md 文件"
+            exit 1
+          fi
+          echo "✅ release_notes/ 目录包含 RELEASE_NOTES 文件:"
+          ls -la release_notes/RELEASE_NOTES_*.md
+
+          echo ""
+          echo "🎉 所有 release 相关文件验证通过!"

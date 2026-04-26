@@ -84,5 +84,15 @@
       "crates/robot_core/src",
       "crates/devtools/src"
     ]
+  },
+  "release": {
+    "requiredFiles": [
+      ".github/workflows/installer.nsi",
+      "Cargo.toml"
+    ],
+    "workspaceMembers": [
+      "robot_control_rust",
+      "rust_tools_suite"
+    ]
   }
 }
