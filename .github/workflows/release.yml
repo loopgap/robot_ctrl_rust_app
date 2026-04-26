@@ -65,11 +65,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo run -p devtools -- validate --strict
-          cargo fmt --check
-          cargo clippy --workspace --all-targets -- -D warnings
-          cargo test --workspace
-          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+          cargo run -p devtools --manifest-path rust_tools_suite/Cargo.toml -- validate --strict
+          cargo fmt --check --manifest-path robot_control_rust/Cargo.toml
+          cargo fmt --check --manifest-path rust_tools_suite/Cargo.toml
+          cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path rust_tools_suite/Cargo.toml --all-targets -- -D warnings
+          cargo test --manifest-path robot_control_rust/Cargo.toml
+          cargo test --manifest-path rust_tools_suite/Cargo.toml
+          RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path robot_control_rust/Cargo.toml --no-deps
+          RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rust_tools_suite/Cargo.toml --no-deps
 
   build-windows:
     name: Build Windows
