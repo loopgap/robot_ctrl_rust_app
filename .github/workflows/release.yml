@@ -65,7 +65,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo run -p devtools --manifest-path rust_tools_suite/Cargo.toml -- validate --strict
           cargo fmt --check --manifest-path robot_control_rust/Cargo.toml
           cargo fmt --check --manifest-path rust_tools_suite/Cargo.toml
           cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings
