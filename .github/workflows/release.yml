@@ -65,14 +65,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo fmt --check --manifest-path robot_control_rust/Cargo.toml
-          cargo fmt --check --manifest-path rust_tools_suite/Cargo.toml
-          cargo clippy --manifest-path robot_control_rust/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path rust_tools_suite/Cargo.toml --all-targets -- -D warnings
-          cargo test --manifest-path robot_control_rust/Cargo.toml
-          cargo test --manifest-path rust_tools_suite/Cargo.toml
-          RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path robot_control_rust/Cargo.toml --no-deps
-          RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rust_tools_suite/Cargo.toml --no-deps
+          cargo fmt --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+          RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
   build-windows:
     name: Build Windows
@@ -96,9 +92,7 @@ jobs:
         run: choco install nsis -y --no-progress
       - name: Build binaries
         shell: pwsh
-        run: |
-          cargo build --release --manifest-path robot_control_rust/Cargo.toml
-          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
+        run: cargo build --release --workspace
       - name: Create Windows installer
         shell: pwsh
         env:
@@ -127,8 +121,8 @@ jobs:
           $version = "$env:VERSION" -replace '^v', ''
           $zipName = "robot_control_suite_${version}_windows_x64_portable.zip"
           $files = @(
-            "robot_control_rust/target/release/robot_control_rust.exe",
-            "rust_tools_suite/target/release/rust_tools_suite.exe",
+            "target/release/robot_control_rust.exe",
+            "target/release/rust_tools_suite.exe",
             "docs/help/index.html",
             "robot_control_rust/ARCHITECTURE_AND_USAGE.md"
           )
@@ -158,9 +152,7 @@ jobs:
             ~/.cargo/registry/index/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build binaries
-        run: |
-          cargo build --release --manifest-path robot_control_rust/Cargo.toml
-          cargo build --release --manifest-path rust_tools_suite/Cargo.toml
+        run: cargo build --release --workspace
       - name: Create Debian package
         shell: bash
         env:
@@ -178,8 +170,8 @@ jobs:
           mkdir -p "$pkg_dir/usr/local/bin"
           mkdir -p "$pkg_dir/usr/local/share/applications"
 
-          cp robot_control_rust/target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
-          cp rust_tools_suite/target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
+          cp target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
+          cp target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
 
           mkdir -p "$pkg_dir/DEBIAN"
           printf '%s\n' \
