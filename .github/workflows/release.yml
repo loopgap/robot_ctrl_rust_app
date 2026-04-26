@@ -117,6 +117,26 @@ jobs:
         with:
           name: windows-installer
           path: robot_control_suite_*_windows_x64-setup.exe
+      - name: Create Windows portable ZIP
+        shell: pwsh
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          $version = "$env:VERSION" -replace '^v', ''
+          $zipName = "robot_control_suite_${version}_windows_x64_portable.zip"
+          $files = @(
+            "target/release/robot_control.exe",
+            "target/release/tools_suite.exe",
+            "target/release/devtools.exe",
+            "docs/help/index.html",
+            "robot_control_rust/ARCHITECTURE_AND_USAGE.md"
+          )
+          Compress-Archive -Path $files -DestinationPath $zipName -Force
+      - name: Upload Windows portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: robot_control_suite_*_windows_x64_portable.zip
 
   build-linux:
     name: Build Linux
@@ -203,12 +223,16 @@ jobs:
         with:
           name: linux-package
           path: artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-portable
+          path: artifacts
       - name: Create checksums
         shell: bash
         run: |
           set -euo pipefail
           cd artifacts
-          sha256sum *.exe *.deb > checksums-sha256.txt
+          sha256sum *.exe *.deb *.zip > checksums-sha256.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -218,6 +242,7 @@ jobs:
           files: |
             artifacts/*.exe
             artifacts/*.deb
+            artifacts/*_portable.zip
             artifacts/checksums-sha256.txt
 
   publish-draft-on-failure:
