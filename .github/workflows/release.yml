@@ -190,8 +190,8 @@ jobs:
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     needs:
-      - verify-tag
-      - quality-gate
+      - call-validate.verify-tag
+      - call-validate.quality-gate
       - build-windows
       - build-linux
       - publish-release
@@ -202,8 +202,8 @@ jobs:
           Automatic draft release generated because release workflow did not fully succeed.
 
           Job results:
-          - verify-tag: ${{ needs.verify-tag.result }}
-          - quality-gate: ${{ needs.quality-gate.result }}
+          - verify-tag: ${{ needs.call-validate.verify-tag.result }}
+          - quality-gate: ${{ needs.call-validate.quality-gate.result }}
           - build-windows: ${{ needs.build-windows.result }}
           - build-linux: ${{ needs.build-linux.result }}
           - publish-release: ${{ needs.publish-release.result }}
