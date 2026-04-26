@@ -147,6 +147,7 @@ var errStopWalk = errors.New("stop-walk")
 type governanceConfig struct {
 	Workspace workspacePolicy `json:"workspace"`
 	Cleanup   cleanupPolicy   `json:"cleanup"`
+	Release   releasePolicy    `json:"release"`
 }
 
 type workspacePolicy struct {
@@ -161,6 +162,11 @@ type cleanupPolicy struct {
 	FixedRelativePaths     []string `json:"fixedRelativePaths"`
 	GlobPatterns           []string `json:"globPatterns"`
 	ProtectedRelativePaths []string `json:"protectedRelativePaths"`
+}
+
+type releasePolicy struct {
+	RequiredFiles      []string `json:"requiredFiles"`
+	WorkspaceMembers   []string `json:"workspaceMembers"`
 }
 
 type releaseStateSnapshot struct {
@@ -4150,11 +4156,41 @@ func runWorkspaceGuard(args []string) int {
 		blockedStagedPaths = uniqueSortedStrings(blockedStagedPaths)
 	}
 
+	// Release policy checks
+	missingRequiredFiles := make([]string, 0)
+	if len(config.Release.RequiredFiles) > 0 {
+		for _, rel := range config.Release.RequiredFiles {
+			fullPath := filepath.Join(repoRoot, filepath.FromSlash(rel))
+			if !fileExists(fullPath) {
+				missingRequiredFiles = append(missingRequiredFiles, rel)
+			}
+		}
+	}
+
+	missingWorkspaceMembers := make([]string, 0)
+	if len(config.Release.WorkspaceMembers) > 0 {
+		cargoTomlPath := filepath.Join(repoRoot, "Cargo.toml")
+		if fileExists(cargoTomlPath) {
+			cargoContent, readErr := os.ReadFile(cargoTomlPath)
+			if readErr == nil {
+				for _, member := range config.Release.WorkspaceMembers {
+					if !strings.Contains(string(cargoContent), member) {
+						missingWorkspaceMembers = append(missingWorkspaceMembers, member)
+					}
+				}
+			}
+		} else {
+			missingWorkspaceMembers = append(missingWorkspaceMembers, "Cargo.toml not found")
+		}
+	}
+
 	fmt.Println("Workspace structure summary")
 	fmt.Printf("- Mode: %s\n", *mode)
 	fmt.Printf("- Unexpected root entries: %d\n", len(unexpectedRootEntries))
 	fmt.Printf("- Blocked workspace paths: %d\n", len(blockedWorkspacePaths))
 	fmt.Printf("- Blocked staged paths: %d\n", len(blockedStagedPaths))
+	fmt.Printf("- Missing required files: %d\n", len(missingRequiredFiles))
+	fmt.Printf("- Missing workspace members in Cargo.toml: %d\n", len(missingWorkspaceMembers))
 
 	if len(unexpectedRootEntries) > 0 {
 		fmt.Println("Unexpected root entries:")
@@ -4177,6 +4213,20 @@ func runWorkspaceGuard(args []string) int {
 		}
 	}
 
+	if len(missingRequiredFiles) > 0 {
+		fmt.Println("Missing required files for release:")
+		for _, f := range missingRequiredFiles {
+			fmt.Printf("  %s\n", f)
+		}
+	}
+
+	if len(missingWorkspaceMembers) > 0 {
+		fmt.Println("Missing workspace members in Cargo.toml:")
+		for _, m := range missingWorkspaceMembers {
+			fmt.Printf("  %s\n", m)
+		}
+	}
+
 	if *mode == "apply" {
 		cleanupCode := runWorkspaceCleanup([]string{"--mode", "apply"})
 		if cleanupCode != exitSuccess {
@@ -4190,7 +4240,7 @@ func runWorkspaceGuard(args []string) int {
 		}
 	}
 
-	issueCount := len(unexpectedRootEntries) + len(blockedWorkspacePaths) + len(blockedStagedPaths)
+	issueCount := len(unexpectedRootEntries) + len(blockedWorkspacePaths) + len(blockedStagedPaths) + len(missingRequiredFiles) + len(missingWorkspaceMembers)
 	if *strict && issueCount > 0 {
 		return exitUsage
 	}
