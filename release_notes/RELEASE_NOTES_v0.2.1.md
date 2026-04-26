@@ -19,10 +19,10 @@
 ## Verification
 - [x] ./scripts/ubuntu/task.sh preflight
 - [x] ./scripts/ubuntu/task.sh ci-local-full
-- [x] CI passed (all jobs)
-- [x] Security audit passed (cargo audit with RUSTSEC-2026-0104 ignored)
+- [x] CI passed
+- [x] Security audit passed
 - [x] Release assets verified (exe/setup/checksums)
-- [x] Release workflow policy validation: Tag v0.2.1 is traceable to origin/main
+- [x] Release workflow policy validation
 
 ## Artifacts
 | Platform | Type | Filename |
