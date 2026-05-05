@@ -66,6 +66,58 @@ cd .\scripts\go\rusktask; go run . review --before-push
 
 ---
 
+## 4.1 构建规范 (Build Profiles)
+
+本工作区采用 **互斥构建策略**，同一时间仅保留一种构建产物以节省磁盘空间。
+
+### 4.1.1 构建命令
+
+| 场景 | 命令 | 产物位置 |
+|------|------|----------|
+| **开发构建** | `cargo clean && cargo build` | `target/debug/` |
+| **发布构建** | `cargo clean && cargo build --release` | `target/release/` |
+| **验证 debug** | `cargo run` | - |
+| **验证 release** | `cargo run --release` | - |
+
+### 4.1.2 Profile 配置
+
+当前 `Cargo.toml` 中已定义优化参数：
+
+```toml
+[profile.dev]
+opt-level = 1
+debug = 0
+strip = true
+codegen-units = 16
+panic = "abort"
+incremental = false
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+incremental = false
+```
+
+### 4.1.3 清理规则
+
+| 构建类型 | 何时清理 | 目的 |
+|----------|----------|------|
+| `target/debug/` | 切换到 release 构建前 | 释放空间，避免产物混淆 |
+| `target/release/` | 切换到 debug 构建前 | 释放空间，避免产物混淆 |
+| `target/` 全局 | 大版本升级或依赖变更后 | 确保完全重编译 |
+
+### 4.1.4 构建检查清单
+
+- [ ] 开发构建前确认 `target/release/` 产物已无用
+- [ ] 发布构建前确认 `target/debug/` 产物已无用
+- [ ] 构建完成后运行 `.\scripts\task.ps1 check` 验证
+- [ ] 勿将 `target/` 目录提交至 Git
+
+---
+
 ## 5. 持续改进
 
 本项目鼓励“文档即代码”。如果发现 `route.md` 或自动化脚本有不完善之处，应优先发起针对规范本身的优化 PR。
