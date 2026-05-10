@@ -6,9 +6,41 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 authors = ["Robot Control Team"]
+license = "GPL-3.0-only"
+
+[workspace.dependencies]
+eframe = { version = "0.31", features = ["default"] }
+egui = "0.31"
+serialport = "4.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4.44", features = ["serde"] }
+
+[profile.dev]
+opt-level = 1
+debug = 0
+strip = true
+codegen-units = 16
+incremental = false
+panic = "abort"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = 0
+incremental = false
+
+[profile.test]
+opt-level = 1
+debug = 0
+strip = true
+incremental = false
 
 [workspace.metadata.release]
 TagPrefix = "v"

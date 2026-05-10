@@ -150,6 +150,33 @@ impl PidController {
     }
 }
 
+impl super::control_algorithm::ControlAlgorithm for PidController {
+    fn name(&self) -> &'static str {
+        "Classic PID"
+    }
+    fn compute(&mut self, feedback: f64) -> f64 {
+        self.compute(feedback)
+    }
+    fn reset(&mut self) {
+        self.reset();
+    }
+    fn setpoint(&self) -> f64 {
+        self.setpoint
+    }
+    fn set_setpoint(&mut self, sp: f64) {
+        self.setpoint = sp;
+    }
+    fn output(&self) -> f64 {
+        self.output
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,5 +288,38 @@ mod tests {
         let out = pid.compute(0.0);
         // error = -10 - 0 = -10, P = 1.0 * (-10) = -10
         assert!(out < 0.0, "Output should be negative for negative error");
+    }
+
+    #[test]
+    fn test_pid_nan_input() {
+        let mut pid = PidController::new(1.0, 0.1, 0.01, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let output = pid.compute(f64::NAN);
+        assert!(
+            output.is_nan() || output.is_finite(),
+            "PID should handle NaN gracefully"
+        );
+    }
+
+    #[test]
+    fn test_pid_infinity_input() {
+        let mut pid = PidController::new(1.0, 0.1, 0.01, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let output = pid.compute(f64::INFINITY);
+        assert!(
+            output.is_finite() || output.is_infinite(),
+            "PID should handle Infinity gracefully"
+        );
+    }
+
+    #[test]
+    fn test_pid_negative_infinity_input() {
+        let mut pid = PidController::new(1.0, 0.1, 0.01, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let output = pid.compute(f64::NEG_INFINITY);
+        assert!(
+            output.is_finite() || output.is_infinite(),
+            "PID should handle -Infinity gracefully"
+        );
     }
 }

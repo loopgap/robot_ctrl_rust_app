@@ -6,6 +6,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// 时间转换工具
+///
+/// 提供时间戳转换、时区转换、日期格式化等功能。
+/// 支持 Unix 时间戳、ISO 8601、RFC 2822 等格式。
 #[derive(Default)]
 pub struct TimeConverterTool {
     timestamp_input: String,
@@ -38,11 +42,11 @@ impl TimeConverterTool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 
@@ -293,5 +297,114 @@ impl TimeConverterTool {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::i18n::Language;
+
+    fn tool() -> TimeConverterTool {
+        TimeConverterTool::default()
+    }
+
+    #[test]
+    fn test_timestamp_to_datetime_seconds() {
+        let mut t = tool();
+        t.timestamp_input = "1704067200".into();
+        t.timestamp_to_datetime(Language::En);
+        assert!(t.verified);
+        assert!(t.output.contains("2024-01-01"));
+    }
+
+    #[test]
+    fn test_timestamp_to_datetime_millis() {
+        let mut t = tool();
+        t.timestamp_input = "1704067200000".into();
+        t.timestamp_to_datetime(Language::En);
+        assert!(t.verified);
+    }
+
+    #[test]
+    fn test_timestamp_to_datetime_zero() {
+        let mut t = tool();
+        t.timestamp_input = "0".into();
+        t.timestamp_to_datetime(Language::En);
+        assert!(t.verified);
+        assert!(t.output.contains("1970"));
+    }
+
+    #[test]
+    fn test_timestamp_to_datetime_invalid() {
+        let mut t = tool();
+        t.timestamp_input = "abc".into();
+        t.timestamp_to_datetime(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_datetime_to_timestamp_valid() {
+        let mut t = tool();
+        t.datetime_input = "2024-01-01 00:00:00".into();
+        t.datetime_to_timestamp(Language::En);
+        assert!(t.verified);
+        assert!(t.output.contains("seconds:"));
+        assert!(t.output.contains("millis:"));
+    }
+
+    #[test]
+    fn test_datetime_to_timestamp_invalid_format() {
+        let mut t = tool();
+        t.datetime_input = "not-a-date".into();
+        t.datetime_to_timestamp(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_load_input_detects_timestamp() {
+        let mut t = tool();
+        t.load_input("1704067200".into());
+        assert!(!t.timestamp_input.is_empty());
+        assert!(t.datetime_input.is_empty());
+    }
+
+    #[test]
+    fn test_load_input_detects_datetime() {
+        let mut t = tool();
+        t.load_input("2024-01-01 00:00:00".into());
+        assert!(!t.datetime_input.is_empty());
+        assert!(t.timestamp_input.is_empty());
+    }
+
+    #[test]
+    fn test_negative_timestamp() {
+        let mut t = tool();
+        t.timestamp_input = "-1".into();
+        t.timestamp_to_datetime(Language::En);
+        assert!(t.verified);
+    }
+
+    #[test]
+    fn test_output_text_empty() {
+        let t = tool();
+        assert!(t.output_text().is_none());
+    }
+
+    #[test]
+    fn test_output_text_some() {
+        let mut t = tool();
+        t.output = "test".into();
+        assert_eq!(t.output_text(), Some("test"));
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut t = tool();
+        t.output = "test".into();
+        t.executed = true;
+        t.clear();
+        assert!(t.output.is_empty());
+        assert!(!t.executed);
     }
 }

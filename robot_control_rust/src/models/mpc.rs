@@ -231,6 +231,33 @@ impl MpcController {
     }
 }
 
+impl super::control_algorithm::ControlAlgorithm for MpcController {
+    fn name(&self) -> &'static str {
+        "MPC"
+    }
+    fn compute(&mut self, feedback: f64) -> f64 {
+        self.compute(feedback)
+    }
+    fn reset(&mut self) {
+        self.reset();
+    }
+    fn setpoint(&self) -> f64 {
+        self.setpoint
+    }
+    fn set_setpoint(&mut self, sp: f64) {
+        self.setpoint = sp;
+    }
+    fn output(&self) -> f64 {
+        self.output
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

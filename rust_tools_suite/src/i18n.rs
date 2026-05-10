@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+/// 语言枚举
+///
+/// 支持中文（Zh）和英文（En）两种语言。
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Language {
     #[default]

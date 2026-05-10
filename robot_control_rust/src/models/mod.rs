@@ -28,13 +28,14 @@ pub use chassis_kinematics::ChassisCodeExamples;
 pub use connection::{
     CanConfig, ConnectionStatus, ConnectionType, SerialConfig, UsbConfig, UsbProtocol, UsbSpeed,
 };
-pub use control_algorithm::ControlAlgorithmType;
+pub use control_algorithm::{ControlAlgorithm, ControlAlgorithmType, DualFeedbackControl};
 pub use data_channel::{DataChannel, DataSource, TimeSeriesBuffer, VizType};
 pub use fuzzy_pid::FuzzyPidController;
 pub use incremental_pid::IncrementalPidController;
 pub use ladrc::LadrcController;
 pub use lqr::LqrController;
-pub use modbus::ModbusFrame;
+#[allow(unused_imports)]
+pub use modbus::{ModbusFrame, ModbusResponse};
 pub use mpc::MpcController;
 pub use neural_network::NeuralNetwork;
 pub use packet::{Endianness, FieldType, PacketParser, PacketTemplate, ParsedPacket};

@@ -1,6 +1,7 @@
 use crate::i18n::Language;
 use eframe::egui;
 
+/// 步骤状态
 #[derive(Clone, Copy)]
 pub enum LoopState {
     Pending,
@@ -8,6 +9,9 @@ pub enum LoopState {
     Warning,
 }
 
+/// 闭环流程步骤
+///
+/// 表示工作流中的一个步骤，包含名称、状态和详情。
 pub struct LoopStep {
     pub name: &'static str,
     pub state: LoopState,

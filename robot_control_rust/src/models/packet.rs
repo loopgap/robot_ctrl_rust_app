@@ -415,10 +415,6 @@ impl PacketParser {
         Self { templates }
     }
 
-    pub fn update_templates(&mut self, templates: Vec<PacketTemplate>) {
-        self.templates = templates;
-    }
-
     /// Try to parse raw data against all registered templates.
     /// Returns the first successful parse, or None.
     pub fn try_parse(&self, data: &[u8]) -> Option<ParsedPacket> {

@@ -107,7 +107,6 @@ impl CanFrame {
 pub struct CanService {
     pub frames: Vec<CanFrame>,
     pub dropped_frames: u64,
-    pub filters: Vec<CanFilter>,
     pub is_running: bool,
     pub bitrate: u32,
     pub fd_enabled: bool,
@@ -117,22 +116,11 @@ pub struct CanService {
     pub bus_load: f32,
     // 高级配置
     pub config_sample_point: f32,
-    pub config_data_sample_point: f32,
-    pub config_sjw: u8,
-    pub config_data_sjw: u8,
     pub config_termination: bool,
     pub config_listen_only: bool,
     pub config_loopback: bool,
     pub config_auto_retransmit: bool,
     pub config_error_reporting: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CanFilter {
-    pub id: u32,
-    pub mask: u32,
-    pub enabled: bool,
-    pub name: String,
 }
 
 impl Default for CanService {
@@ -146,7 +134,6 @@ impl CanService {
         Self {
             frames: Vec::new(),
             dropped_frames: 0,
-            filters: Vec::new(),
             is_running: false,
             bitrate: 500_000,
             fd_enabled: false,
@@ -155,9 +142,6 @@ impl CanService {
             frame_count_rx: 0,
             bus_load: 0.0,
             config_sample_point: 0.875,
-            config_data_sample_point: 0.750,
-            config_sjw: 1,
-            config_data_sjw: 1,
             config_termination: true,
             config_listen_only: false,
             config_loopback: false,
@@ -196,17 +180,7 @@ impl CanService {
     }
 
     pub fn filtered_frames(&self) -> Vec<&CanFrame> {
-        if self.filters.is_empty() || self.filters.iter().all(|f| !f.enabled) {
-            return self.frames.iter().collect();
-        }
-        self.frames
-            .iter()
-            .filter(|frame| {
-                self.filters.iter().any(|filter| {
-                    filter.enabled && (frame.id & filter.mask) == (filter.id & filter.mask)
-                })
-            })
-            .collect()
+        self.frames.iter().collect()
     }
 
     pub fn clear(&mut self) {
@@ -382,37 +356,5 @@ mod tests {
         }
         assert!(svc.frames.len() <= MAX_CAN_FRAMES);
         assert_eq!(svc.dropped_frames, 500);
-    }
-
-    #[test]
-    fn test_can_filter() {
-        let mut svc = CanService::new();
-        svc.filters.push(CanFilter {
-            id: 0x100,
-            mask: 0x7FF,
-            enabled: true,
-            name: "Test".into(),
-        });
-        svc.simulate_rx(0x100, &[1]);
-        svc.simulate_rx(0x200, &[2]);
-        let filtered = svc.filtered_frames();
-        assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].id, 0x100);
-    }
-
-    #[test]
-    fn test_can_filter_disabled() {
-        let mut svc = CanService::new();
-        svc.filters.push(CanFilter {
-            id: 0x100,
-            mask: 0x7FF,
-            enabled: false,
-            name: "Off".into(),
-        });
-        svc.simulate_rx(0x100, &[1]);
-        svc.simulate_rx(0x200, &[2]);
-        let filtered = svc.filtered_frames();
-        // 所有filter都disabled时，返回全部帧
-        assert_eq!(filtered.len(), 2);
     }
 }

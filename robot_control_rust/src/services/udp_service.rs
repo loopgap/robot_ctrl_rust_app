@@ -2,6 +2,7 @@ use crate::models::ConnectionStatus;
 use anyhow::Result;
 use chrono::Local;
 use std::net::UdpSocket;
+use tracing::{error, info};
 
 use super::connection_provider::ConnectionProvider;
 
@@ -50,7 +51,7 @@ impl UdpService {
                 socket.set_nonblocking(true)?;
                 self.socket = Some(socket);
                 self.status = ConnectionStatus::Connected;
-                log::info!("UDP bound to {}", addr);
+                info!("UDP bound to {}", addr);
                 Ok(())
             }
             Err(e) => {
@@ -107,7 +108,7 @@ impl ConnectionProvider for UdpService {
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Vec::new(),
             Err(e) => {
-                log::error!("UDP read error: {}", e);
+                error!("UDP read error: {}", e);
                 self.error_count += 1;
                 Vec::new()
             }
@@ -122,5 +123,49 @@ impl ConnectionProvider for UdpService {
         self.bytes_sent = 0;
         self.bytes_received = 0;
         self.error_count = 0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_udp_service_default() {
+        let service = UdpService::default();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        assert_eq!(service.local_addr, "0.0.0.0");
+        assert_eq!(service.local_port, 9000);
+        assert_eq!(service.remote_addr, "127.0.0.1");
+        assert_eq!(service.remote_port, 9001);
+        assert!(!service.is_connected());
+    }
+
+    #[test]
+    fn test_close_when_not_bound() {
+        let mut service = UdpService::default();
+        service.close();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn test_reset_stats() {
+        let mut service = UdpService {
+            bytes_sent: 100,
+            bytes_received: 200,
+            error_count: 5,
+            ..Default::default()
+        };
+        service.reset_stats();
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.bytes_received, 0);
+        assert_eq!(service.error_count, 0);
+    }
+
+    #[test]
+    fn test_send_data_when_disconnected_returns_error() {
+        let mut service = UdpService::default();
+        assert!(service.send_default(b"ping").is_err());
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
 }

@@ -83,7 +83,7 @@ rust_serial/
 |--------|----------|----------|
 | **CI** | PR / push 到 main/develop | 格式检查、Clippy、测试、文档阻断 |
 | **Security Audit** | 每周一 / 依赖变更 | cargo-audit 与 cargo-deny 门禁 |
-| **Release** | push tag v* | 自动发布 `robot_control_rust_windows_x64_portable.zip`、`rust_tools_suite_windows_x64_portable.zip`、`RobotControlSuite_Setup.exe`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
+| **Release** | push tag v* | 自动发布 `robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`，并同步本地 release notes 正文 |
 
 ## 本地开发
 

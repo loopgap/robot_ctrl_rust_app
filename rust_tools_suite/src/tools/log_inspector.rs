@@ -6,6 +6,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// 日志检查工具
+///
+/// 提供日志解析、过滤、统计等功能。
+/// 支持多种日志格式（syslog、JSON、自定义）。
 #[derive(Default)]
 pub struct LogTool {
     input: String,
@@ -34,11 +38,11 @@ impl LogTool {
         self.detail.clear();
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 
@@ -262,5 +266,129 @@ impl LogTool {
             Language::Zh => format!("筛选完成：命中 {} 行", self.matched_count),
             Language::En => format!("Filter completed: {} lines matched", self.matched_count),
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::i18n::Language;
+
+    fn tool() -> LogTool {
+        LogTool::default()
+    }
+
+    #[test]
+    fn test_filter_no_regex() {
+        let mut t = tool();
+        t.input = "line1\nline2\nline3".into();
+        t.execute(Language::En);
+        assert!(t.verified);
+        assert_eq!(t.matched_count, 3);
+    }
+
+    #[test]
+    fn test_filter_include_regex() {
+        let mut t = tool();
+        t.input = "error: fail\ninfo: ok\nerror: bad".into();
+        t.include_regex = "error".into();
+        t.execute(Language::En);
+        assert_eq!(t.matched_count, 2);
+    }
+
+    #[test]
+    fn test_filter_exclude_regex() {
+        let mut t = tool();
+        t.input = "error: fail\ninfo: ok\nerror: bad".into();
+        t.exclude_regex = "error".into();
+        t.execute(Language::En);
+        assert_eq!(t.matched_count, 1);
+    }
+
+    #[test]
+    fn test_filter_both_regex() {
+        let mut t = tool();
+        t.input = "error: fail\ninfo: ok\nerror: bad\nwarning: low".into();
+        t.include_regex = "error|warning".into();
+        t.exclude_regex = "bad".into();
+        t.execute(Language::En);
+        assert_eq!(t.matched_count, 2);
+    }
+
+    #[test]
+    fn test_invalid_include_regex() {
+        let mut t = tool();
+        t.input = "test".into();
+        t.include_regex = "[invalid".into();
+        t.execute(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_invalid_exclude_regex() {
+        let mut t = tool();
+        t.input = "test".into();
+        t.exclude_regex = "[invalid".into();
+        t.execute(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_empty_input() {
+        let mut t = tool();
+        t.input = "".into();
+        t.execute(Language::En);
+        assert!(t.verified);
+        assert_eq!(t.matched_count, 0);
+    }
+
+    #[test]
+    fn test_empty_regex() {
+        let mut t = tool();
+        t.input = "line1\nline2".into();
+        t.include_regex = "".into();
+        t.exclude_regex = "".into();
+        t.execute(Language::En);
+        assert_eq!(t.matched_count, 2);
+    }
+
+    #[test]
+    fn test_output_content() {
+        let mut t = tool();
+        t.input = "line1\nline2\nline3".into();
+        t.include_regex = "line1".into();
+        t.execute(Language::En);
+        assert_eq!(t.output, "line1");
+    }
+
+    #[test]
+    fn test_matched_count_updates() {
+        let mut t = tool();
+        t.input = "a\nb\nc".into();
+        t.execute(Language::En);
+        assert_eq!(t.matched_count, 3);
+    }
+
+    #[test]
+    fn test_output_text_empty() {
+        let t = tool();
+        assert!(t.output_text().is_none());
+    }
+
+    #[test]
+    fn test_output_text_some() {
+        let mut t = tool();
+        t.output = "test".into();
+        assert_eq!(t.output_text(), Some("test"));
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut t = tool();
+        t.output = "test".into();
+        t.matched_count = 5;
+        t.clear();
+        assert!(t.output.is_empty());
+        assert_eq!(t.matched_count, 0);
     }
 }

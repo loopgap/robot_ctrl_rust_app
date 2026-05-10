@@ -1,9 +1,11 @@
 #![windows_subsystem = "windows"]
-#![allow(dead_code)]
 
+#[allow(dead_code)]
 mod app;
 mod i18n;
+#[allow(dead_code)]
 mod models;
+#[allow(dead_code)]
 mod services;
 mod views;
 
@@ -266,7 +268,7 @@ impl RobotControlApp {
 
         let clear_shortcut = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::L);
         if ctx.input_mut(|i| i.consume_shortcut(&clear_shortcut)) {
-            self.state.log_entries.clear();
+            self.state.log.log_entries.clear();
             self.state.status_message = Tr::logs_cleared(self.state.lang()).into();
         }
 
@@ -339,13 +341,13 @@ impl RobotControlApp {
 
         ui.menu_button(Tr::menu_edit(lang), |ui| {
             if ui.button(Tr::menu_clear_logs(lang)).clicked() {
-                self.state.log_entries.clear();
+                self.state.log.log_entries.clear();
                 self.state.status_message = Tr::logs_cleared(lang).into();
                 ui.close_menu();
             }
 
             if ui.button(Tr::menu_copy_frame(lang)).clicked() {
-                if let Some(last) = self.state.log_entries.last() {
+                if let Some(last) = self.state.log.log_entries.back() {
                     let direction = match last.direction {
                         LogDirection::Tx => "TX",
                         LogDirection::Rx => "RX",
@@ -929,6 +931,10 @@ fn check_linux_env() {
 }
 
 fn main() -> eframe::Result<()> {
+    // 初始化 tokio 运行时（用于 MCP 服务器）
+    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    let _guard = rt.enter();
+
     #[cfg(target_os = "linux")]
     check_linux_env();
 
@@ -936,7 +942,7 @@ fn main() -> eframe::Result<()> {
         return Ok(());
     }
 
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,

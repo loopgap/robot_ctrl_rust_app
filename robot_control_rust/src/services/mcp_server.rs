@@ -1,37 +1,20 @@
 // ═══════════════════════════════════════════════════════════════
-// MCP 服务器实现 - JSON-RPC 2.0 协议
+// MCP 服务器实现 - 使用官方 rmcp SDK
 // ═══════════════════════════════════════════════════════════════
 
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+use rmcp::{
+    handler::server::wrapper::Parameters, model::*, tool, tool_handler, tool_router,
+    transport::stdio, ErrorData as McpError, ServerHandler, ServiceExt,
 };
-use std::thread;
-
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing::info;
 
 use crate::models::{ParsedPacket, RobotState};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpRequest {
-    pub jsonrpc: String,
-    pub method: String,
-    pub params: Option<serde_json::Value>,
-    pub id: Option<serde_json::Value>,
-    #[serde(default)]
-    pub auth_token: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpResponse {
-    pub jsonrpc: String,
-    pub result: Option<serde_json::Value>,
-    pub error: Option<serde_json::Value>,
-    pub id: Option<serde_json::Value>,
-}
+// ========== 共享状态（保持与 AppState 的兼容性）==========
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpSharedState {
@@ -70,235 +53,284 @@ impl Default for McpSharedState {
     }
 }
 
-pub struct McpServer {
-    pub port: u16,
-    pub running: Arc<AtomicBool>,
+// ========== 参数定义 ==========
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct PidParams {
+    #[schemars(description = "比例系数")]
+    pub kp: f64,
+    #[schemars(description = "积分系数")]
+    pub ki: f64,
+    #[schemars(description = "微分系数")]
+    pub kd: f64,
+    #[schemars(description = "目标设定值")]
+    pub setpoint: f64,
 }
 
-impl McpServer {
-    pub fn start(
-        shared: Arc<Mutex<McpSharedState>>,
-        port: u16,
-        auth_token: Option<String>,
-        running: Arc<AtomicBool>,
-    ) -> Result<(), String> {
-        let listener = TcpListener::bind(("0.0.0.0", port))
-            .map_err(|e| format!("Failed to bind MCP port {}: {}", port, e))?;
-        running.store(true, Ordering::SeqCst);
+// ========== MCP 服务器结构体 ==========
 
-        thread::spawn(move || {
-            for stream in listener.incoming() {
-                if !running.load(Ordering::SeqCst) {
-                    break;
-                }
-                if let Ok(stream) = stream {
-                    let shared = Arc::clone(&shared);
-                    let auth_token = auth_token.clone();
-                    thread::spawn(move || {
-                        handle_client(stream, shared, auth_token);
-                    });
-                }
-            }
-        });
-
-        Ok(())
-    }
-
-    pub fn stop(running: Arc<AtomicBool>) {
-        running.store(false, Ordering::SeqCst);
-    }
+#[derive(Clone)]
+/// MCP (Model Context Protocol) 服务器，使用官方 rmcp SDK 实现
+///
+/// 提供 6 个工具方法：
+/// - get_pid_params: 获取 PID 参数
+/// - set_pid_params: 设置 PID 参数
+/// - get_robot_state: 获取机器人状态
+/// - get_state_history: 获取状态历史
+/// - get_parsed_packets: 获取解析的数据包
+/// - suggest_params: 获取 AI 建议的参数
+pub struct RobotMcpServer {
+    state: Arc<Mutex<McpSharedState>>,
 }
 
-fn handle_client(
-    mut stream: TcpStream,
-    shared: Arc<Mutex<McpSharedState>>,
-    auth_token: Option<String>,
-) {
-    let mut buf = [0u8; 4096];
-    if let Ok(n) = stream.read(&mut buf) {
-        if n == 0 {
-            return;
-        }
-        let req_str = String::from_utf8_lossy(&buf[..n]);
-        if let Ok(req) = serde_json::from_str::<McpRequest>(&req_str) {
-            if let Some(expected) = &auth_token {
-                if req.auth_token.as_deref() != Some(expected.as_str()) {
-                    if let Ok(mut s) = shared.lock() {
-                        s.unauthorized_count = s.unauthorized_count.saturating_add(1);
-                    }
-                    let resp = McpResponse {
-                        jsonrpc: "2.0".into(),
-                        result: None,
-                        error: Some(json!({"code": -32001, "message": "Unauthorized"})),
-                        id: req.id.clone(),
-                    };
-                    let resp_str = serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into());
-                    let _ = stream.write_all(resp_str.as_bytes());
-                    return;
-                }
-            }
-            if let Ok(mut s) = shared.lock() {
-                s.request_count = s.request_count.saturating_add(1);
-            }
-            let resp = handle_request(req, &shared);
-            let resp_str = serde_json::to_string(&resp).unwrap_or_else(|_| "{}".into());
-            let _ = stream.write_all(resp_str.as_bytes());
-        }
+// ========== 工具实现 ==========
+
+#[tool_router]
+impl RobotMcpServer {
+    pub fn new(state: Arc<Mutex<McpSharedState>>) -> Self {
+        Self { state }
     }
-}
 
-fn handle_request(req: McpRequest, shared: &Arc<Mutex<McpSharedState>>) -> McpResponse {
-    let mut result = None;
-    let mut error = None;
-    let jsonrpc = "2.0".to_string();
-    let id = req.id.clone();
-    let method = req.method.as_str();
-    let params = req.params.clone();
-
-    match method {
-        "get_pid_params" => {
-            let s = shared.lock().unwrap();
-            result = Some(json!({
+    #[tool(description = "获取当前 PID 控制器参数")]
+    async fn get_pid_params(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::json!({
                 "kp": s.kp,
                 "ki": s.ki,
                 "kd": s.kd,
-                "setpoint": s.setpoint,
-            }));
-        }
-        "set_pid_params" => {
-            if let Some(p) = params {
-                if let (Some(kp), Some(ki), Some(kd), Some(sp)) = (
-                    p.get("kp").and_then(|v| v.as_f64()),
-                    p.get("ki").and_then(|v| v.as_f64()),
-                    p.get("kd").and_then(|v| v.as_f64()),
-                    p.get("setpoint").and_then(|v| v.as_f64()),
-                ) {
-                    let mut s = shared.lock().unwrap();
-                    s.kp = kp;
-                    s.ki = ki;
-                    s.kd = kd;
-                    s.setpoint = sp;
-                    s.status = format!("MCP set params kp={:.4} ki={:.4} kd={:.4}", kp, ki, kd);
-                    result = Some(json!({"ok": true}));
-                } else {
-                    error = Some(json!({"code": -32602, "message": "Invalid params"}));
-                }
-            } else {
-                error = Some(json!({"code": -32602, "message": "Missing params"}));
-            }
-        }
-        "get_robot_state" => {
-            let s = shared.lock().unwrap();
-            result = Some(json!(&s.current_state));
-        }
-        "get_state_history" => {
-            let s = shared.lock().unwrap();
-            result = Some(json!(&s.state_history));
-        }
-        "get_parsed_packets" => {
-            let s = shared.lock().unwrap();
-            result = Some(json!(&s.parsed_packets));
-        }
-        "suggest_params" => {
-            let s = shared.lock().unwrap();
-            result = Some(json!({
+                "setpoint": s.setpoint
+            })
+            .to_string(),
+        )]))
+    }
+
+    #[tool(description = "设置 PID 控制器参数")]
+    async fn set_pid_params(
+        &self,
+        Parameters(PidParams {
+            kp,
+            ki,
+            kd,
+            setpoint,
+        }): Parameters<PidParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut s = self.state.lock().await;
+        s.kp = kp;
+        s.ki = ki;
+        s.kd = kd;
+        s.setpoint = setpoint;
+        s.status = format!("MCP set params kp={:.4} ki={:.4} kd={:.4}", kp, ki, kd);
+        s.request_count = s.request_count.saturating_add(1);
+        Ok(CallToolResult::success(vec![Content::text("ok")]))
+    }
+
+    #[tool(description = "获取机器人当前状态")]
+    async fn get_robot_state(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::to_string(&s.current_state).unwrap_or_default(),
+        )]))
+    }
+
+    #[tool(description = "获取历史状态记录（最近 500 条）")]
+    async fn get_state_history(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::to_string(&s.state_history).unwrap_or_default(),
+        )]))
+    }
+
+    #[tool(description = "获取已解析的数据包（最近 200 条）")]
+    async fn get_parsed_packets(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::to_string(&s.parsed_packets).unwrap_or_default(),
+        )]))
+    }
+
+    #[tool(description = "获取 AI 建议的 PID 参数")]
+    async fn suggest_params(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::json!({
                 "kp": s.suggested_kp,
                 "ki": s.suggested_ki,
                 "kd": s.suggested_kd,
-                "status": s.status,
-            }));
-        }
-        "tools" | "tools/list" => {
-            result = Some(json!([
-                "get_pid_params",
-                "set_pid_params",
-                "get_robot_state",
-                "get_state_history",
-                "get_parsed_packets",
-                "suggest_params"
-            ]));
-        }
-        "initialize" => {
-            result = Some(json!({
-                "protocolVersion": "2025-11-05",
-                "serverInfo": {"name": "robot-control-mcp", "version": "0.1.1"}
-            }));
-        }
-        _ => {
-            error = Some(json!({"code": -32601, "message": "Method not found"}));
-        }
+                "status": s.status
+            })
+            .to_string(),
+        )]))
     }
-    McpResponse {
-        jsonrpc,
-        result,
-        error,
-        id,
+}
+
+// ========== 服务器处理器 ==========
+
+#[tool_handler]
+impl ServerHandler for RobotMcpServer {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(Implementation::new(
+                "robot-control-mcp",
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions("机器人控制 MCP 服务器，提供 PID 参数读写和状态查询".to_string())
     }
+}
+
+// ========== 启动函数 ==========
+
+pub async fn start_mcp_server(state: Arc<Mutex<McpSharedState>>) -> Result<(), anyhow::Error> {
+    info!("Starting MCP server...");
+    let server = RobotMcpServer::new(state);
+    let service = server.serve(stdio()).await.inspect_err(|e| {
+        tracing::error!("MCP server error: {:?}", e);
+    })?;
+    info!("MCP server started successfully");
+    service.waiting().await?;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_handle_get_pid_params() {
-        let shared = Arc::new(Mutex::new(McpSharedState {
+    #[tokio::test]
+    async fn test_mcp_shared_state_default() {
+        let state = McpSharedState::default();
+        assert_eq!(state.kp, 1.0);
+        assert_eq!(state.ki, 0.1);
+        assert_eq!(state.kd, 0.01);
+        assert_eq!(state.setpoint, 0.0);
+        assert_eq!(state.status, "Ready");
+        assert_eq!(state.request_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_pid_params_deserialize() {
+        let json = r#"{"kp":2.5,"ki":0.3,"kd":0.05,"setpoint":100.0}"#;
+        let params: PidParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.kp, 2.5);
+        assert_eq!(params.ki, 0.3);
+        assert_eq!(params.kd, 0.05);
+        assert_eq!(params.setpoint, 100.0);
+    }
+
+    #[tokio::test]
+    async fn test_robot_mcp_server_new() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+        let info = server.get_info();
+        assert_eq!(info.server_info.name, "robot-control-mcp");
+    }
+
+    #[tokio::test]
+    async fn test_get_pid_params() {
+        let state = Arc::new(Mutex::new(McpSharedState {
             kp: 2.0,
             ki: 0.2,
             kd: 0.05,
+            setpoint: 100.0,
             ..Default::default()
         }));
 
-        let req = McpRequest {
-            jsonrpc: "2.0".into(),
-            method: "get_pid_params".into(),
-            params: None,
-            id: Some(json!(1)),
-            auth_token: None,
-        };
-        let resp = handle_request(req, &shared);
-        assert!(resp.error.is_none());
-        let result = resp.result.unwrap();
-        assert_eq!(result["kp"].as_f64().unwrap(), 2.0);
+        let server = RobotMcpServer::new(state);
+        let result = server.get_pid_params().await.unwrap();
+
+        // 验证结果
+        assert!(!result.is_error.unwrap_or(true));
     }
 
-    #[test]
-    fn test_handle_set_pid_params() {
-        let shared = Arc::new(Mutex::new(McpSharedState::default()));
-        let req = McpRequest {
-            jsonrpc: "2.0".into(),
-            method: "set_pid_params".into(),
-            params: Some(json!({"kp": 3.0, "ki": 0.3, "kd": 0.07, "setpoint": 100.0})),
-            id: Some(json!(2)),
-            auth_token: None,
-        };
-        let resp = handle_request(req, &shared);
-        assert!(resp.error.is_none());
+    #[tokio::test]
+    async fn test_set_pid_params() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state.clone());
 
-        let s = shared.lock().unwrap();
+        let params = PidParams {
+            kp: 3.0,
+            ki: 0.3,
+            kd: 0.07,
+            setpoint: 100.0,
+        };
+        let result = server.set_pid_params(Parameters(params)).await.unwrap();
+
+        // 验证结果
+        assert!(!result.is_error.unwrap_or(true));
+
+        // 验证状态已更新
+        let s = state.lock().await;
         assert_eq!(s.kp, 3.0);
         assert_eq!(s.setpoint, 100.0);
     }
 
-    #[test]
-    fn test_unknown_method() {
-        let shared = Arc::new(Mutex::new(McpSharedState::default()));
-        let req = McpRequest {
-            jsonrpc: "2.0".into(),
-            method: "unknown".into(),
-            params: None,
-            id: Some(json!(3)),
-            auth_token: None,
-        };
-        let resp = handle_request(req, &shared);
-        assert!(resp.error.is_some());
-        assert_eq!(resp.error.unwrap()["code"].as_i64().unwrap(), -32601);
+    #[tokio::test]
+    async fn test_get_robot_state() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+
+        let result = server.get_robot_state().await.unwrap();
+        assert!(!result.is_error.unwrap_or(true));
     }
 
-    #[test]
-    fn test_auth_token_field_deserialize() {
-        let raw = r#"{"jsonrpc":"2.0","method":"get_pid_params","id":1,"auth_token":"secret"}"#;
-        let req: McpRequest = serde_json::from_str(raw).unwrap();
-        assert_eq!(req.auth_token.as_deref(), Some("secret"));
+    #[tokio::test]
+    async fn test_suggest_params() {
+        let state = Arc::new(Mutex::new(McpSharedState {
+            suggested_kp: 1.5,
+            suggested_ki: 0.15,
+            suggested_kd: 0.015,
+            status: "AI suggested".into(),
+            ..Default::default()
+        }));
+
+        let server = RobotMcpServer::new(state);
+        let result = server.suggest_params().await.unwrap();
+        assert!(!result.is_error.unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn test_get_state_history_empty() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+        let result = server.get_state_history().await.unwrap();
+        assert!(!result.is_error.unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn test_get_parsed_packets_empty() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+        let result = server.get_parsed_packets().await.unwrap();
+        assert!(!result.is_error.unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn test_set_pid_params_updates_status() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state.clone());
+        let params = PidParams {
+            kp: 1.0,
+            ki: 0.1,
+            kd: 0.01,
+            setpoint: 50.0,
+        };
+        server.set_pid_params(Parameters(params)).await.unwrap();
+        let s = state.lock().await;
+        assert!(s.status.contains("MCP set params"));
+    }
+
+    #[tokio::test]
+    async fn test_server_info_version() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+        let info = server.get_info();
+        assert_eq!(info.server_info.version, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[tokio::test]
+    async fn test_server_capabilities() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        let server = RobotMcpServer::new(state);
+        let info = server.get_info();
+        assert!(info.capabilities.tools.is_some());
     }
 }

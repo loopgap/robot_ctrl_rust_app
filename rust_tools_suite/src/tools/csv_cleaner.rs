@@ -5,6 +5,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// CSV 清洗工具
+///
+/// 提供去重、筛选、格式转换等功能。
+/// 支持自定义分隔符和编码格式。
 #[derive(Default)]
 pub struct CsvCleanerTool {
     input: String,
@@ -30,11 +34,11 @@ impl CsvCleanerTool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 

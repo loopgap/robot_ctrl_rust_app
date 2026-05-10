@@ -30,19 +30,6 @@ impl ConnectionType {
             Self::Usb,
         ]
     }
-
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::Serial => "📟",
-            Self::Tcp => "🌐",
-            Self::Udp => "📡",
-            Self::Can => "🔧",
-            Self::CanFd => "⚙",
-            Self::ModbusRtu => "🏭",
-            Self::ModbusTcp => "🏗",
-            Self::Usb => "🔌",
-        }
-    }
 }
 
 impl fmt::Display for ConnectionType {
@@ -76,10 +63,6 @@ pub enum ConnectionStatus {
 impl ConnectionStatus {
     pub fn is_connected(&self) -> bool {
         matches!(self, Self::Connected)
-    }
-
-    pub fn is_disconnected(&self) -> bool {
-        matches!(self, Self::Disconnected | Self::Error)
     }
 
     pub fn color_rgb(&self) -> (u8, u8, u8) {
@@ -159,50 +142,6 @@ impl SerialConfig {
 
 // ═══════════════════════════════════════════════════════════════
 // TCP 配置
-// ═══════════════════════════════════════════════════════════════
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TcpConfig {
-    pub host: String,
-    pub port: u16,
-    pub is_server: bool,
-    pub timeout_ms: u64,
-}
-
-impl Default for TcpConfig {
-    fn default() -> Self {
-        Self {
-            host: "127.0.0.1".into(),
-            port: 8080,
-            is_server: false,
-            timeout_ms: 5000,
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// UDP 配置
-// ═══════════════════════════════════════════════════════════════
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UdpConfig {
-    pub local_host: String,
-    pub local_port: u16,
-    pub remote_host: String,
-    pub remote_port: u16,
-}
-
-impl Default for UdpConfig {
-    fn default() -> Self {
-        Self {
-            local_host: "0.0.0.0".into(),
-            local_port: 9000,
-            remote_host: "127.0.0.1".into(),
-            remote_port: 9001,
-        }
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════
 // CAN 配置
 // ═══════════════════════════════════════════════════════════════
@@ -360,22 +299,6 @@ impl UsbProtocol {
         }
     }
 
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::CdcAcm => "\u{1F4DF}",                // 📟
-            Self::Hid => "\u{2328}",                    // ⌨
-            Self::Msc => "\u{1F4BE}",                   // 💾
-            Self::Midi => "\u{1F3B5}",                  // 🎵
-            Self::Audio => "\u{1F50A}",                 // 🔊
-            Self::Video => "\u{1F4F7}",                 // 📷
-            Self::CdcEcm | Self::CdcNcm => "\u{1F310}", // 🌐
-            Self::Dfu => "\u{2B06}",                    // ⬆
-            Self::Vendor => "\u{1F527}",                // 🔧
-            Self::Printer => "\u{1F5A8}",               // 🖨
-            Self::Hub => "\u{1F500}",                   // 🔀
-        }
-    }
-
     /// Common USB speeds for this protocol
     pub fn typical_speeds(&self) -> &[&str] {
         match self {
@@ -447,16 +370,6 @@ impl UsbSpeed {
             Self::SuperSpeedPlus,
         ]
     }
-
-    pub fn bandwidth(&self) -> &str {
-        match self {
-            Self::LowSpeed => "1.5 Mbps",
-            Self::FullSpeed => "12 Mbps",
-            Self::HighSpeed => "480 Mbps",
-            Self::SuperSpeed => "5 Gbps",
-            Self::SuperSpeedPlus => "10+ Gbps",
-        }
-    }
 }
 
 impl fmt::Display for UsbSpeed {
@@ -486,31 +399,6 @@ impl Default for UsbConfig {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Modbus 配置
-// ═══════════════════════════════════════════════════════════════
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModbusConfig {
-    pub slave_id: u8,
-    pub is_tcp: bool,
-    // RTU 串口设置复用 SerialConfig
-    // TCP 网络设置
-    pub tcp_host: String,
-    pub tcp_port: u16,
-}
-
-impl Default for ModbusConfig {
-    fn default() -> Self {
-        Self {
-            slave_id: 1,
-            is_tcp: false,
-            tcp_host: "127.0.0.1".into(),
-            tcp_port: 502,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,7 +419,6 @@ mod tests {
     fn test_connection_status_default() {
         let s = ConnectionStatus::default();
         assert_eq!(s, ConnectionStatus::Disconnected);
-        assert!(s.is_disconnected());
         assert!(!s.is_connected());
     }
 
@@ -568,29 +455,6 @@ mod tests {
         assert!(SerialConfig::parity_options().contains(&"Odd"));
         assert!(SerialConfig::data_bits_options().contains(&8));
         assert!(SerialConfig::stop_bits_options().contains(&1));
-    }
-
-    #[test]
-    fn test_tcp_config_default() {
-        let cfg = TcpConfig::default();
-        assert_eq!(cfg.host, "127.0.0.1");
-        assert_eq!(cfg.port, 8080);
-        assert!(!cfg.is_server);
-    }
-
-    #[test]
-    fn test_udp_config_default() {
-        let cfg = UdpConfig::default();
-        assert_eq!(cfg.local_host, "0.0.0.0");
-        assert_eq!(cfg.local_port, 9000);
-        assert_eq!(cfg.remote_port, 9001);
-    }
-
-    #[test]
-    fn test_connection_type_icons_non_empty() {
-        for ct in ConnectionType::all() {
-            assert!(!ct.icon().is_empty(), "{:?} should have an icon", ct);
-        }
     }
 
     #[test]
@@ -683,17 +547,8 @@ mod tests {
     }
 
     #[test]
-    fn test_usb_protocol_icons_non_empty() {
-        for p in UsbProtocol::all() {
-            assert!(!p.icon().is_empty(), "{:?} should have icon", p);
-        }
-    }
-
-    #[test]
     fn test_usb_speeds() {
         assert_eq!(UsbSpeed::all().len(), 5);
-        assert_eq!(UsbSpeed::FullSpeed.bandwidth(), "12 Mbps");
-        assert_eq!(UsbSpeed::HighSpeed.bandwidth(), "480 Mbps");
     }
 
     #[test]

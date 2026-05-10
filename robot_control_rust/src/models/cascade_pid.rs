@@ -272,6 +272,39 @@ impl CascadePidController {
     }
 }
 
+impl super::control_algorithm::ControlAlgorithm for CascadePidController {
+    fn name(&self) -> &'static str {
+        "Cascade PID"
+    }
+    fn compute(&mut self, feedback: f64) -> f64 {
+        self.compute_single_feedback(feedback)
+    }
+    fn reset(&mut self) {
+        self.reset();
+    }
+    fn setpoint(&self) -> f64 {
+        self.setpoint
+    }
+    fn set_setpoint(&mut self, sp: f64) {
+        self.setpoint = sp;
+    }
+    fn output(&self) -> f64 {
+        self.output
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+impl super::control_algorithm::DualFeedbackControl for CascadePidController {
+    fn compute_dual(&mut self, position: f64, velocity: f64) -> f64 {
+        self.compute(position, velocity)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -13,10 +13,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
             ui.label(RichText::new(format!("{}:", Tr::presets(lang))).strong());
-            let presets = state.builtin_topologies.clone();
+            let presets = state.control.builtin_topologies.clone();
             for preset in &presets {
                 if ui.button(&preset.name).clicked() {
-                    state.topology = preset.clone();
+                    state.control.topology = preset.clone();
                 }
             }
         });
@@ -29,7 +29,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.label(RichText::new(Tr::chassis_type(lang)).size(15.0).strong());
         ui.add_space(8.0);
 
-        let current_chassis = state.topology.chassis_type;
+        let current_chassis = state.control.topology.chassis_type;
         let combo_w = ui.available_width().clamp(180.0, 320.0);
         egui::ComboBox::from_id_salt("chassis_type_combo")
             .selected_text(format!("{}", current_chassis))
@@ -37,18 +37,22 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show_ui(ui, |ui| {
                 for &ct in ChassisType::all() {
                     if ui
-                        .selectable_value(&mut state.topology.chassis_type, ct, format!("{}", ct))
+                        .selectable_value(
+                            &mut state.control.topology.chassis_type,
+                            ct,
+                            format!("{}", ct),
+                        )
                         .clicked()
                     {
                         let new_ct = ct;
-                        state.topology.set_chassis_type(new_ct);
+                        state.control.topology.set_chassis_type(new_ct);
                     }
                 }
             });
 
         ui.add_space(4.0);
         ui.label(
-            RichText::new(state.topology.chassis_type.description())
+            RichText::new(state.control.topology.chassis_type.description())
                 .size(12.0)
                 .color(Color32::GRAY)
                 .italics(),
@@ -65,12 +69,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .spacing([20.0, 8.0])
             .show(ui, |ui| {
                 ui.label(format!("{}:", Tr::name(lang)));
-                ui.text_edit_singleline(&mut state.topology.name);
+                ui.text_edit_singleline(&mut state.control.topology.name);
                 ui.end_row();
 
                 ui.label(format!("{}:", Tr::wheel_radius(lang)));
                 ui.add(
-                    egui::DragValue::new(&mut state.topology.wheel_radius)
+                    egui::DragValue::new(&mut state.control.topology.wheel_radius)
                         .range(10.0..=500.0)
                         .speed(1.0),
                 );
@@ -78,7 +82,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 ui.label(format!("{}:", Tr::wheel_base(lang)));
                 ui.add(
-                    egui::DragValue::new(&mut state.topology.wheel_base)
+                    egui::DragValue::new(&mut state.control.topology.wheel_base)
                         .range(50.0..=2000.0)
                         .speed(1.0),
                 );
@@ -86,7 +90,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 ui.label(format!("{}:", Tr::track_width(lang)));
                 ui.add(
-                    egui::DragValue::new(&mut state.topology.track_width)
+                    egui::DragValue::new(&mut state.control.topology.track_width)
                         .range(50.0..=2000.0)
                         .speed(1.0),
                 );
@@ -94,7 +98,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 ui.label(format!("{}:", Tr::max_linear_vel(lang)));
                 ui.add(
-                    egui::DragValue::new(&mut state.topology.max_linear_vel)
+                    egui::DragValue::new(&mut state.control.topology.max_linear_vel)
                         .range(0.0..=10000.0)
                         .speed(10.0),
                 );
@@ -102,7 +106,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 ui.label(format!("{}:", Tr::max_angular_vel(lang)));
                 ui.add(
-                    egui::DragValue::new(&mut state.topology.max_angular_vel)
+                    egui::DragValue::new(&mut state.control.topology.max_angular_vel)
                         .range(0.0..=20.0)
                         .speed(0.1),
                 );
@@ -118,20 +122,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 RichText::new(format!(
                     "{} ({})",
                     Tr::motors_joints(lang),
-                    state.topology.motors.len()
+                    state.control.topology.motors.len()
                 ))
                 .size(15.0)
                 .strong(),
             );
             ui.add_space(12.0);
             if ui.button(Tr::add_motor(lang)).clicked() {
-                let id = state.topology.motors.len() as u8;
+                let id = state.control.topology.motors.len() as u8;
                 let mc = crate::models::robot_topology::MotorConfig {
                     id,
                     name: format!("Motor_{}", id + 1),
                     ..Default::default()
                 };
-                state.topology.motors.push(mc);
+                state.control.topology.motors.push(mc);
             }
         });
         ui.add_space(8.0);
@@ -139,7 +143,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         let mut remove_motor: Option<usize> = None;
 
         ScrollArea::vertical().max_height(280.0).show(ui, |ui| {
-            for mi in 0..state.topology.motors.len() {
+            for mi in 0..state.control.topology.motors.len() {
                 egui::Frame::new()
                     .fill(Color32::from_rgba_premultiplied(35, 40, 55, 200))
                     .corner_radius(6.0)
@@ -148,31 +152,33 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .show(ui, |ui| {
                         ui.horizontal_wrapped(|ui| {
                             ui.spacing_mut().item_spacing.x = 8.0;
-                            ui.checkbox(&mut state.topology.motors[mi].enabled, "");
+                            ui.checkbox(&mut state.control.topology.motors[mi].enabled, "");
                             ui.label(
-                                RichText::new(format!("#{}", state.topology.motors[mi].id))
+                                RichText::new(format!("#{}", state.control.topology.motors[mi].id))
                                     .strong(),
                             );
                             ui.add(
-                                egui::TextEdit::singleline(&mut state.topology.motors[mi].name)
-                                    .desired_width(110.0),
+                                egui::TextEdit::singleline(
+                                    &mut state.control.topology.motors[mi].name,
+                                )
+                                .desired_width(110.0),
                             );
 
-                            let at = state.topology.motors[mi].actuator_type;
+                            let at = state.control.topology.motors[mi].actuator_type;
                             egui::ComboBox::from_id_salt(format!("motor_type_{}", mi))
                                 .selected_text(format!("{}", at))
                                 .width(130.0)
                                 .show_ui(ui, |ui| {
                                     for &a in ActuatorType::all() {
                                         ui.selectable_value(
-                                            &mut state.topology.motors[mi].actuator_type,
+                                            &mut state.control.topology.motors[mi].actuator_type,
                                             a,
                                             format!("{}", a),
                                         );
                                     }
                                 });
 
-                            ui.checkbox(&mut state.topology.motors[mi].reversed, "Rev");
+                            ui.checkbox(&mut state.control.topology.motors[mi].reversed, "Rev");
                         });
 
                         ui.add_space(4.0);
@@ -181,26 +187,34 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             ui.spacing_mut().item_spacing.x = 10.0;
                             ui.label("RPM:");
                             ui.add(
-                                egui::DragValue::new(&mut state.topology.motors[mi].max_rpm)
-                                    .range(0.0..=50000.0)
-                                    .speed(10.0),
+                                egui::DragValue::new(
+                                    &mut state.control.topology.motors[mi].max_rpm,
+                                )
+                                .range(0.0..=50000.0)
+                                .speed(10.0),
                             );
                             ui.label("Max A:");
                             ui.add(
-                                egui::DragValue::new(&mut state.topology.motors[mi].max_current)
-                                    .range(0.0..=100.0)
-                                    .speed(0.1),
+                                egui::DragValue::new(
+                                    &mut state.control.topology.motors[mi].max_current,
+                                )
+                                .range(0.0..=100.0)
+                                .speed(0.1),
                             );
                             ui.label("Gear:");
                             ui.add(
-                                egui::DragValue::new(&mut state.topology.motors[mi].gear_ratio)
-                                    .range(0.01..=1000.0)
-                                    .speed(0.1),
+                                egui::DragValue::new(
+                                    &mut state.control.topology.motors[mi].gear_ratio,
+                                )
+                                .range(0.01..=1000.0)
+                                .speed(0.1),
                             );
                             ui.label("PPR:");
                             ui.add(
-                                egui::DragValue::new(&mut state.topology.motors[mi].encoder_ppr)
-                                    .range(1..=65535),
+                                egui::DragValue::new(
+                                    &mut state.control.topology.motors[mi].encoder_ppr,
+                                )
+                                .range(1..=65535),
                             );
 
                             if ui.button("Remove").clicked() {
@@ -212,9 +226,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
 
         if let Some(ri) = remove_motor {
-            if state.topology.motors.len() > 1 {
-                state.topology.motors.remove(ri);
-                for (i, m) in state.topology.motors.iter_mut().enumerate() {
+            if state.control.topology.motors.len() > 1 {
+                state.control.topology.motors.remove(ri);
+                for (i, m) in state.control.topology.motors.iter_mut().enumerate() {
                     m.id = i as u8;
                 }
             }
@@ -227,7 +241,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::topology_viz(lang)).size(15.0).strong());
         ui.add_space(8.0);
-        let art = chassis_ascii_art(state.topology.chassis_type);
+        let art = chassis_ascii_art(state.control.topology.chassis_type);
         ui.label(
             RichText::new(art)
                 .size(12.0)
@@ -237,7 +251,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-fn chassis_ascii_art(ct: ChassisType) -> &'static str {
+pub(crate) fn chassis_ascii_art(ct: ChassisType) -> &'static str {
     match ct {
         ChassisType::Differential => {
             r#"
@@ -319,12 +333,80 @@ fn chassis_ascii_art(ct: ChassisType) -> &'static str {
         }
         _ => {
             r#"
-   ┌─────────────┐
-   │   CUSTOM    │
-   │   ROBOT     │
-   │   CONFIG    │
-   └─────────────┘
+    ┌─────────────┐
+    │   CUSTOM    │
+    │   ROBOT     │
+    │   CONFIG    │
+    └─────────────┘
 "#
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::ChassisType;
+
+    #[test]
+    fn test_chassis_ascii_art_differential() {
+        let art = chassis_ascii_art(ChassisType::Differential);
+        assert!(!art.is_empty());
+        assert!(art.contains("M1") || art.contains("M2"));
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_mecanum() {
+        let art = chassis_ascii_art(ChassisType::Mecanum);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_omni3() {
+        let art = chassis_ascii_art(ChassisType::Omni3);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_omni4() {
+        let art = chassis_ascii_art(ChassisType::Omni4);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_ackermann() {
+        let art = chassis_ascii_art(ChassisType::Ackermann);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_tracked() {
+        let art = chassis_ascii_art(ChassisType::Tracked);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_scara() {
+        let art = chassis_ascii_art(ChassisType::Scara);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_six_dof_arm() {
+        let art = chassis_ascii_art(ChassisType::SixDofArm);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_delta_robot() {
+        let art = chassis_ascii_art(ChassisType::DeltaRobot);
+        assert!(!art.is_empty());
+    }
+
+    #[test]
+    fn test_chassis_ascii_art_custom() {
+        let art = chassis_ascii_art(ChassisType::Custom);
+        assert!(!art.is_empty());
+        assert!(art.contains("CUSTOM"));
     }
 }

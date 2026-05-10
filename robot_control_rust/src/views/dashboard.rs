@@ -1,4 +1,4 @@
-use crate::app::{ActiveTab, AppState, LogDirection};
+use crate::app::{ActiveTab, AppState};
 use crate::i18n::{Language, Tr};
 use crate::services::ConnectionProvider;
 use crate::views::ui_kit::{page_header, section_title, settings_card};
@@ -16,30 +16,30 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             connection_card(
                 ui,
                 "Serial",
-                &state.serial.status.to_string(),
-                status_color(state.serial.is_connected()),
+                &state.conn.serial.status.to_string(),
+                status_color(state.conn.serial.is_connected()),
             );
             connection_card(
                 ui,
                 "TCP",
-                &state.tcp.status.to_string(),
-                status_color(state.tcp.is_connected()),
+                &state.conn.tcp.status.to_string(),
+                status_color(state.conn.tcp.is_connected()),
             );
             connection_card(
                 ui,
                 "UDP",
-                &state.udp.status.to_string(),
-                status_color(state.udp.is_connected()),
+                &state.conn.udp.status.to_string(),
+                status_color(state.conn.udp.is_connected()),
             );
             connection_card(
                 ui,
                 "CAN",
-                if state.can.is_running {
+                if state.conn.can.is_running {
                     "Running"
                 } else {
                     "Stopped"
                 },
-                status_color(state.can.is_running),
+                status_color(state.conn.can.is_running),
             );
         });
     });
@@ -137,16 +137,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 stat_row(
                     ui,
                     Tr::log_entries(lang),
-                    &state.log_entries.len().to_string(),
+                    &state.log.log_entries.len().to_string(),
                 );
                 ui.end_row();
                 stat_row(
                     ui,
                     Tr::state_history(lang),
-                    &state.state_history.len().to_string(),
+                    &state.control.state_history.len().to_string(),
                 );
                 ui.end_row();
-                stat_row(ui, Tr::active_channel(lang), &state.active_conn.to_string());
+                stat_row(
+                    ui,
+                    Tr::active_channel(lang),
+                    &state.conn.active_conn.to_string(),
+                );
                 ui.end_row();
                 stat_row(ui, Tr::last_comm(lang), state.last_comm());
                 ui.end_row();
@@ -190,7 +194,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }
             }
 
-            let run_text = if state.is_running {
+            let run_text = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(14.0)
                     .color(Color32::from_rgb(255, 100, 100))
@@ -220,7 +224,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .clicked()
             {
                 state.refresh_ports();
-                state.status_message = Tr::found_ports(state.available_ports.len(), lang);
+                state.status_message = Tr::found_ports(state.conn.available_ports.len(), lang);
             }
 
             let update_text = if state.update_available {
@@ -240,7 +244,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     // ═══ 机器人状态 ═══════════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::robot_state(lang));
-        let s = &state.current_state;
+        let s = &state.control.current_state;
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(18.0, 10.0);
             state_cell(ui, Tr::position(lang), &format!("{:.2}", s.position));
@@ -380,15 +384,17 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         section_title(ui, Tr::topology_info(lang));
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 16.0;
-            ui.label(format!("{}", state.topology.chassis_type));
+            ui.label(format!("{}", state.control.topology.chassis_type));
             ui.label(format!(
                 "| {} {}",
-                state.topology.motors.len(),
+                state.control.topology.motors.len(),
                 Tr::motors(lang)
             ));
             ui.label(format!(
                 "| PID: Kp={:.3} Ki={:.3} Kd={:.3}",
-                state.pid.kp, state.pid.ki, state.pid.kd
+                state.control.pid().kp,
+                state.control.pid().ki,
+                state.control.pid().kd
             ));
         });
     });
@@ -404,16 +410,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 "Protocol Analysis Entry"
             },
         );
-        let mut tx = 0usize;
-        let mut rx = 0usize;
-        let mut info = 0usize;
-        for entry in &state.log_entries {
-            match entry.direction {
-                LogDirection::Tx => tx += 1,
-                LogDirection::Rx => rx += 1,
-                LogDirection::Info => info += 1,
-            }
-        }
+        let (tx, rx, info) = state.log.counts();
 
         ui.horizontal_wrapped(|ui| {
             ui.label(format!(
@@ -423,7 +420,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 } else {
                     "Total Frames"
                 },
-                state.log_entries.len()
+                state.log.log_entries.len()
             ));
             ui.separator();
             ui.label(format!("TX: {}", tx));
@@ -465,7 +462,7 @@ fn connection_card(ui: &mut Ui, label: &str, status: &str, color: Color32) {
         });
 }
 
-fn status_color(connected: bool) -> Color32 {
+pub(crate) fn status_color(connected: bool) -> Color32 {
     if connected {
         Color32::from_rgb(46, 160, 67)
     } else {
@@ -486,7 +483,7 @@ fn state_cell(ui: &mut Ui, label: &str, value: &str) {
     });
 }
 
-fn format_bytes(bytes: u64) -> String {
+pub(crate) fn format_bytes(bytes: u64) -> String {
     if bytes < 1024 {
         return format!("{} B", bytes);
     }
@@ -494,4 +491,49 @@ fn format_bytes(bytes: u64) -> String {
         return format!("{:.1} KB", bytes as f64 / 1024.0);
     }
     format!("{:.2} MB", bytes as f64 / (1024.0 * 1024.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_bytes_zero() {
+        assert_eq!(format_bytes(0), "0 B");
+    }
+
+    #[test]
+    fn test_format_bytes_one() {
+        assert_eq!(format_bytes(1), "1 B");
+    }
+
+    #[test]
+    fn test_format_bytes_1023() {
+        assert_eq!(format_bytes(1023), "1023 B");
+    }
+
+    #[test]
+    fn test_format_bytes_1kb() {
+        assert_eq!(format_bytes(1024), "1.0 KB");
+    }
+
+    #[test]
+    fn test_format_bytes_1mb() {
+        assert_eq!(format_bytes(1024 * 1024), "1.00 MB");
+    }
+
+    #[test]
+    fn test_format_bytes_1gb() {
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1024.00 MB");
+    }
+
+    #[test]
+    fn test_status_color_connected() {
+        assert_eq!(status_color(true), Color32::from_rgb(46, 160, 67));
+    }
+
+    #[test]
+    fn test_status_color_disconnected() {
+        assert_eq!(status_color(false), Color32::from_rgb(128, 128, 128));
+    }
 }

@@ -1,7 +1,7 @@
 # Robot Control Rust
 
-> 迁移说明：运行时代码已迁移到 workspace crate `crates/robot_control`。
-> 当前目录保留文档与历史兼容说明，构建/运行请在仓库根目录执行 `cargo run -p robot_control`。
+> 当前目录是 workspace 成员 `robot_control_rust` 的源码目录。
+> 构建/运行建议在仓库根目录执行 `cargo run -p robot_control_rust`。
 
 > 纯 Rust 实现的工业级机器人控制与多协议调试平台
 >
@@ -157,23 +157,23 @@ robot_control_rust/
 ```powershell
 # 克隆项目
 git clone <repo-url>
-cd robot_control_rust
+cd rust_serial
 
 # Debug 构建并运行
-cargo run
+cargo run -p robot_control_rust
 
 # Release 构建（体积优化 ~5.35MB）
-cargo build --release
+cargo build --release -p robot_control_rust
 ./target/release/robot_control_rust
 ```
 
 ### 测试
 
 ```powershell
-cargo test          # Debug 模式测试
-cargo test --release # Release 模式测试
-cargo clippy        # 静态分析
-cargo fmt --check   # 代码格式检查
+cargo test -p robot_control_rust          # Debug 模式测试
+cargo test --release -p robot_control_rust # Release 模式测试
+cargo clippy -p robot_control_rust --all-targets -- -D warnings
+cargo fmt --all -- --check
 ```
 
 ### 本地预检（与 CI 对齐）
@@ -183,7 +183,7 @@ cargo fmt --check   # 代码格式检查
 ./scripts/task.ps1 preflight
 
 # Linux / macOS
-./scripts/task preflight
+./scripts/ubuntu/task.sh preflight
 ```
 
 ---

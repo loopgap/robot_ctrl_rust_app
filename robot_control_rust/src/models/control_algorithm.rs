@@ -30,6 +30,25 @@ pub enum ControlAlgorithmType {
 }
 
 impl ControlAlgorithmType {
+    pub fn index(&self) -> usize {
+        match self {
+            Self::ClassicPid => 0,
+            Self::IncrementalPid => 1,
+            Self::BangBang => 2,
+            Self::FuzzyPid => 3,
+            Self::CascadePid => 4,
+            Self::SmithPredictor => 5,
+            Self::Adrc => 6,
+            Self::Ladrc => 7,
+            Self::Lqr => 8,
+            Self::Mpc => 9,
+        }
+    }
+
+    pub fn from_index(idx: usize) -> Option<Self> {
+        Self::all().get(idx).copied()
+    }
+
     /// 所有可用的算法类型
     pub fn all() -> &'static [Self] {
         &[
@@ -115,6 +134,23 @@ impl std::fmt::Display for ControlAlgorithmType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name_en())
     }
+}
+
+/// 所有控制算法的统一 trait
+pub trait ControlAlgorithm {
+    fn name(&self) -> &'static str;
+    fn compute(&mut self, feedback: f64) -> f64;
+    fn reset(&mut self);
+    fn setpoint(&self) -> f64;
+    fn set_setpoint(&mut self, sp: f64);
+    fn output(&self) -> f64;
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+/// 需要双反馈（位置+速度）的算法扩展 trait
+pub trait DualFeedbackControl: ControlAlgorithm {
+    fn compute_dual(&mut self, position: f64, velocity: f64) -> f64;
 }
 
 #[cfg(test)]

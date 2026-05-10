@@ -1,8 +1,5 @@
 # Robot Control Rust - 架构与使用文档
 
-> 迁移说明：核心源码已迁移到 `crates/robot_control`（workspace 结构）。
-> 本文档继续保留业务架构说明；涉及路径时请以仓库根目录下 `crates/robot_control` 为准。
-
 > 项目路径：`robot_control_rust/`  
 > 目标：跨平台（Windows/macOS/Linux）机器人调试与控制 GUI（eframe/egui）  
 > 更新时间：2026-02-26
@@ -78,7 +75,7 @@ robot_control_rust/
 
 ## 4. 核心架构
 
-### 4.1 状态中心（`src/app.rs`）
+### 4.1 状态中心（`src/app/`）
 
 应用采用单状态中心（`AppState`）+ UI 临时状态（`UiState`）模式：
 
@@ -241,7 +238,7 @@ cargo clippy --all-targets
 本地一键预检：
 
 - Windows：`./scripts/task.ps1 preflight`
-- Linux/macOS：`./scripts/task preflight`
+- Linux/macOS：`./scripts/ubuntu/task.sh preflight`
 
 ---
 

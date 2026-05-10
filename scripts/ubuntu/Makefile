@@ -15,17 +15,17 @@
 
 SHELL := /bin/bash
 AUDIT_DB := $(CURDIR)/.cargo-advisory-db
-AUDIT_IGNORE_IDS := RUSTSEC-2023-0071
+AUDIT_IGNORE_IDS :=
 AUDIT_IGNORE_FLAGS := $(foreach id,$(AUDIT_IGNORE_IDS),--ignore $(id))
 RUSKTASK := cd scripts/go/rusktask && go run .
 SELF_MAKE := $(MAKE) -f $(abspath $(lastword $(MAKEFILE_LIST)))
 
-ROBOT_CONTROL_PROJECT := $(if $(wildcard crates/robot_control/Cargo.toml),crates/robot_control,robot_control_rust)
-TOOLS_SUITE_PROJECT := $(if $(wildcard crates/tools_suite/Cargo.toml),crates/tools_suite,rust_tools_suite)
+ROBOT_CONTROL_PROJECT := robot_control_rust
+TOOLS_SUITE_PROJECT := rust_tools_suite
 CORE_PROJECTS = $(ROBOT_CONTROL_PROJECT) $(TOOLS_SUITE_PROJECT)
-ALL_PROJECTS := $(CORE_PROJECTS) $(if $(wildcard crates/robot_core/Cargo.toml),crates/robot_core,) $(if $(wildcard crates/devtools/Cargo.toml),crates/devtools,)
-AUDIT_LOCK_FILES := $(strip $(if $(wildcard Cargo.lock),Cargo.lock,) $(if $(wildcard $(ROBOT_CONTROL_PROJECT)/Cargo.lock),$(ROBOT_CONTROL_PROJECT)/Cargo.lock,) $(if $(wildcard $(TOOLS_SUITE_PROJECT)/Cargo.lock),$(TOOLS_SUITE_PROJECT)/Cargo.lock,))
-DENY_MANIFESTS := $(strip $(if $(wildcard Cargo.toml),Cargo.toml,) $(if $(wildcard $(ROBOT_CONTROL_PROJECT)/Cargo.toml),$(ROBOT_CONTROL_PROJECT)/Cargo.toml,) $(if $(wildcard $(TOOLS_SUITE_PROJECT)/Cargo.toml),$(TOOLS_SUITE_PROJECT)/Cargo.toml,))
+ALL_PROJECTS := $(CORE_PROJECTS)
+AUDIT_LOCK_FILES := $(strip $(if $(wildcard Cargo.lock),Cargo.lock,))
+DENY_MANIFESTS := $(strip $(if $(wildcard Cargo.toml),Cargo.toml,))
 RELEASE_NOTES_FILE ?=
 RELEASE_NOTES_MODE ?= release
 PACKAGE_VERSION ?=
@@ -170,7 +170,7 @@ release:
 	@echo ""
 	@echo "== Build artifacts =="
 	@ls -lh target/release/robot_control* 2>/dev/null || true
-	@ls -lh target/release/tools_suite* 2>/dev/null || true
+	@ls -lh target/release/rust_tools_suite* 2>/dev/null || true
 
 doc:
 	@echo "== Build docs =="
@@ -191,9 +191,9 @@ audit:
 	@if [ -z "$(AUDIT_LOCK_FILES)" ]; then \
 		echo ""; \
 		echo "Problem: no Cargo.lock file found for security audit"; \
-		echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f <path-to-Cargo.lock>"; \
-		echo "Fix direction: ensure at least one project lockfile exists before running audit"; \
-		echo "Inspect first: workspace root and core project directories"; \
+		echo "Suggested command: cargo audit -d $(AUDIT_DB) $(AUDIT_IGNORE_FLAGS) -f Cargo.lock"; \
+		echo "Fix direction: generate the workspace root lockfile before running audit"; \
+		echo "Inspect first: workspace root"; \
 		exit 1; \
 	fi
 	@for lock in $(AUDIT_LOCK_FILES); do \
@@ -210,7 +210,7 @@ audit:
 	@if [ -z "$(DENY_MANIFESTS)" ]; then \
 		echo ""; \
 		echo "Problem: no Cargo.toml manifest found for dependency policy check"; \
-		echo "Suggested command: cargo deny check advisories bans sources --manifest-path <path> --config $(CURDIR)/deny.toml"; \
+		echo "Suggested command: cargo deny check --manifest-path <path> --config $(CURDIR)/deny.toml"; \
 		echo "Fix direction: ensure at least one project manifest exists before running cargo-deny"; \
 		echo "Inspect first: workspace root and core project directories"; \
 		exit 1; \
@@ -218,10 +218,10 @@ audit:
 	@for manifest in $(DENY_MANIFESTS); do \
 		echo "-> manifest: $$manifest"; \
 		manifest_dir=$$(dirname "$$manifest"); \
-		if ! (cd "$$manifest_dir" && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml); then \
+		if ! (cd "$$manifest_dir" && cargo deny check --config $(CURDIR)/deny.toml); then \
 			echo ""; \
 			echo "Problem: dependency policy check failed for manifest $$manifest"; \
-			echo "Suggested command: cd $$manifest_dir && cargo deny check advisories bans sources --config $(CURDIR)/deny.toml"; \
+			echo "Suggested command: cd $$manifest_dir && cargo deny check --config $(CURDIR)/deny.toml"; \
 			echo "Fix direction: review advisories, source policy, and bans rules"; \
 			echo "Inspect first: first cargo-deny error"; \
 			exit 1; \

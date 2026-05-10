@@ -182,6 +182,10 @@ impl ActiveTool {
     }
 }
 
+/// 工具套件主应用结构体
+///
+/// 管理所有工具的生命周期、UI 渲染、主题切换和国际化。
+/// 支持 GUI 和 CLI 两种运行模式。
 pub struct ToolSuiteApp {
     language: Language,
     dark_mode: bool,
@@ -350,16 +354,16 @@ impl ToolSuiteApp {
 
     fn active_output_text(&self) -> Option<String> {
         match self.active {
-            ActiveTool::Checksum => self.checksum.output_text(),
-            ActiveTool::Json => self.json.output_text(),
-            ActiveTool::Log => self.log.output_text(),
-            ActiveTool::UrlCodec => self.url_codec.output_text(),
-            ActiveTool::TimeConverter => self.time_converter.output_text(),
-            ActiveTool::Base64 => self.base64_tool.output_text(),
-            ActiveTool::UuidBatch => self.uuid_batch.output_text(),
-            ActiveTool::CsvCleaner => self.csv_cleaner.output_text(),
+            ActiveTool::Checksum => self.checksum.output_text().map(str::to_owned),
+            ActiveTool::Json => self.json.output_text().map(str::to_owned),
+            ActiveTool::Log => self.log.output_text().map(str::to_owned),
+            ActiveTool::UrlCodec => self.url_codec.output_text().map(str::to_owned),
+            ActiveTool::TimeConverter => self.time_converter.output_text().map(str::to_owned),
+            ActiveTool::Base64 => self.base64_tool.output_text().map(str::to_owned),
+            ActiveTool::UuidBatch => self.uuid_batch.output_text().map(str::to_owned),
+            ActiveTool::CsvCleaner => self.csv_cleaner.output_text().map(str::to_owned),
             ActiveTool::JwtInspector => self.jwt_inspector.output_text(),
-            ActiveTool::RegexWorkbench => self.regex_workbench.output_text(),
+            ActiveTool::RegexWorkbench => self.regex_workbench.output_text().map(str::to_owned),
         }
     }
 

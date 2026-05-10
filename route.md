@@ -81,7 +81,7 @@ cd .\scripts\go\rusktask; go run . review --before-push
 
 ### 4.1.2 Profile 配置
 
-当前 `Cargo.toml` 中已定义优化参数：
+根目录 `Cargo.toml` 中定义 workspace 级优化参数：
 
 ```toml
 [profile.dev]

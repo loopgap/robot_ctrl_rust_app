@@ -229,6 +229,10 @@ impl TopologyConfig {
         }
     }
 
+    pub fn builtin_list() -> Vec<TopologyConfig> {
+        Self::builtin_configs()
+    }
+
     pub fn builtin_configs() -> Vec<TopologyConfig> {
         vec![
             {

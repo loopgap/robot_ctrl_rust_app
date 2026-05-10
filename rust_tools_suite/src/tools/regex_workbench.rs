@@ -6,6 +6,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// 正则表达式工作台
+///
+/// 提供正则表达式测试、匹配、替换等功能。
+/// 支持实时预览和捕获组高亮。
 #[derive(Default)]
 pub struct RegexWorkbenchTool {
     pattern: String,
@@ -33,11 +37,11 @@ impl RegexWorkbenchTool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 

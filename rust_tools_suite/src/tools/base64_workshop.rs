@@ -6,6 +6,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// Base64 编解码工具
+///
+/// 提供 Base64 编码、解码功能。
+/// 支持标准 Base64、URL 安全 Base64、MIME Base64 等变体。
 #[derive(Default)]
 pub struct Base64Tool {
     input: String,
@@ -31,11 +35,11 @@ impl Base64Tool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 

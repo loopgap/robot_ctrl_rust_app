@@ -16,6 +16,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
         ui.horizontal(|ui| {
             let arch: Vec<String> = state
+                .control
                 .nn
                 .layers
                 .iter()
@@ -39,8 +40,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal(|ui| {
             ui.label(format!(
                 "Training Epochs: {}  |  Loss History: {} points",
-                state.nn.training_epochs,
-                state.nn.loss_history.len()
+                state.control.nn.training_epochs,
+                state.control.nn.loss_history.len()
             ));
         });
     });
@@ -63,7 +64,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .desired_width(110.0),
             );
             if let Ok(lr) = state.ui.nn_learning_rate_text.parse::<f64>() {
-                state.nn.learning_rate = lr;
+                state.control.nn.learning_rate = lr;
             }
         });
 
@@ -76,18 +77,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::train_step(lang)).size(14.0))
                 .clicked()
             {
-                state.nn_train_step();
+                state.control.nn_train_step();
             }
 
             if ui.button(RichText::new("Train x10").size(14.0)).clicked() {
                 for _ in 0..10 {
-                    state.nn_train_step();
+                    state.control.nn_train_step();
                 }
             }
 
             if ui.button(RichText::new("Train x100").size(14.0)).clicked() {
                 for _ in 0..100 {
-                    state.nn_train_step();
+                    state.control.nn_train_step();
                 }
             }
 
@@ -95,8 +96,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    if state.ui.nn_auto_train && state.is_running {
-        state.nn_train_step();
+    if state.ui.nn_auto_train && state.control.is_running {
+        state.ui.nn_train_frame_counter += 1;
+        if state.ui.nn_train_frame_counter.is_multiple_of(10) {
+            state.control.nn_train_step();
+        }
     }
 
     ui.add_space(10.0);
@@ -106,8 +110,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.label(RichText::new(Tr::training_loss(lang)).size(15.0).strong());
         ui.add_space(8.0);
 
-        if !state.nn.loss_history.is_empty() {
+        if !state.control.nn.loss_history.is_empty() {
             let loss_points: PlotPoints = state
+                .control
                 .nn
                 .loss_history
                 .iter()
@@ -133,7 +138,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.label(
                 RichText::new(format!(
                     "Current Loss: {:.6}",
-                    state.nn.loss_history.last().unwrap_or(&0.0)
+                    state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)
                 .color(Color32::from_rgb(255, 165, 0)),
@@ -162,7 +167,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::predict(lang)).size(14.0))
                 .clicked()
             {
-                state.nn_suggest_params();
+                state.control.nn_suggest_params();
             }
 
             if ui
@@ -193,9 +198,24 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(RichText::new(Tr::delta(lang)).strong());
                 ui.end_row();
 
-                param_row(ui, "Kp", state.pid.kp, state.nn_suggested_kp);
-                param_row(ui, "Ki", state.pid.ki, state.nn_suggested_ki);
-                param_row(ui, "Kd", state.pid.kd, state.nn_suggested_kd);
+                param_row(
+                    ui,
+                    "Kp",
+                    state.control.pid().kp,
+                    state.control.nn_suggested_kp,
+                );
+                param_row(
+                    ui,
+                    "Ki",
+                    state.control.pid().ki,
+                    state.control.nn_suggested_ki,
+                );
+                param_row(
+                    ui,
+                    "Kd",
+                    state.control.pid().kd,
+                    state.control.nn_suggested_kd,
+                );
             });
     });
 
@@ -259,10 +279,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(12.0);
 
     // ─── 特征预览 ────────────────────────────────────────
-    if state.state_history.len() >= 10 {
+    if state.control.state_history.len() >= 10 {
         ui.collapsing(Tr::input_features(lang), |ui| {
             ui.add_space(4.0);
-            let errors: Vec<f64> = state.state_history.iter().map(|s| s.error).collect();
+            let errors: Vec<f64> = state
+                .control
+                .state_history
+                .iter()
+                .map(|s| s.error)
+                .collect();
             let features = crate::models::NeuralNetwork::extract_features(&errors);
             let labels = [
                 "Mean Error",

@@ -277,19 +277,6 @@ pub enum PdoDataType {
 }
 
 impl PdoDataType {
-    pub fn all() -> &'static [PdoDataType] {
-        &[
-            Self::Bool,
-            Self::U8,
-            Self::I8,
-            Self::U16,
-            Self::I16,
-            Self::U32,
-            Self::I32,
-            Self::F32,
-        ]
-    }
-
     pub fn bit_size(self) -> u8 {
         match self {
             Self::Bool => 1,
@@ -475,11 +462,6 @@ impl PdoConfig {
         results
     }
 
-    /// 导出为 JSON 字符串
-    pub fn to_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap_or_default()
-    }
-
     /// 从 JSON 导入
     pub fn from_json(json: &str) -> Option<PdoConfig> {
         serde_json::from_str(json).ok()
@@ -601,7 +583,6 @@ pub fn preset_pdo_configs() -> Vec<PdoConfig> {
 /// CANopen 帧深度解析结果
 #[derive(Debug, Clone)]
 pub struct CanopenFrameAnalysis {
-    pub cob_id: u16,
     pub node_id: u8,
     pub role: &'static str,
     pub fields: Vec<CanopenFieldInfo>,
@@ -800,7 +781,6 @@ pub fn analyze_canopen_frame(cob_id: u16, data: &[u8]) -> CanopenFrameAnalysis {
     }
 
     CanopenFrameAnalysis {
-        cob_id,
         node_id,
         role,
         fields,
@@ -847,9 +827,7 @@ pub struct CanStdFrame {
     pub can_id: u32,
     pub data: Vec<u8>,
     pub is_extended: bool, // 29-bit ID
-    pub is_fd: bool,       // CAN FD
     pub brs: bool,         // Bit Rate Switch (FD only)
-    pub esi: bool,         // Error State Indicator (FD only)
 }
 
 impl CanStdFrame {
@@ -863,9 +841,7 @@ impl CanStdFrame {
             },
             data: data.iter().copied().take(8).collect(),
             is_extended: extended,
-            is_fd: false,
             brs: false,
-            esi: false,
         }
     }
 
@@ -879,33 +855,12 @@ impl CanStdFrame {
             },
             data: data.iter().copied().take(64).collect(),
             is_extended: extended,
-            is_fd: true,
             brs: true,
-            esi: false,
         }
     }
 
     pub fn dlc(&self) -> usize {
         self.data.len()
-    }
-
-    /// CAN FD DLC 编码（返回 0~15 的 DLC 码）
-    pub fn fd_dlc_code(&self) -> Option<u8> {
-        if !self.is_fd {
-            return None;
-        }
-        Some(fd_len_to_dlc(self.data.len()))
-    }
-
-    /// 转为 CanopenFrame（若兼容 11-bit ID + <=8 bytes）
-    pub fn to_canopen_frame(&self) -> Option<CanopenFrame> {
-        if self.is_extended || self.data.len() > 8 {
-            return None;
-        }
-        Some(CanopenFrame {
-            cob_id: self.can_id as u16,
-            data: self.data.clone(),
-        })
     }
 }
 
@@ -1160,16 +1115,6 @@ pub struct MultiProtocolFrame {
 }
 
 impl MultiProtocolFrame {
-    /// 创建 CANopen 标准 CAN 帧
-    pub fn canopen_nmt(node_id: u8, cmd: NmtCommand) -> Self {
-        let co_frame = build_nmt(node_id, cmd);
-        Self {
-            protocol: CanProtocolType::Standard,
-            frame: CanStdFrame::new(co_frame.cob_id as u32, &co_frame.data, false),
-            ecat_coe: None,
-        }
-    }
-
     /// CAN FD PDO（支持 >8 字节载荷）
     pub fn can_fd_pdo(cob_id: u16, data: &[u8]) -> Self {
         Self {
@@ -1289,7 +1234,6 @@ mod tests {
         assert_eq!(f.can_id, 0x123);
         assert_eq!(f.data.len(), 2);
         assert!(!f.is_extended);
-        assert!(!f.is_fd);
         assert_eq!(f.dlc(), 2);
     }
 
@@ -1298,10 +1242,8 @@ mod tests {
         let payload = vec![0u8; 24];
         let f = CanStdFrame::new_fd(0x1ABCDEF, &payload, true);
         assert!(f.is_extended);
-        assert!(f.is_fd);
         assert_eq!(f.data.len(), 24);
         assert_eq!(f.dlc(), 24);
-        assert_eq!(f.fd_dlc_code(), Some(12));
     }
 
     #[test]
@@ -1363,16 +1305,10 @@ mod tests {
 
     #[test]
     fn test_multi_protocol_frame_builder() {
-        // Standard CAN -> CANopen NMT
-        let f = MultiProtocolFrame::canopen_nmt(1, NmtCommand::StartRemoteNode);
-        assert_eq!(f.protocol, CanProtocolType::Standard);
-        assert!(!f.frame.is_fd);
-
         // CAN FD PDO
         let payload = vec![0u8; 16];
         let f2 = MultiProtocolFrame::can_fd_pdo(0x181, &payload);
         assert_eq!(f2.protocol, CanProtocolType::Fd);
-        assert!(f2.frame.is_fd);
         assert_eq!(f2.frame.data.len(), 16);
     }
 }

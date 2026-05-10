@@ -116,7 +116,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
-$AuditIgnoreIds = @("RUSTSEC-2023-0071")
+$AuditIgnoreIds = @()
 
 function Resolve-ProjectPath {
     param(
@@ -139,30 +139,16 @@ function Resolve-ProjectPath {
 }
 
 $CoreProjects = @(
-    (Resolve-ProjectPath -Candidates @("crates\robot_control", "robot_control_rust")),
-    (Resolve-ProjectPath -Candidates @("crates\tools_suite", "rust_tools_suite"))
+    (Resolve-ProjectPath -Candidates @("robot_control_rust")),
+    (Resolve-ProjectPath -Candidates @("rust_tools_suite"))
 )
 
 $AllProjects = @($CoreProjects)
-$OptionalRobotCore = Resolve-ProjectPath -Candidates @("crates\robot_core") -Required $false
-if ($OptionalRobotCore) {
-    $AllProjects += $OptionalRobotCore
-}
-$OptionalDevtools = Resolve-ProjectPath -Candidates @("crates\devtools") -Required $false
-if ($OptionalDevtools) {
-    $AllProjects += $OptionalDevtools
-}
 
 $AuditLockFiles = @()
 $RootLockFile = Join-Path $RepoRoot "Cargo.lock"
 if (Test-Path $RootLockFile) {
     $AuditLockFiles += $RootLockFile
-}
-foreach ($Project in $CoreProjects) {
-    $ProjectLockFile = Join-Path $RepoRoot "$Project\Cargo.lock"
-    if (Test-Path $ProjectLockFile) {
-        $AuditLockFiles += $ProjectLockFile
-    }
 }
 $AuditLockFiles = @($AuditLockFiles | Select-Object -Unique)
 
@@ -170,12 +156,6 @@ $DenyManifestPaths = @()
 $RootManifest = Join-Path $RepoRoot "Cargo.toml"
 if (Test-Path $RootManifest) {
     $DenyManifestPaths += $RootManifest
-}
-foreach ($Project in $CoreProjects) {
-    $ProjectManifest = Join-Path $RepoRoot "$Project\Cargo.toml"
-    if (Test-Path $ProjectManifest) {
-        $DenyManifestPaths += $ProjectManifest
-    }
 }
 $DenyManifestPaths = @($DenyManifestPaths | Select-Object -Unique)
 
@@ -383,7 +363,7 @@ switch ($Target) {
         Write-Header "Build artifacts"
         Get-ChildItem "target\release\robot_control*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
-        Get-ChildItem "target\release\tools_suite*" -ErrorAction SilentlyContinue |
+        Get-ChildItem "target\release\rust_tools_suite*" -ErrorAction SilentlyContinue |
             Select-Object Name, @{N="SizeMB";E={[math]::Round($_.Length / 1MB, 2)}}
     }
     "doc" {
@@ -408,9 +388,9 @@ switch ($Target) {
         if ($AuditLockFiles.Count -eq 0) {
             Show-FailureGuidance `
                 "no Cargo.lock file found for security audit" `
-                "cargo audit -d $AuditDbPath -f <path-to-Cargo.lock>" `
-                "Ensure at least one project lockfile exists before running audit" `
-                "Project root and each core project directory"
+                "cargo audit -d $AuditDbPath -f $RootLockFile" `
+                "Generate the workspace root lockfile before running audit" `
+                "Workspace root"
             exit 1
         }
 
@@ -434,9 +414,9 @@ switch ($Target) {
         if ($DenyManifestPaths.Count -eq 0) {
             Show-FailureGuidance `
                 "no Cargo.toml manifest found for dependency policy check" `
-                "cargo deny check advisories bans sources --manifest-path <path> --config $RepoRoot\deny.toml" `
-                "Ensure at least one project manifest exists before running cargo-deny" `
-                "Project root and each core project directory"
+                "cargo deny check --config $RepoRoot\deny.toml" `
+                "Ensure the workspace root manifest exists before running cargo-deny" `
+                "Workspace root"
             exit 1
         }
 
@@ -445,11 +425,11 @@ switch ($Target) {
             $ManifestDir = Split-Path -Parent $ManifestPath
             Push-Location $ManifestDir
             try {
-                cargo deny check advisories bans sources --config "$RepoRoot\deny.toml"
+                cargo deny check --config "$RepoRoot\deny.toml"
                 if ($LASTEXITCODE -ne 0) {
                     Show-FailureGuidance `
                         "dependency policy check failed for manifest: $ManifestPath" `
-                        "cd $ManifestDir; cargo deny check advisories bans sources --config $RepoRoot\deny.toml" `
+                        "cd $ManifestDir; cargo deny check --config $RepoRoot\deny.toml" `
                         "Review source policy, advisories, and duplicate dependency bans" `
                         "The first cargo-deny error"
                     exit 1
@@ -946,8 +926,8 @@ switch ($Target) {
     git-pr-merge merge pull request
     docs-bundle build docs/help bundle via Go
     release-publish create/update GitHub release via Go (requires GITHUB_TOKEN)
-    build-release-slim build robot_control slim release target
-    package-windows-installer package installer via Go (Inno/iExpress fallback)
+    build-release-slim build robot_control_rust slim release target
+    package-windows-installer package installer via Go (NSIS/iExpress fallback)
     package-windows-assets package portable zips via Go
     package-windows-portable-installer package portable installer bundle via Go
     release-local-windows local Windows release pipeline

@@ -122,7 +122,7 @@ go run . review --project robot_control_rust
 .\scripts\task.ps1 preflight
 
 # Linux/macOS
-./scripts/task preflight
+./scripts/ubuntu/task.sh preflight
 ```
 
 ### 版本智能升级
@@ -181,8 +181,8 @@ on:
 ```
 
 **构建目标**:
-- Windows x64 (`robot_control_rust_windows_x64_portable.zip`、`rust_tools_suite_windows_x64_portable.zip`、`RobotControlSuite_Setup.exe`)
-- Linux x64 (`rust_tools_suite_linux_amd64.deb`)
+- Windows x64 (`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`)
+- Linux x64 (`robot_control_suite_*_amd64.deb`)
 - 完整性校验 (`checksums-sha256.txt`)
 
 ## 故障排除

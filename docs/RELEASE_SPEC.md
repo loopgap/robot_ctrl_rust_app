@@ -9,8 +9,8 @@
 
 | 格式 | 示例 | 说明 |
 |------|------|------|
-| `vMAJOR.MINOR.PATCH` | `v0.2.1` | 正式版本 |
-| `vMAJOR.MINOR.PATCH-PRERELEASE` | `v0.2.1-beta.1` | 预发布版本 |
+| `vMAJOR.MINOR.PATCH` | `v0.1.9` | 正式版本 |
+| `vMAJOR.MINOR.PATCH-PRERELEASE` | `v0.1.9-beta.1` | 预发布版本 |
 
 **语义化版本 (SemVer):**
 - **MAJOR**: 不兼容的 API 变更
@@ -49,7 +49,7 @@
 ```
 robot_control_suite_{VERSION}_{PLATFORM}_arttype.{ext}
 
-VERSION:   v0.2.1 (不含 v 前缀用于文件名)
+VERSION:   v0.1.9 (不含 v 前缀用于文件名)
 PLATFORM:  windows_x64 | amd64 (Linux)
 ARTYPE:    setup | portable | deb
 EXT:       exe | zip | deb | txt
@@ -57,9 +57,9 @@ EXT:       exe | zip | deb | txt
 
 **示例:**
 ```
-robot_control_suite_0.2.1_windows_x64-setup.exe
-robot_control_suite_0.2.1_windows_x64_portable.zip
-robot_control_suite_0.2.1_amd64.deb
+robot_control_suite_0.1.9_windows_x64-setup.exe
+robot_control_suite_0.1.9_windows_x64_portable.zip
+robot_control_suite_0.1.9_amd64.deb
 checksums-sha256.txt
 ```
 
@@ -95,7 +95,7 @@ checksums-sha256.txt
 ```
 v{MAJOR}.{MINOR}.{PATCH}
 ```
-示例: `v0.2.1`
+示例: `v0.1.9`
 
 ### 5.2 Tag 必须来自 main 分支
 Release workflow 的 `verify-tag` job 会验证：
@@ -165,6 +165,7 @@ git tag vX.Y.Z && git push origin main --tags
 
 | 版本 | 发布日期 | 工件 |
 |------|----------|------|
+| v0.1.9 | - | windows-setup.exe, windows-portable.zip, linux.deb |
 | v0.2.0 | - | windows-setup.exe, linux.deb |
 | v0.1.8 | - | windows-setup.exe, linux.deb |
 | v0.1.7 | - | windows-setup.exe, linux.deb |

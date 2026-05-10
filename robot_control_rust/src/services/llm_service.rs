@@ -1,7 +1,9 @@
 // LLM tuning service for PID parameter recommendations.
 
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tracing::{error, info};
 
 /// Current PID parameters.
 #[derive(Debug, Clone, Serialize)]
@@ -67,6 +69,9 @@ impl LlmService {
     /// Build the prompt from current controller state and error history.
     fn build_prompt(current: &PidParams, errors: &[f64]) -> String {
         let n = errors.len();
+        if n == 0 {
+            return "No error data available.".to_string();
+        }
         let mean_err = errors.iter().map(|e| e.abs()).sum::<f64>() / n as f64;
         let max_err = errors.iter().map(|e| e.abs()).fold(0.0_f64, f64::max);
         let last_10: Vec<String> = errors
@@ -129,12 +134,21 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
         &self,
         current: &PidParams,
         errors: &[f64],
-    ) -> Result<SuggestedParams, String> {
+    ) -> Result<SuggestedParams> {
+        info!(
+            "LLM suggest_params: model={}, url={}",
+            self.model, self.api_url
+        );
+
         if self.api_key.is_empty() {
-            return Err("API key is empty".into());
+            let e = anyhow!("API key is empty");
+            error!("LLM request failed: {}", e);
+            return Err(e);
         }
         if self.api_url.is_empty() {
-            return Err("API URL is empty".into());
+            let e = anyhow!("API URL is empty");
+            error!("LLM request failed: {}", e);
+            return Err(e);
         }
 
         let prompt = Self::build_prompt(current, errors);
@@ -162,87 +176,40 @@ Please provide optimized PID parameters. Respond ONLY with a JSON object:
             .header("Authorization", &format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .send_json(&body)
-            .map_err(|e| format!("HTTP error: {}", e))?;
+            .context("HTTP error")?;
+
+        info!("LLM response: status={}", resp.status());
 
         let status = resp.status().as_u16();
-        let body_str = resp
-            .body_mut()
-            .read_to_string()
-            .map_err(|e| format!("Read error: {}", e))?;
+        let body_str = resp.body_mut().read_to_string().context("Read error")?;
 
         if status != 200 {
-            return Err(format!("API returned status {}: {}", status, body_str));
+            let e = anyhow!("API returned status {}: {}", status, body_str);
+            error!("LLM request failed: {}", e);
+            return Err(e);
         }
 
         // Parse OpenAI-compatible response body.
         let resp_json: serde_json::Value =
-            serde_json::from_str(&body_str).map_err(|e| format!("JSON parse error: {}", e))?;
+            serde_json::from_str(&body_str).context("JSON parse error")?;
 
         let content = resp_json["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or("No content in response")?;
+            .context("No content in response")?;
 
         // Extract JSON payload from content.
         let json_str = extract_json(content);
         let suggested: SuggestedParams = serde_json::from_str(&json_str)
-            .map_err(|e| format!("Failed to parse suggestion: {} from: {}", e, json_str))?;
+            .context(format!("Failed to parse suggestion from: {}", json_str))?;
 
         // Basic sanity check.
         if suggested.kp < 0.0 || suggested.ki < 0.0 || suggested.kd < 0.0 {
-            return Err("LLM suggested negative parameters".into());
+            let e = anyhow!("LLM suggested negative parameters");
+            error!("LLM request failed: {}", e);
+            return Err(e);
         }
 
         Ok(suggested)
-    }
-
-    /// Request a short system analysis from LLM.
-    pub fn analyze_system(&self, current: &PidParams, errors: &[f64]) -> Result<String, String> {
-        if self.api_key.is_empty() {
-            return Err("API key is empty".into());
-        }
-
-        let n = errors.len();
-        let mean_err = if n > 0 {
-            errors.iter().map(|e| e.abs()).sum::<f64>() / n as f64
-        } else {
-            0.0
-        };
-
-        let prompt = format!(
-            "Analyze this PID control system briefly.\n\
-             Kp={:.4}, Ki={:.4}, Kd={:.4}, Setpoint={:.2}\n\
-             {} data points, mean |error|={:.4}\n\
-             Give a concise analysis in 2-3 sentences.",
-            current.kp, current.ki, current.kd, current.setpoint, n, mean_err,
-        );
-
-        let body = serde_json::json!({
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "max_tokens": 300
-        });
-
-        let mut resp = self
-            .agent
-            .post(&self.api_url)
-            .header("Authorization", &format!("Bearer {}", self.api_key))
-            .header("Content-Type", "application/json")
-            .send_json(&body)
-            .map_err(|e| format!("HTTP error: {}", e))?;
-
-        let body_str = resp
-            .body_mut()
-            .read_to_string()
-            .map_err(|e| format!("Read error: {}", e))?;
-
-        let resp_json: serde_json::Value =
-            serde_json::from_str(&body_str).map_err(|e| format!("JSON parse error: {}", e))?;
-
-        resp_json["choices"][0]["message"]["content"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| "No content in response".into())
     }
 }
 
@@ -255,46 +222,6 @@ fn extract_json(text: &str) -> String {
         }
     }
     text.to_string()
-}
-
-/// Built-in LLM provider presets.
-#[derive(Debug, Clone)]
-pub struct LlmPreset {
-    pub name: &'static str,
-    pub api_url: &'static str,
-    pub default_model: &'static str,
-}
-
-impl LlmPreset {
-    pub fn all() -> &'static [LlmPreset] {
-        &[
-            LlmPreset {
-                name: "OpenAI",
-                api_url: "https://api.openai.com/v1/chat/completions",
-                default_model: "gpt-4o-mini",
-            },
-            LlmPreset {
-                name: "Claude (Anthropic)",
-                api_url: "https://api.anthropic.com/v1/messages",
-                default_model: "claude-sonnet-4-20250514",
-            },
-            LlmPreset {
-                name: "DeepSeek",
-                api_url: "https://api.deepseek.com/v1/chat/completions",
-                default_model: "deepseek-chat",
-            },
-            LlmPreset {
-                name: "Ollama (Local)",
-                api_url: "http://localhost:11434/v1/chat/completions",
-                default_model: "llama3",
-            },
-            LlmPreset {
-                name: "Custom",
-                api_url: "",
-                default_model: "",
-            },
-        ]
-    }
 }
 
 // Tests
@@ -381,14 +308,6 @@ mod tests {
     }
 
     #[test]
-    fn test_llm_presets() {
-        let presets = LlmPreset::all();
-        assert!(presets.len() >= 4);
-        assert_eq!(presets[0].name, "OpenAI");
-        assert!(presets[0].api_url.contains("openai"));
-    }
-
-    #[test]
     fn test_suggest_empty_key() {
         let svc = LlmService::new("https://example.com".into(), "".into(), "m".into());
         let params = PidParams {
@@ -400,7 +319,7 @@ mod tests {
         let errors = vec![1.0; 20];
         let result = svc.suggest_pid_params(&params, &errors);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("key"));
+        assert!(result.unwrap_err().to_string().contains("key"));
     }
 
     #[test]
@@ -415,7 +334,7 @@ mod tests {
         let errors = vec![1.0; 20];
         let result = svc.suggest_pid_params(&params, &errors);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("URL"));
+        assert!(result.unwrap_err().to_string().contains("URL"));
     }
 
     #[test]
@@ -429,20 +348,6 @@ mod tests {
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains("\"kp\":1.0"));
         assert!(json.contains("\"setpoint\":50.0"));
-    }
-
-    #[test]
-    fn test_analyze_empty_key() {
-        let svc = LlmService::new("https://example.com".into(), "".into(), "m".into());
-        let params = PidParams {
-            kp: 1.0,
-            ki: 0.1,
-            kd: 0.01,
-            setpoint: 0.0,
-        };
-        let errors = vec![1.0; 10];
-        let result = svc.analyze_system(&params, &errors);
-        assert!(result.is_err());
     }
 
     #[test]

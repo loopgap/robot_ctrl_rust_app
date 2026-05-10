@@ -43,6 +43,7 @@
 
 4. 等待 Release 工作流完成，确认资产：
 - robot_control_suite_*_windows_x64-setup.exe
+- robot_control_suite_*_windows_x64_portable.zip
 - robot_control_suite_*_amd64.deb
 - checksums-sha256.txt
 
@@ -91,9 +92,9 @@
 .\scripts\task.ps1 release-publish \
 	-ReleaseTag vX.Y.Z \
 	-ReleaseBodyFile release_notes/RELEASE_NOTES_vX.Y.Z.md \
-	-ReleaseAsset release_artifacts/robot_control_rust_windows_x64_portable.zip \
-	-ReleaseAsset release_artifacts/rust_tools_suite_windows_x64_portable.zip \
-	-ReleaseAsset release_artifacts/RobotControlSuite_Setup.exe \
+	-ReleaseAsset release_artifacts/robot_control_suite_X.Y.Z_windows_x64-setup.exe \
+	-ReleaseAsset release_artifacts/robot_control_suite_X.Y.Z_windows_x64_portable.zip \
+	-ReleaseAsset release_artifacts/robot_control_suite_X.Y.Z_amd64.deb \
 	-ReleaseAsset release_artifacts/checksums-sha256.txt
 ```
 
@@ -110,12 +111,12 @@ Release 工作流会在发布前执行：
 
 ## 发布后验收
 
-1. 校验 Release 页面包含必需资产（Windows 安装包、Linux deb、checksums）。
-2. 下载 checksums-sha256.txt 并对 .exe/.deb 做 SHA256 校验。
+1. 校验 Release 页面包含必需资产（Windows 安装包、Windows 便携 ZIP、Linux deb、checksums）。
+2. 下载 checksums-sha256.txt 并对 .exe/.zip/.deb 做 SHA256 校验。
 3. 记录发布链接和版本号到变更日志。
 
-## v0.2.1 专项验证
+## v0.1.9 专项验证
 
-1. `v0.2.1` Tag 需通过分支祖先校验（可追溯到 `origin/main`）。
-2. `release_notes/RELEASE_NOTES_v0.2.1.md` 必须存在且通过结构校验。
-3. 校验 `checksums-sha256.txt` 包含 .exe 与 .deb 两类资产散列值。
+1. `v0.1.9` Tag 需通过分支祖先校验（可追溯到 `origin/main`）。
+2. `release_notes/RELEASE_NOTES_v0.1.9.md` 必须存在且通过结构校验。
+3. 校验 `checksums-sha256.txt` 包含 .exe、.zip 与 .deb 三类资产散列值。

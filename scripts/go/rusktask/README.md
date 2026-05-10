@@ -6,7 +6,7 @@ Transitional Go task orchestrator for workspace automation standardization.
 
 ```bash
 go run . version
-go run . release-notes validate --file ../../release_notes/RELEASE_NOTES_v0.1.8.md --mode draft
+go run . release-notes validate --file ../../../release_notes/RELEASE_NOTES_v0.1.9.md --mode draft
 go run . check
 go run . preflight
 ```
@@ -31,10 +31,10 @@ go run . preflight
 - `docs-bundle [--output-root <dir>] [--create-zip]`: build mdBook + help bundle for offline distribution.
 - `release-publish [--owner <owner>] [--repo <repo>] --tag <tag> [--release-name <name>] [--body-file <path>] [--asset <path>]... [--prerelease] [--draft] [--prune-extra-assets]`: create/update GitHub release and upload assets.
 - `build-release-slim [--skip-tests] [--skip-clippy]`: run slim release pipeline for workspace crate `robot_control` and trim transient target directories.
-- `release-sync [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote] [--strict]`: release tags/notes state audit and normalization.
+- `release-sync [--mode audit|apply] [--prune-local-tags-not-on-remote] [--sync-local-tags-to-remote] [--clean-orphan-notes] [--skip-remote] [--strict]`: release tags/notes state audit and normalization.
 - `workflow-seal [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote]`: one-command workflow seal pipeline.
 - `update-release-index [--skip-remote]`: rebuild release_notes/RELEASE_INDEX.md.
-- `package-windows-installer [--version <X.Y.Z>] [--build-tag <yyyymmdd>] [--prefer-iexpress] [--skip-build]`: native Windows installer packaging flow (ISCC with iExpress fallback).
+- `package-windows-installer [--version <X.Y.Z>] [--build-tag <yyyymmdd>] [--prefer-iexpress] [--skip-build]`: native Windows installer packaging flow (NSIS with iExpress fallback).
 - `package-windows-assets [--version <X.Y.Z>] [--output-dir <dir>] [--skip-build]`: native Windows portable assets packaging flow.
 - `package-windows-portable-installer [--version <X.Y.Z>] [--output-dir <dir>] [--skip-build]`: build portable installer bundle zip with install/uninstall scripts.
 - `workspace-cleanup [--mode audit|apply] [--strict]`: workspace transient artifact governance.
