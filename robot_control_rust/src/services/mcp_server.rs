@@ -29,6 +29,7 @@ pub struct McpSharedState {
     pub suggested_ki: f64,
     pub suggested_kd: f64,
     pub status: String,
+    pub runtime_mode: String,
     pub request_count: u64,
     pub unauthorized_count: u64,
 }
@@ -47,6 +48,7 @@ impl Default for McpSharedState {
             suggested_ki: 0.1,
             suggested_kd: 0.01,
             status: "Ready".into(),
+            runtime_mode: "embedded".into(),
             request_count: 0,
             unauthorized_count: 0,
         }
@@ -72,13 +74,14 @@ pub struct PidParams {
 #[derive(Clone)]
 /// MCP (Model Context Protocol) 服务器，使用官方 rmcp SDK 实现
 ///
-/// 提供 6 个工具方法：
+/// 提供低风险 MCP 工具方法：
 /// - get_pid_params: 获取 PID 参数
-/// - set_pid_params: 设置 PID 参数
+/// - set_pid_params: 设置 MCP 内存态 PID 参数
 /// - get_robot_state: 获取机器人状态
 /// - get_state_history: 获取状态历史
 /// - get_parsed_packets: 获取解析的数据包
 /// - suggest_params: 获取 AI 建议的参数
+/// - get_server_status: 获取服务器状态与安全边界
 pub struct RobotMcpServer {
     state: Arc<Mutex<McpSharedState>>,
 }
@@ -105,7 +108,9 @@ impl RobotMcpServer {
         )]))
     }
 
-    #[tool(description = "设置 PID 控制器参数")]
+    #[tool(
+        description = "Set PID controller parameters in the in-memory MCP state only; this does not write to serial, CAN, Modbus, USB, or hardware outputs."
+    )]
     async fn set_pid_params(
         &self,
         Parameters(PidParams {
@@ -123,6 +128,25 @@ impl RobotMcpServer {
         s.status = format!("MCP set params kp={:.4} ki={:.4} kd={:.4}", kp, ki, kd);
         s.request_count = s.request_count.saturating_add(1);
         Ok(CallToolResult::success(vec![Content::text("ok")]))
+    }
+
+    #[tool(description = "Get MCP server version, mode, counters, and safety status.")]
+    async fn get_server_status(&self) -> Result<CallToolResult, McpError> {
+        let s = self.state.lock().await;
+        Ok(CallToolResult::success(vec![Content::text(
+            serde_json::json!({
+                "name": "robot-control-mcp",
+                "version": env!("CARGO_PKG_VERSION"),
+                "runtime_mode": s.runtime_mode,
+                "status": s.status,
+                "request_count": s.request_count,
+                "unauthorized_count": s.unauthorized_count,
+                "state_history_len": s.state_history.len(),
+                "parsed_packets_len": s.parsed_packets.len(),
+                "hardware_write_enabled": false
+            })
+            .to_string(),
+        )]))
     }
 
     #[tool(description = "获取机器人当前状态")]
@@ -182,6 +206,11 @@ impl ServerHandler for RobotMcpServer {
 
 pub async fn start_mcp_server(state: Arc<Mutex<McpSharedState>>) -> Result<(), anyhow::Error> {
     info!("Starting MCP server...");
+    {
+        let mut s = state.lock().await;
+        s.runtime_mode = "stdio".into();
+        s.status = "MCP stdio server ready".into();
+    }
     let server = RobotMcpServer::new(state);
     let service = server.serve(stdio()).await.inspect_err(|e| {
         tracing::error!("MCP server error: {:?}", e);
@@ -203,6 +232,7 @@ mod tests {
         assert_eq!(state.kd, 0.01);
         assert_eq!(state.setpoint, 0.0);
         assert_eq!(state.status, "Ready");
+        assert_eq!(state.runtime_mode, "embedded");
         assert_eq!(state.request_count, 0);
     }
 
@@ -285,6 +315,22 @@ mod tests {
         let server = RobotMcpServer::new(state);
         let result = server.suggest_params().await.unwrap();
         assert!(!result.is_error.unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn test_get_server_status_reports_safety_boundary() {
+        let state = Arc::new(Mutex::new(McpSharedState {
+            runtime_mode: "stdio".into(),
+            ..Default::default()
+        }));
+        let server = RobotMcpServer::new(state);
+        let result = server.get_server_status().await.unwrap();
+        assert!(!result.is_error.unwrap_or(true));
+        let text = result.content[0].as_text().unwrap().text.as_str();
+        let status: serde_json::Value = serde_json::from_str(text).unwrap();
+        assert_eq!(status["version"].as_str(), Some(env!("CARGO_PKG_VERSION")));
+        assert_eq!(status["runtime_mode"].as_str(), Some("stdio"));
+        assert_eq!(status["hardware_write_enabled"].as_bool(), Some(false));
     }
 
     #[tokio::test]
