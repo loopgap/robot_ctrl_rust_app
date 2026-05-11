@@ -2282,14 +2282,14 @@ func runPackageWindowsInstaller(args []string) int {
 		templateContent = strings.ReplaceAll(
 			templateContent,
 			`File "target\release\robot_control_rust.exe"`,
-			fmt.Sprintf(`File %q`, filepath.ToSlash(filepath.Join(stageDir, "robot_control_rust.exe"))),
+			fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "robot_control_rust.exe"))),
 		)
 		templateContent = strings.ReplaceAll(
 			templateContent,
 			`File "target\release\rust_tools_suite.exe"`,
-			fmt.Sprintf(`File %q`, filepath.ToSlash(filepath.Join(stageDir, "rust_tools_suite.exe"))),
+			fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "rust_tools_suite.exe"))),
 		)
-		outFileLine := fmt.Sprintf("OutFile %q", filepath.ToSlash(expectedInstaller))
+		outFileLine := fmt.Sprintf("OutFile %q", filepath.Clean(expectedInstaller))
 		outFilePattern := regexp.MustCompile(`(?m)^OutFile\s+".*"$`)
 		if outFilePattern.MatchString(templateContent) {
 			templateContent = outFilePattern.ReplaceAllString(templateContent, outFileLine)
