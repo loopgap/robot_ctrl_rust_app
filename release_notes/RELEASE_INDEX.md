@@ -4,12 +4,10 @@
 
 | Version | Tag | Local Tag Status | Remote Tag Status | Release Notes | Local Archive Status | Local Archive Path |
 |---|---|---|---|---|---|---|
-| 0.2.1 | v0.2.1 | present | present | release_notes/RELEASE_NOTES_v0.2.1.md | not-archived | - |
-| 0.2.0 | v0.2.0 | present | present | release_notes/RELEASE_NOTES_v0.2.0.md | not-archived | - |
-| 0.1.9 | v0.1.9 | pending | missing | release_notes/RELEASE_NOTES_v0.1.9.md | not-archived | - |
+| 0.1.9 | v0.1.9 | present | present | release_notes/RELEASE_NOTES_v0.1.9.md | not-archived | - |
 | 0.1.8 | v0.1.8 | present | present | release_notes/RELEASE_NOTES_v0.1.8.md | not-archived | - |
 | 0.1.7 | v0.1.7 | present | present | release_notes/RELEASE_NOTES_v0.1.7.md | archived | release_notes/archive_assets/v0.1.7 |
 | 0.1.1 | v0.1.1 | present | present | release_notes/RELEASE_NOTES_v0.1.1.md | not-archived | - |
 | 0.1.0 | v0.1.0 | present | present | release_notes/RELEASE_NOTES_v0.1.0.md | archived | release_notes/archive_assets/v0.1.0 |
 
-更新时间(UTC): 2026-05-11 15:41:03
+更新时间(UTC): 2026-05-11 18:02:29
