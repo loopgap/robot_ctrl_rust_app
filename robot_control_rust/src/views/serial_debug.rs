@@ -22,14 +22,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             ui.separator();
             if ui.button(Tr::clear(lang)).clicked() {
-                state.log_entries.clear();
+                state.log.log_entries.clear();
             }
 
             ui.separator();
             ui.label(format!(
                 "{}: {}",
                 Tr::entries(lang),
-                state.log_entries.len()
+                state.log.log_entries.len()
             ));
         });
     });
@@ -48,7 +48,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
 
-                if state.log_entries.is_empty() {
+                if state.log.log_entries.is_empty() {
                     ui.add_space(20.0);
                     ui.label(
                         RichText::new(Tr::no_data_yet(lang))
@@ -58,7 +58,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     );
                 }
 
-                for entry in &state.log_entries {
+                for entry in &state.log.log_entries {
                     let (prefix, color) = match entry.direction {
                         LogDirection::Tx => ("TX", Color32::from_rgb(100, 200, 255)),
                         LogDirection::Rx => ("RX", Color32::from_rgb(100, 255, 100)),
@@ -276,5 +276,38 @@ fn format_bytes_short(bytes: u64) -> String {
         format!("{:.1}K", bytes as f64 / 1024.0)
     } else {
         format!("{:.1}M", bytes as f64 / (1024.0 * 1024.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::DisplayMode;
+
+    #[test]
+    fn test_format_bytes_short_bytes() {
+        assert_eq!(format_bytes_short(500), "500B");
+    }
+
+    #[test]
+    fn test_format_bytes_short_kb() {
+        assert_eq!(format_bytes_short(1024), "1.0K");
+    }
+
+    #[test]
+    fn test_format_bytes_short_mb() {
+        assert_eq!(format_bytes_short(1048576), "1.0M");
+    }
+
+    #[test]
+    fn test_format_data_hex() {
+        let result = format_data_with_mode(&[0x48, 0x65], DisplayMode::Hex);
+        assert!(result.contains("48") || result.contains("65"));
+    }
+
+    #[test]
+    fn test_format_data_ascii() {
+        let result = format_data_with_mode(&[0x48, 0x65], DisplayMode::Ascii);
+        assert!(result.contains("He"));
     }
 }

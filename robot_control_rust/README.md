@@ -1,7 +1,7 @@
 # Robot Control Rust
 
-> 迁移说明：运行时代码已迁移到 workspace crate `crates/robot_control`。
-> 当前目录保留文档与历史兼容说明，构建/运行请在仓库根目录执行 `cargo run -p robot_control`。
+> 当前目录是 workspace 成员 `robot_control_rust` 的源码目录。
+> 构建/运行建议在仓库根目录执行 `cargo run -p robot_control_rust`。
 
 > 纯 Rust 实现的工业级机器人控制与多协议调试平台
 >
@@ -56,7 +56,7 @@
 | **CANopen** | 标准 CAN / CAN FD / EtherCAT CoE 三协议工具链（NMT/SDO/PDO/对象字典/帧分析） |
 | **数据可视化** | 折线图 / 散点图 / 柱状图 / 仪表盘 / 直方图 / 表格 (6种类型) |
 | **报文工具** | 模板式报文构建器 / 二进制解析器 / 14种字段类型 / 6种校验算法 |
-| **外部接口** | MCP Server (JSON-RPC 2.0) / LLM API 集成 |
+| **外部接口** | MCP Server (stdio) / LLM API 集成 |
 | **国际化** | 中英文实时切换 |
 | **商用级体验** | 企业级菜单栏 / 偏好持久化 / 日志轮转 / 崩溃追溯 / 性能看门狗 / 动效四层级 |
 
@@ -125,7 +125,7 @@ robot_control_rust/
 │   │   ├── udp_service.rs            # UDP 服务
 │   │   ├── can_service.rs            # CAN/CAN FD 模拟
 │   │   ├── llm_service.rs            # LLM API 调用
-│   │   └── mcp_server.rs             # MCP Server (JSON-RPC)
+│   │   └── mcp_server.rs             # MCP Server (rmcp stdio)
 │   └── views/
 │       ├── mod.rs
 │       ├── dashboard.rs              # 仪表盘
@@ -157,23 +157,23 @@ robot_control_rust/
 ```powershell
 # 克隆项目
 git clone <repo-url>
-cd robot_control_rust
+cd rust_serial
 
 # Debug 构建并运行
-cargo run
+cargo run -p robot_control_rust
 
 # Release 构建（体积优化 ~5.35MB）
-cargo build --release
+cargo build --release -p robot_control_rust
 ./target/release/robot_control_rust
 ```
 
 ### 测试
 
 ```powershell
-cargo test          # Debug 模式测试
-cargo test --release # Release 模式测试
-cargo clippy        # 静态分析
-cargo fmt --check   # 代码格式检查
+cargo test -p robot_control_rust          # Debug 模式测试
+cargo test --release -p robot_control_rust # Release 模式测试
+cargo clippy -p robot_control_rust --all-targets -- -D warnings
+cargo fmt --all -- --check
 ```
 
 ### 本地预检（与 CI 对齐）
@@ -183,7 +183,7 @@ cargo fmt --check   # 代码格式检查
 ./scripts/task.ps1 preflight
 
 # Linux / macOS
-./scripts/task preflight
+./scripts/ubuntu/task.sh preflight
 ```
 
 ---
@@ -347,32 +347,33 @@ cargo fmt --check   # 代码格式检查
 
 ### MCP Server
 
-基于 JSON-RPC 2.0 的 TCP 协议接口，支持外部 AI 工具集成：
+基于官方 `rmcp` SDK 的 stdio MCP 接口，支持 Zed Agent 等外部 AI 工具集成：
 
 **支持方法**：
 
 | 方法 | 说明 |
 |------|------|
 | `initialize` | 握手与版本协商 |
-| `tools` / `tools/list` | 列出可用方法 |
+| `tools/list` | 列出 MCP 工具定义 |
 | `get_pid_params` | 获取 PID 参数 |
-| `set_pid_params` | 设置 PID 参数 |
+| `set_pid_params` | 设置 MCP 内存态 PID 参数，不触发串口/CAN/Modbus/USB/硬件写入 |
 | `get_robot_state` | 获取机器人状态 |
 | `get_state_history` | 获取状态历史 |
 | `get_parsed_packets` | 获取解析数据包 |
 | `suggest_params` | 参数建议 |
+| `get_server_status` | 获取版本、运行模式、计数器与安全状态 |
 
-**调用示例**：
+**Headless 启动**：
 
-```json
-// 获取 PID 参数
-{"jsonrpc":"2.0","method":"get_pid_params","id":1}
-// → {"jsonrpc":"2.0","result":{"kp":1.0,"ki":0.1,"kd":0.01,"setpoint":0.0},"id":1}
-
-// 设置 PID 参数
-{"jsonrpc":"2.0","method":"set_pid_params","params":{"kp":2.2,"ki":0.15,"kd":0.03,"setpoint":50.0},"id":2}
-// → {"jsonrpc":"2.0","result":{"ok":true},"id":2}
+```powershell
+cargo build -p robot_control_rust --bin robot_control_mcp
+.\target\debug\robot_control_mcp.exe --version
+.\target\debug\robot_control_mcp.exe --stdio
 ```
+
+`get_server_status.hardware_write_enabled` 固定为 `false`。Zed dev
+extension 和 custom `context_servers` 示例位于
+`integrations/zed/robot-control-mcp`。
 
 ---
 

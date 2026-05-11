@@ -69,13 +69,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     // 更新 ModbusFrame
     let fns = ModbusFunction::all();
     let fn_idx = state.ui.modbus_fn_idx.min(fns.len() - 1);
-    state.modbus_frame.slave_id = state.ui.modbus_slave_id_text.parse().unwrap_or(1);
-    state.modbus_frame.function = fns[fn_idx];
-    state.modbus_frame.start_address = state.ui.modbus_start_addr_text.parse().unwrap_or(0);
-    state.modbus_frame.quantity = state.ui.modbus_quantity_text.parse().unwrap_or(10);
+    state.protocol.modbus_frame.slave_id = state.ui.modbus_slave_id_text.parse().unwrap_or(1);
+    state.protocol.modbus_frame.function = fns[fn_idx];
+    state.protocol.modbus_frame.start_address =
+        state.ui.modbus_start_addr_text.parse().unwrap_or(0);
+    state.protocol.modbus_frame.quantity = state.ui.modbus_quantity_text.parse().unwrap_or(10);
 
     if !fns[fn_idx].is_read() {
-        state.modbus_frame.write_values = state
+        state.protocol.modbus_frame.write_values = state
             .ui
             .modbus_write_values_text
             .split(',')
@@ -86,8 +87,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     // ─── 帧预览 ─────────────────────────────────────────
-    let rtu_frame = state.modbus_frame.build_rtu_request();
-    let tcp_frame = state.modbus_frame.build_tcp_request(1);
+    let rtu_frame = state.protocol.modbus_frame.build_rtu_request();
+    let tcp_frame = state.protocol.modbus_frame.build_tcp_request(1);
 
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::frame_preview(lang)).size(15.0).strong());
@@ -138,10 +139,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::send_rtu(lang)).size(14.0))
                 .clicked()
             {
-                let data = state.modbus_frame.build_rtu_request();
+                let data = state.protocol.modbus_frame.build_rtu_request();
                 match state.send_data(&data) {
                     Ok(()) => {
                         state
+                            .protocol
                             .modbus_response_log
                             .push(format!("[TX RTU] {}", bytes_to_hex(&data)));
                         state.status_message = Tr::sent_bytes(data.len(), lang);
@@ -154,10 +156,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::send_tcp(lang)).size(14.0))
                 .clicked()
             {
-                let data = state.modbus_frame.build_tcp_request(1);
+                let data = state.protocol.modbus_frame.build_tcp_request(1);
                 match state.send_data(&data) {
                     Ok(()) => {
                         state
+                            .protocol
                             .modbus_response_log
                             .push(format!("[TX TCP] {}", bytes_to_hex(&data)));
                         state.status_message = Tr::sent_bytes(data.len(), lang);
@@ -184,7 +187,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.label(RichText::new(Tr::register_table(lang)).size(15.0).strong());
             ui.add_space(12.0);
             if ui.button(Tr::randomize(lang)).clicked() {
-                for reg in state.modbus_registers.iter_mut() {
+                for reg in state.protocol.modbus_registers.iter_mut() {
                     *reg = (*reg).wrapping_add(1);
                 }
             }
@@ -203,14 +206,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     }
                     ui.end_row();
 
-                    let start = state.modbus_frame.start_address as usize;
-                    let qty = state.modbus_frame.quantity as usize;
-                    let end = (start + qty).min(state.modbus_registers.len());
+                    let start = state.protocol.modbus_frame.start_address as usize;
+                    let qty = state.protocol.modbus_frame.quantity as usize;
+                    let end = (start + qty).min(state.protocol.modbus_registers.len());
                     let range_start = (start / 8) * 8;
                     let range_end = end.div_ceil(8) * 8;
 
-                    for row_start in
-                        (range_start..range_end.min(state.modbus_registers.len())).step_by(8)
+                    for row_start in (range_start
+                        ..range_end.min(state.protocol.modbus_registers.len()))
+                        .step_by(8)
                     {
                         ui.label(
                             RichText::new(format!("{:05}", row_start))
@@ -219,9 +223,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         );
                         for j in 0..8 {
                             let addr = row_start + j;
-                            if addr < state.modbus_registers.len() {
+                            if addr < state.protocol.modbus_registers.len() {
                                 let in_range = addr >= start && addr < end;
-                                let text = format!("{:5}", state.modbus_registers[addr]);
+                                let text = format!("{:5}", state.protocol.modbus_registers[addr]);
                                 let rt = RichText::new(text).monospace().size(11.5);
                                 if in_range {
                                     ui.label(rt.color(Color32::from_rgb(100, 255, 100)));
@@ -239,20 +243,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     });
 
     // ─── 日志 ────────────────────────────────────────────
-    if !state.modbus_response_log.is_empty() {
+    if !state.protocol.modbus_response_log.is_empty() {
         ui.add_space(10.0);
         settings_card(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(Tr::modbus_log(lang)).size(15.0).strong());
                 ui.add_space(12.0);
                 if ui.button(Tr::clear(lang)).clicked() {
-                    state.modbus_response_log.clear();
+                    state.protocol.modbus_response_log.clear();
                 }
             });
             ui.add_space(6.0);
 
             ScrollArea::vertical().max_height(110.0).show(ui, |ui| {
-                for entry in state.modbus_response_log.iter().rev().take(50) {
+                for entry in state.protocol.modbus_response_log.iter().rev().take(50) {
                     ui.label(RichText::new(entry).size(11.5).monospace());
                 }
             });

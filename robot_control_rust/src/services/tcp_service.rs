@@ -4,6 +4,7 @@ use chrono::Local;
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::time::Duration;
+use tracing::{error, info};
 
 use super::connection_provider::ConnectionProvider;
 
@@ -60,7 +61,7 @@ impl TcpService {
                 self.stream = Some(stream);
                 self.status = ConnectionStatus::Connected;
                 self.is_server = false;
-                log::info!("TCP connected to {}", addr);
+                info!("TCP connected to {}", addr);
                 Ok(())
             }
             Err(e) => {
@@ -81,7 +82,7 @@ impl TcpService {
                 self.listener = Some(listener);
                 self.status = ConnectionStatus::Connected;
                 self.is_server = true;
-                log::info!("TCP server listening on {}", addr);
+                info!("TCP server listening on {}", addr);
                 Ok(())
             }
             Err(e) => {
@@ -101,7 +102,7 @@ impl TcpService {
                 let addr_str = addr.to_string();
                 self.connected_clients.push(addr_str.clone());
                 self.stream = Some(stream); // 简化：只保留最新连接
-                log::info!("TCP client connected: {}", addr_str);
+                info!("TCP client connected: {}", addr_str);
             }
         }
     }
@@ -145,7 +146,7 @@ impl ConnectionProvider for TcpService {
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Vec::new(),
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => Vec::new(),
             Err(e) => {
-                log::error!("TCP read error: {}", e);
+                error!("TCP read error: {}", e);
                 self.error_count += 1;
                 Vec::new()
             }
@@ -168,5 +169,51 @@ impl ConnectionProvider for TcpService {
         self.bytes_sent = 0;
         self.bytes_received = 0;
         self.error_count = 0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tcp_service_default() {
+        let service = TcpService::default();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.bytes_received, 0);
+        assert_eq!(service.host, "127.0.0.1");
+        assert_eq!(service.port, 8080);
+        assert!(!service.is_server);
+        assert!(!service.is_connected());
+    }
+
+    #[test]
+    fn test_disconnect_when_not_connected() {
+        let mut service = TcpService::default();
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        assert!(service.connected_clients.is_empty());
+    }
+
+    #[test]
+    fn test_reset_stats() {
+        let mut service = TcpService {
+            bytes_sent: 100,
+            bytes_received: 200,
+            error_count: 5,
+            ..Default::default()
+        };
+        service.reset_stats();
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.bytes_received, 0);
+        assert_eq!(service.error_count, 0);
+    }
+
+    #[test]
+    fn test_send_data_when_disconnected_returns_error() {
+        let mut service = TcpService::default();
+        assert!(service.send_data(b"ping").is_err());
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
 }

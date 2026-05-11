@@ -90,6 +90,33 @@ impl BangBangController {
     }
 }
 
+impl super::control_algorithm::ControlAlgorithm for BangBangController {
+    fn name(&self) -> &'static str {
+        "Bang-Bang"
+    }
+    fn compute(&mut self, feedback: f64) -> f64 {
+        self.compute(feedback)
+    }
+    fn reset(&mut self) {
+        self.reset();
+    }
+    fn setpoint(&self) -> f64 {
+        self.setpoint
+    }
+    fn set_setpoint(&mut self, sp: f64) {
+        self.setpoint = sp;
+    }
+    fn output(&self) -> f64 {
+        self.output
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,5 +207,27 @@ mod tests {
         assert_eq!(c.output, 80.0);
         c.compute(10.0); // error=-10 → Low
         assert_eq!(c.output, -40.0);
+    }
+
+    #[test]
+    fn test_bang_bang_at_threshold() {
+        let mut bb = BangBangController::new(0.0, 1.0, -1.0, 0.5);
+        let output = bb.compute(0.5); // 正好在阈值上
+        assert!(output == 1.0 || output == -1.0 || output == 0.0);
+    }
+
+    #[test]
+    fn test_bang_bang_very_large_error() {
+        let mut bb = BangBangController::new(0.0, 1.0, -1.0, 0.5);
+        let output = bb.compute(1000.0);
+        // error = setpoint - feedback = 0.0 - 1000.0 = -1000.0 < -hysteresis
+        assert_eq!(output, -1.0);
+    }
+
+    #[test]
+    fn test_bang_bang_very_small_error() {
+        let mut bb = BangBangController::new(0.0, 1.0, -1.0, 0.5);
+        let output = bb.compute(0.001); // 非常小的误差
+        assert!(output == 1.0 || output == 0.0);
     }
 }

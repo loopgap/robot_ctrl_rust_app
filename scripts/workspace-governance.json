@@ -4,6 +4,7 @@
     "allowedRootEntries": [
       ".git",
       ".github",
+      ".githooks",
       ".gitignore",
       ".cargo",
       "Cargo.toml",
@@ -12,6 +13,7 @@
       "target",
       "deny.toml",
       "docs",
+      "integrations",
       "LICENSE",
       "README.md",
       "release_notes",
@@ -77,12 +79,11 @@
       ".git",
       ".github",
       "docs",
+      "integrations",
       "scripts",
       "release_notes",
-      "crates/robot_control/src",
-      "crates/tools_suite/src",
-      "crates/robot_core/src",
-      "crates/devtools/src"
+      "robot_control_rust/src",
+      "rust_tools_suite/src"
     ]
   },
   "release": {

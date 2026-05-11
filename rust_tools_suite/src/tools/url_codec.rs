@@ -5,6 +5,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// URL 编解码工具
+///
+/// 提供 URL 编码、解码、解析等功能。
+/// 支持 Unicode 和特殊字符处理。
 #[derive(Default)]
 pub struct UrlCodecTool {
     input: String,
@@ -29,11 +33,11 @@ impl UrlCodecTool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 
@@ -215,5 +219,99 @@ impl UrlCodecTool {
                 self.detail = format!("{}: {err}", lang.tr("解码失败", "Decode failed"));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::i18n::Language;
+
+    fn tool() -> UrlCodecTool {
+        UrlCodecTool::default()
+    }
+
+    #[test]
+    fn test_encode_basic() {
+        let mut t = tool();
+        t.input = "hello world".into();
+        t.encode(Language::En);
+        assert_eq!(t.output, "hello%20world");
+        assert!(t.verified);
+    }
+
+    #[test]
+    fn test_decode_basic() {
+        let mut t = tool();
+        t.input = "hello%20world".into();
+        t.decode(Language::En);
+        assert_eq!(t.output, "hello world");
+        assert!(t.verified);
+    }
+
+    #[test]
+    fn test_encode_special_chars() {
+        let mut t = tool();
+        t.input = "a=b&c=d".into();
+        t.encode(Language::En);
+        assert!(t.output.contains("%3D"));
+        assert!(t.output.contains("%26"));
+    }
+
+    #[test]
+    fn test_decode_passthrough() {
+        let mut t = tool();
+        t.input = "hello%world".into();
+        t.decode(Language::En);
+        assert!(t.verified);
+        assert!(t.executed);
+    }
+
+    #[test]
+    fn test_encode_empty() {
+        let mut t = tool();
+        t.input = "".into();
+        t.encode(Language::En);
+        assert_eq!(t.output, "");
+    }
+
+    #[test]
+    fn test_encode_unicode() {
+        let mut t = tool();
+        t.input = "你好".into();
+        t.encode(Language::En);
+        assert!(t.output.contains("%"));
+    }
+
+    #[test]
+    fn test_decode_unicode() {
+        let mut t = tool();
+        t.input = "%E4%BD%A0%E5%A5%BD".into();
+        t.decode(Language::En);
+        assert_eq!(t.output, "你好");
+    }
+
+    #[test]
+    fn test_roundtrip() {
+        let mut t = tool();
+        t.input = "hello world!@#$%".into();
+        t.encode(Language::En);
+        let encoded = t.output.clone();
+        t.input = encoded;
+        t.decode(Language::En);
+        assert_eq!(t.output, "hello world!@#$%");
+    }
+
+    #[test]
+    fn test_output_text_empty() {
+        let t = tool();
+        assert!(t.output_text().is_none());
+    }
+
+    #[test]
+    fn test_output_text_some() {
+        let mut t = tool();
+        t.output = "test".into();
+        assert_eq!(t.output_text(), Some("test"));
     }
 }

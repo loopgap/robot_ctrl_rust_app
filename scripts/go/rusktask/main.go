@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -39,27 +40,15 @@ type projectDef struct {
 
 var allProjects = []projectDef{
 	{
-		Name:       "robot_control",
-		DirRelPath: filepath.FromSlash("crates/robot_control"),
-		CargoToml:  filepath.FromSlash("crates/robot_control/Cargo.toml"),
+		Name:       "robot_control_rust",
+		DirRelPath: filepath.FromSlash("robot_control_rust"),
+		CargoToml:  filepath.FromSlash("robot_control_rust/Cargo.toml"),
 		CargoLock:  filepath.FromSlash("Cargo.lock"),
 	},
 	{
-		Name:       "tools_suite",
-		DirRelPath: filepath.FromSlash("crates/tools_suite"),
-		CargoToml:  filepath.FromSlash("crates/tools_suite/Cargo.toml"),
-		CargoLock:  filepath.FromSlash("Cargo.lock"),
-	},
-	{
-		Name:       "robot_core",
-		DirRelPath: filepath.FromSlash("crates/robot_core"),
-		CargoToml:  filepath.FromSlash("crates/robot_core/Cargo.toml"),
-		CargoLock:  filepath.FromSlash("Cargo.lock"),
-	},
-	{
-		Name:       "devtools",
-		DirRelPath: filepath.FromSlash("crates/devtools"),
-		CargoToml:  filepath.FromSlash("crates/devtools/Cargo.toml"),
+		Name:       "rust_tools_suite",
+		DirRelPath: filepath.FromSlash("rust_tools_suite"),
+		CargoToml:  filepath.FromSlash("rust_tools_suite/Cargo.toml"),
 		CargoLock:  filepath.FromSlash("Cargo.lock"),
 	},
 }
@@ -80,74 +69,24 @@ func resolveProjectCandidate(repoRoot string, required bool, candidates ...proje
 }
 
 func resolvedAllProjects(repoRoot string) []projectDef {
-	projects := make([]projectDef, 0, 4)
-
-	if project, ok := resolveProjectCandidate(repoRoot, true,
-		projectDef{
-			Name:       "robot_control",
-			DirRelPath: filepath.FromSlash("crates/robot_control"),
-			CargoToml:  filepath.FromSlash("crates/robot_control/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("Cargo.lock"),
-		},
-		projectDef{
-			Name:       "robot_control",
-			DirRelPath: filepath.FromSlash("robot_control_rust"),
-			CargoToml:  filepath.FromSlash("robot_control_rust/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("robot_control_rust/Cargo.lock"),
-		},
-	); ok {
-		projects = append(projects, project)
-	}
-
-	if project, ok := resolveProjectCandidate(repoRoot, true,
-		projectDef{
-			Name:       "tools_suite",
-			DirRelPath: filepath.FromSlash("crates/tools_suite"),
-			CargoToml:  filepath.FromSlash("crates/tools_suite/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("Cargo.lock"),
-		},
-		projectDef{
-			Name:       "tools_suite",
-			DirRelPath: filepath.FromSlash("rust_tools_suite"),
-			CargoToml:  filepath.FromSlash("rust_tools_suite/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("rust_tools_suite/Cargo.lock"),
-		},
-	); ok {
-		projects = append(projects, project)
-	}
-
-	if project, ok := resolveProjectCandidate(repoRoot, false,
-		projectDef{
-			Name:       "robot_core",
-			DirRelPath: filepath.FromSlash("crates/robot_core"),
-			CargoToml:  filepath.FromSlash("crates/robot_core/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("Cargo.lock"),
-		},
-	); ok {
-		projects = append(projects, project)
-	}
-
-	if project, ok := resolveProjectCandidate(repoRoot, false,
-		projectDef{
-			Name:       "devtools",
-			DirRelPath: filepath.FromSlash("crates/devtools"),
-			CargoToml:  filepath.FromSlash("crates/devtools/Cargo.toml"),
-			CargoLock:  filepath.FromSlash("Cargo.lock"),
-		},
-	); ok {
-		projects = append(projects, project)
+	projects := make([]projectDef, 0, len(allProjects))
+	for _, project := range allProjects {
+		manifestPath := filepath.Join(repoRoot, project.CargoToml)
+		if fileExists(manifestPath) {
+			projects = append(projects, project)
+		}
 	}
 
 	return projects
 }
 
-var defaultAuditIgnores = []string{"RUSTSEC-2023-0071"}
+var defaultAuditIgnores []string
 var errStopWalk = errors.New("stop-walk")
 
 type governanceConfig struct {
 	Workspace workspacePolicy `json:"workspace"`
 	Cleanup   cleanupPolicy   `json:"cleanup"`
-	Release   releasePolicy    `json:"release"`
+	Release   releasePolicy   `json:"release"`
 }
 
 type workspacePolicy struct {
@@ -165,8 +104,8 @@ type cleanupPolicy struct {
 }
 
 type releasePolicy struct {
-	RequiredFiles      []string `json:"requiredFiles"`
-	WorkspaceMembers   []string `json:"workspaceMembers"`
+	RequiredFiles    []string `json:"requiredFiles"`
+	WorkspaceMembers []string `json:"workspaceMembers"`
 }
 
 type releaseStateSnapshot struct {
@@ -177,6 +116,14 @@ type releaseStateSnapshot struct {
 	LocalOnlyTags []string
 	OrphanNotes   []string
 	OrphanTags    []string
+	PendingNotes  []string
+	TagMismatches []tagRefMismatch
+}
+
+type tagRefMismatch struct {
+	Tag    string
+	Local  string
+	Remote string
 }
 
 type releaseIndexRow struct {
@@ -470,29 +417,34 @@ func runAudit(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
-	projects := resolvedAllProjects(repoRoot)
 
-	denyConfig := filepath.Join(repoRoot, "deny.toml")
-	auditDB := filepath.Join(repoRoot, ".cargo-advisory-db")
-
-	for _, project := range projects {
-		auditArgs := []string{"audit", "-d", auditDB, "-f", filepath.Join(repoRoot, project.CargoLock)}
-		for _, id := range ignoreIDs {
-			auditArgs = append(auditArgs, "--ignore", id)
-		}
-
-		if err := runCommand(repoRoot, "cargo", auditArgs, nil); err != nil {
-			return exitExecution
-		}
-
-		denyArgs := []string{"deny", "check", "advisories", "bans", "sources", "--config", denyConfig}
-		projectDir := filepath.Join(repoRoot, project.DirRelPath)
-		if err := runCommand(projectDir, "cargo", denyArgs, nil); err != nil {
-			return exitExecution
-		}
+	if err := runSecurityAudit(repoRoot, []string(ignoreIDs)); err != nil {
+		return exitExecution
 	}
 
 	return exitSuccess
+}
+
+func runSecurityAudit(repoRoot string, ignoreIDs []string) error {
+	denyConfig := filepath.Join(repoRoot, "deny.toml")
+	auditDB := filepath.Join(repoRoot, ".cargo-advisory-db")
+	rootLock := filepath.Join(repoRoot, "Cargo.lock")
+	defer func() {
+		if err := removeIfExists(auditDB + "..lock"); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to remove cargo-audit lock file: %v\n", err)
+		}
+	}()
+
+	auditArgs := []string{"audit", "-d", auditDB, "-f", rootLock}
+	for _, id := range ignoreIDs {
+		auditArgs = append(auditArgs, "--ignore", id)
+	}
+	if err := runCommand(repoRoot, "cargo", auditArgs, nil); err != nil {
+		return err
+	}
+
+	denyArgs := []string{"deny", "check", "--config", denyConfig}
+	return runCommand(repoRoot, "cargo", denyArgs, nil)
 }
 
 func runCheck(args []string) int {
@@ -621,9 +573,6 @@ func runRustReview(args []string) int {
 		return exitUsage
 	}
 
-	denyConfig := filepath.Join(repoRoot, "deny.toml")
-	auditDB := filepath.Join(repoRoot, ".cargo-advisory-db")
-
 	for _, project := range selectedProjects {
 		fmt.Printf("[review] project: %s\n", project.Name)
 		manifestPath := filepath.Join(repoRoot, project.CargoToml)
@@ -660,20 +609,11 @@ func runRustReview(args []string) int {
 			return exitExecution
 		}
 
-		if !*skipAudit {
-			auditArgs := []string{"audit", "-d", auditDB, "-f", filepath.Join(repoRoot, project.CargoLock)}
-			for _, id := range defaultAuditIgnores {
-				auditArgs = append(auditArgs, "--ignore", id)
-			}
-			if err := runCommand(repoRoot, "cargo", auditArgs, nil); err != nil {
-				return exitExecution
-			}
+	}
 
-			projectDir := filepath.Join(repoRoot, project.DirRelPath)
-			denyArgs := []string{"deny", "check", "advisories", "bans", "sources", "--config", denyConfig}
-			if err := runCommand(projectDir, "cargo", denyArgs, nil); err != nil {
-				return exitExecution
-			}
+	if !*skipAudit {
+		if err := runSecurityAudit(repoRoot, defaultAuditIgnores); err != nil {
+			return exitExecution
 		}
 	}
 
@@ -926,11 +866,12 @@ func runSmartBump(args []string) int {
 		}
 
 		manifestRelPaths := []string{
-			filepath.ToSlash("crates/robot_control/Cargo.toml"),
-			filepath.ToSlash("crates/tools_suite/Cargo.toml"),
+			filepath.ToSlash("Cargo.toml"),
+			filepath.ToSlash("robot_control_rust/Cargo.toml"),
+			filepath.ToSlash("rust_tools_suite/Cargo.toml"),
 		}
 
-		anchorManifest := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
+		anchorManifest := filepath.Join(repoRoot, "Cargo.toml")
 		currentVersion, err := parseManifestVersion(anchorManifest)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -1484,10 +1425,6 @@ func ensureTagNotExists(repoRoot string, tagName string) error {
 		return fmt.Errorf("tag already exists locally: %s", tagName)
 	}
 
-	if err := runCommand(repoRoot, "git", []string{"fetch", "--tags", "--quiet"}, nil); err != nil {
-		return fmt.Errorf("failed to fetch remote tags: %w", err)
-	}
-
 	remoteTags, err := runCommandCapture(repoRoot, "git", []string{"ls-remote", "--tags", "origin", tagName})
 	if err != nil {
 		return fmt.Errorf("failed to inspect remote tags: %w", err)
@@ -2038,6 +1975,7 @@ func runReleaseSync(args []string) int {
 	fs.SetOutput(os.Stderr)
 	mode := fs.String("mode", "audit", "Mode: audit or apply")
 	prune := fs.Bool("prune-local-tags-not-on-remote", false, "Prune local tags not present on remote")
+	syncLocalTags := fs.Bool("sync-local-tags-to-remote", false, "Force-update mismatched local tags from origin")
 	cleanOrphanNotes := fs.Bool("clean-orphan-notes", false, "Clean orphan release notes")
 	skipRemote := fs.Bool("skip-remote", false, "Skip fetching and checking remote tags")
 	strict := fs.Bool("strict", false, "Fail when inconsistencies are found")
@@ -2072,6 +2010,21 @@ func runReleaseSync(args []string) int {
 					return exitExecution
 				}
 				fmt.Printf("Deleted local-only tag: %s\n", tag)
+			}
+		}
+
+		if *syncLocalTags {
+			if *skipRemote {
+				fmt.Fprintln(os.Stderr, "--sync-local-tags-to-remote cannot be used with --skip-remote")
+				return exitUsage
+			}
+
+			for _, mismatch := range snapshot.TagMismatches {
+				if err := forceFetchRemoteTag(repoRoot, mismatch.Tag); err != nil {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					return exitExecution
+				}
+				fmt.Printf("Updated local tag from origin: %s\n", mismatch.Tag)
 			}
 		}
 
@@ -2240,7 +2193,7 @@ func runPackageWindowsInstaller(args []string) int {
 	fs.SetOutput(os.Stderr)
 	version := fs.String("version", "", "Release version (without v prefix)")
 	buildTag := fs.String("build-tag", "", "Build tag for iExpress fallback artifact name")
-	preferIExpress := fs.Bool("prefer-iexpress", false, "Prefer iExpress packaging even when ISCC is available")
+	preferIExpress := fs.Bool("prefer-iexpress", false, "Prefer iExpress packaging even when NSIS is available")
 	skipBuild := fs.Bool("skip-build", false, "Skip cargo build in installer packaging")
 
 	if err := fs.Parse(args); err != nil {
@@ -2251,12 +2204,9 @@ func runPackageWindowsInstaller(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
-	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
-	suiteManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/tools_suite/Cargo.toml"))
-	devtoolsManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/devtools/Cargo.toml"))
-	mainExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control.exe"))
-	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/tools_suite.exe"))
-	devtoolsExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/devtools.exe"))
+	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/Cargo.toml"))
+	mainExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust.exe"))
+	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/rust_tools_suite.exe"))
 	archDoc := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/ARCHITECTURE_AND_USAGE.md"))
 	issTemplatePath := filepath.Join(repoRoot, filepath.FromSlash(".github/workflows/installer.nsi"))
 	stageDir := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64/stage"))
@@ -2270,13 +2220,13 @@ func runPackageWindowsInstaller(args []string) int {
 	}
 
 	if !*skipBuild {
-		if err := buildReleaseBinaries(repoRoot, mainManifestPath, suiteManifestPath, devtoolsManifestPath); err != nil {
+		if err := buildReleaseBinaries(repoRoot); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return exitExecution
 		}
 	}
 
-	for _, required := range []string{mainExe, suiteExe, devtoolsExe, issTemplatePath} {
+	for _, required := range []string{mainExe, suiteExe, issTemplatePath} {
 		if !fileExists(required) {
 			fmt.Fprintf(os.Stderr, "required file not found: %s\n", required)
 			return exitExecution
@@ -2296,15 +2246,11 @@ func runPackageWindowsInstaller(args []string) int {
 		return exitExecution
 	}
 
-	if err := copyFile(mainExe, filepath.Join(stageDir, "robot_control.exe")); err != nil {
+	if err := copyFile(mainExe, filepath.Join(stageDir, "robot_control_rust.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
-	if err := copyFile(suiteExe, filepath.Join(stageDir, "tools_suite.exe")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
-	}
-	if err := copyFile(devtoolsExe, filepath.Join(stageDir, "devtools.exe")); err != nil {
+	if err := copyFile(suiteExe, filepath.Join(stageDir, "rust_tools_suite.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
@@ -2319,11 +2265,11 @@ func runPackageWindowsInstaller(args []string) int {
 		return exitExecution
 	}
 
-	isccPath := ""
+	makensisPath := ""
 	if !*preferIExpress {
-		isccPath = findISCCExecutable()
+		makensisPath = findMakensisExecutable()
 	}
-	if isccPath != "" {
+	if makensisPath != "" {
 		templateContentBytes, err := os.ReadFile(issTemplatePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to read NSIS template: %v\n", err)
@@ -2333,6 +2279,16 @@ func runPackageWindowsInstaller(args []string) int {
 		expectedInstaller := filepath.Join(outputDir, fmt.Sprintf("robot_control_suite_%s_windows_x64-setup.exe", resolvedVersion))
 		templateContent := strings.ReplaceAll(string(templateContentBytes), "${VERSION}", resolvedVersion)
 		templateContent = strings.ReplaceAll(templateContent, "$VERSION", resolvedVersion)
+		templateContent = strings.ReplaceAll(
+			templateContent,
+			`File "target\release\robot_control_rust.exe"`,
+			fmt.Sprintf(`File %q`, filepath.ToSlash(filepath.Join(stageDir, "robot_control_rust.exe"))),
+		)
+		templateContent = strings.ReplaceAll(
+			templateContent,
+			`File "target\release\rust_tools_suite.exe"`,
+			fmt.Sprintf(`File %q`, filepath.ToSlash(filepath.Join(stageDir, "rust_tools_suite.exe"))),
+		)
 		outFileLine := fmt.Sprintf("OutFile %q", filepath.ToSlash(expectedInstaller))
 		outFilePattern := regexp.MustCompile(`(?m)^OutFile\s+".*"$`)
 		if outFilePattern.MatchString(templateContent) {
@@ -2346,8 +2302,8 @@ func runPackageWindowsInstaller(args []string) int {
 			return exitExecution
 		}
 
-		if err := runCommand(repoRoot, isccPath, []string{generatedNsiPath}, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "ISCC failed: %v\n", err)
+		if err := runCommand(repoRoot, makensisPath, []string{generatedNsiPath}, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "NSIS failed: %v\n", err)
 			return exitExecution
 		}
 
@@ -2370,11 +2326,17 @@ func runPackageWindowsInstaller(args []string) int {
 		fmt.Println("[Package] Success")
 		fmt.Printf("[Package] Installer: %s\n", installerPath)
 		fmt.Printf("[Package] Size MB: %.2f\n", float64(info.Size())/(1024.0*1024.0))
+		checksumPath, err := writeReleaseChecksums(outputDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
+		fmt.Printf("[Package] Checksums: %s\n", checksumPath)
 		return exitSuccess
 	}
 
-	fmt.Fprintln(os.Stderr, "[Package] Inno Setup not found. Falling back to iExpress...")
-	installerPath, err := packageWindowsInstallerIExpress(repoRoot, resolvedVersion, strings.TrimSpace(*buildTag), mainExe, suiteExe, devtoolsExe, archDoc, outputDir, stageDir)
+	fmt.Fprintln(os.Stderr, "[Package] NSIS not found. Falling back to iExpress...")
+	installerPath, err := packageWindowsInstallerIExpress(repoRoot, resolvedVersion, strings.TrimSpace(*buildTag), mainExe, suiteExe, archDoc, outputDir, stageDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
@@ -2389,6 +2351,12 @@ func runPackageWindowsInstaller(args []string) int {
 	fmt.Println("[IExpressPackage] Success")
 	fmt.Printf("[IExpressPackage] Installer: %s\n", installerPath)
 	fmt.Printf("[IExpressPackage] Size MB: %.2f\n", float64(info.Size())/(1024.0*1024.0))
+	checksumPath, err := writeReleaseChecksums(outputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return exitExecution
+	}
+	fmt.Printf("[IExpressPackage] Checksums: %s\n", checksumPath)
 
 	return exitSuccess
 }
@@ -2408,12 +2376,9 @@ func runPackageWindowsAssets(args []string) int {
 	if code != exitSuccess {
 		return code
 	}
-	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
-	suiteManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/tools_suite/Cargo.toml"))
-	devtoolsManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/devtools/Cargo.toml"))
-	mainExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control.exe"))
-	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/tools_suite.exe"))
-	devtoolsExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/devtools.exe"))
+	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/Cargo.toml"))
+	mainExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust.exe"))
+	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/rust_tools_suite.exe"))
 	archDoc := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/ARCHITECTURE_AND_USAGE.md"))
 	workspaceReadme := filepath.Join(repoRoot, "README.md")
 	tempRoot := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64/release-assets-tmp"))
@@ -2429,13 +2394,13 @@ func runPackageWindowsAssets(args []string) int {
 	resolvedOutputDir := resolveOutputDir(repoRoot, *outputDir, "release_artifacts")
 
 	if !*skipBuild {
-		if err := buildReleaseBinaries(repoRoot, mainManifestPath, suiteManifestPath, devtoolsManifestPath); err != nil {
+		if err := buildReleaseBinaries(repoRoot); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return exitExecution
 		}
 	}
 
-	for _, required := range []string{mainExe, suiteExe, devtoolsExe, workspaceReadme} {
+	for _, required := range []string{mainExe, suiteExe, workspaceReadme} {
 		if !fileExists(required) {
 			fmt.Fprintf(os.Stderr, "required file not found: %s\n", required)
 			return exitExecution
@@ -2476,15 +2441,11 @@ func runPackageWindowsAssets(args []string) int {
 		return exitExecution
 	}
 
-	if err := copyFile(mainExe, filepath.Join(bundleRoot, "robot_control.exe")); err != nil {
+	if err := copyFile(mainExe, filepath.Join(bundleRoot, "robot_control_rust.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
-	if err := copyFile(suiteExe, filepath.Join(bundleRoot, "tools_suite.exe")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
-	}
-	if err := copyFile(devtoolsExe, filepath.Join(bundleRoot, "devtools.exe")); err != nil {
+	if err := copyFile(suiteExe, filepath.Join(bundleRoot, "rust_tools_suite.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
@@ -2514,6 +2475,12 @@ func runPackageWindowsAssets(args []string) int {
 
 	fmt.Println("[PackageAssets] Success")
 	fmt.Printf("[PackageAssets] Bundle zip: %s\n", bundleZip)
+	checksumPath, err := writeReleaseChecksums(resolvedOutputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return exitExecution
+	}
+	fmt.Printf("[PackageAssets] Checksums: %s\n", checksumPath)
 
 	return exitSuccess
 }
@@ -2792,7 +2759,7 @@ func runBuildReleaseSlim(args []string) int {
 		return code
 	}
 
-	manifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
+	manifestPath := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/Cargo.toml"))
 	targetDir := filepath.Join(repoRoot, "target")
 
 	if !fileExists(manifestPath) {
@@ -2855,9 +2822,9 @@ func runBuildReleaseSlim(args []string) int {
 		fmt.Printf("[ReleaseSlim] Reduced by %d bytes, remaining %.2f%%\n", delta, ratio)
 	}
 
-	releaseBin := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control.exe"))
+	releaseBin := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust.exe"))
 	if !fileExists(releaseBin) {
-		releaseBin = filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control"))
+		releaseBin = filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust"))
 	}
 	if !fileExists(releaseBin) {
 		fmt.Fprintln(os.Stderr, "[ReleaseSlim] Release binary not found")
@@ -2894,12 +2861,9 @@ func runPackageWindowsPortableInstaller(args []string) int {
 		return code
 	}
 
-	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/robot_control/Cargo.toml"))
-	suiteManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/tools_suite/Cargo.toml"))
-	devtoolsManifestPath := filepath.Join(repoRoot, filepath.FromSlash("crates/devtools/Cargo.toml"))
-	releaseExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control.exe"))
-	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/tools_suite.exe"))
-	devtoolsExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/devtools.exe"))
+	mainManifestPath := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/Cargo.toml"))
+	releaseExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust.exe"))
+	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/rust_tools_suite.exe"))
 	archDoc := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/ARCHITECTURE_AND_USAGE.md"))
 
 	resolvedVersion, err := resolveReleaseVersion(mainManifestPath, *version)
@@ -2909,7 +2873,7 @@ func runPackageWindowsPortableInstaller(args []string) int {
 	}
 
 	if !*skipBuild {
-		if err := buildReleaseBinaries(repoRoot, mainManifestPath, suiteManifestPath, devtoolsManifestPath); err != nil {
+		if err := buildReleaseBinaries(repoRoot); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return exitExecution
 		}
@@ -2923,11 +2887,6 @@ func runPackageWindowsPortableInstaller(args []string) int {
 		fmt.Fprintf(os.Stderr, "suite executable not found: %s\n", suiteExe)
 		return exitPrecondition
 	}
-	if !fileExists(devtoolsExe) {
-		fmt.Fprintf(os.Stderr, "devtools executable not found: %s\n", devtoolsExe)
-		return exitPrecondition
-	}
-
 	distRoot := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64"))
 	bundleDir := filepath.Join(distRoot, "installer-bundle")
 	resolvedOutputDir := strings.TrimSpace(*outputDir)
@@ -2950,15 +2909,11 @@ func runPackageWindowsPortableInstaller(args []string) int {
 		return exitExecution
 	}
 
-	if err := copyFile(releaseExe, filepath.Join(bundleDir, "robot_control.exe")); err != nil {
+	if err := copyFile(releaseExe, filepath.Join(bundleDir, "robot_control_rust.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
-	if err := copyFile(suiteExe, filepath.Join(bundleDir, "tools_suite.exe")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
-	}
-	if err := copyFile(devtoolsExe, filepath.Join(bundleDir, "devtools.exe")); err != nil {
+	if err := copyFile(suiteExe, filepath.Join(bundleDir, "rust_tools_suite.exe")); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return exitExecution
 	}
@@ -2976,22 +2931,20 @@ func runPackageWindowsPortableInstaller(args []string) int {
 		"setlocal\r\n" +
 		"set \"TARGET=%LOCALAPPDATA%\\Robot Control Suite\"\r\n" +
 		"if not exist \"%TARGET%\" mkdir \"%TARGET%\"\r\n" +
-		"copy /Y \"%~dp0robot_control.exe\" \"%TARGET%\\robot_control.exe\" >nul\r\n" +
-		"copy /Y \"%~dp0tools_suite.exe\" \"%TARGET%\\tools_suite.exe\" >nul\r\n" +
-		"copy /Y \"%~dp0devtools.exe\" \"%TARGET%\\devtools.exe\" >nul\r\n" +
+		"copy /Y \"%~dp0robot_control_rust.exe\" \"%TARGET%\\robot_control_rust.exe\" >nul\r\n" +
+		"copy /Y \"%~dp0rust_tools_suite.exe\" \"%TARGET%\\rust_tools_suite.exe\" >nul\r\n" +
 		"if exist \"%~dp0ARCHITECTURE_AND_USAGE.md\" copy /Y \"%~dp0ARCHITECTURE_AND_USAGE.md\" \"%TARGET%\\ARCHITECTURE_AND_USAGE.md\" >nul\r\n" +
-		"powershell -NoProfile -ExecutionPolicy Bypass -Command \"$s=(New-Object -ComObject WScript.Shell); $lnk=$s.CreateShortcut([System.IO.Path]::Combine($env:USERPROFILE,'Desktop','Robot Control Suite.lnk')); $lnk.TargetPath=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite','robot_control.exe'); $lnk.WorkingDirectory=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite'); $lnk.Save();\"\r\n" +
-		"powershell -NoProfile -ExecutionPolicy Bypass -Command \"$sm=[Environment]::GetFolderPath('StartMenu'); $dir=Join-Path $sm 'Programs'; $s=(New-Object -ComObject WScript.Shell); $lnk=$s.CreateShortcut((Join-Path $dir 'Robot Control Suite.lnk')); $lnk.TargetPath=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite','robot_control.exe'); $lnk.WorkingDirectory=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite'); $lnk.Save();\"\r\n" +
+		"powershell -NoProfile -ExecutionPolicy Bypass -Command \"$s=(New-Object -ComObject WScript.Shell); $lnk=$s.CreateShortcut([System.IO.Path]::Combine($env:USERPROFILE,'Desktop','Robot Control Suite.lnk')); $lnk.TargetPath=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite','robot_control_rust.exe'); $lnk.WorkingDirectory=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite'); $lnk.Save();\"\r\n" +
+		"powershell -NoProfile -ExecutionPolicy Bypass -Command \"$sm=[Environment]::GetFolderPath('StartMenu'); $dir=Join-Path $sm 'Programs'; $s=(New-Object -ComObject WScript.Shell); $lnk=$s.CreateShortcut((Join-Path $dir 'Robot Control Suite.lnk')); $lnk.TargetPath=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite','robot_control_rust.exe'); $lnk.WorkingDirectory=[System.IO.Path]::Combine($env:LOCALAPPDATA,'Robot Control Suite'); $lnk.Save();\"\r\n" +
 		"echo Installed to: %TARGET%\r\n" +
-		"start \"\" \"%TARGET%\\robot_control.exe\"\r\n" +
+		"start \"\" \"%TARGET%\\robot_control_rust.exe\"\r\n" +
 		"exit /b 0\r\n"
 
 	uninstallCmdContent := "@echo off\r\n" +
 		"setlocal\r\n" +
 		"set \"TARGET=%LOCALAPPDATA%\\Robot Control Suite\"\r\n" +
-		"del /F /Q \"%TARGET%\\robot_control.exe\" 2>nul\r\n" +
-		"del /F /Q \"%TARGET%\\tools_suite.exe\" 2>nul\r\n" +
-		"del /F /Q \"%TARGET%\\devtools.exe\" 2>nul\r\n" +
+		"del /F /Q \"%TARGET%\\robot_control_rust.exe\" 2>nul\r\n" +
+		"del /F /Q \"%TARGET%\\rust_tools_suite.exe\" 2>nul\r\n" +
 		"del /F /Q \"%TARGET%\\ARCHITECTURE_AND_USAGE.md\" 2>nul\r\n" +
 		"del /F /Q \"%TARGET%\\Uninstall_RobotControlSuite_x64.cmd\" 2>nul\r\n" +
 		"rmdir \"%TARGET%\" 2>nul\r\n" +
@@ -3029,6 +2982,12 @@ func runPackageWindowsPortableInstaller(args []string) int {
 	fmt.Println("[PortablePackage] Success")
 	fmt.Printf("[PortablePackage] Installer: %s\n", outputZip)
 	fmt.Printf("[PortablePackage] Size MB: %.2f\n", float64(info.Size())/(1024.0*1024.0))
+	checksumPath, err := writeReleaseChecksums(resolvedOutputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return exitExecution
+	}
+	fmt.Printf("[PortablePackage] Checksums: %s\n", checksumPath)
 
 	return exitSuccess
 }
@@ -3146,17 +3105,9 @@ func firstExistingPath(candidates []string) string {
 	return candidates[0]
 }
 
-func buildReleaseBinaries(repoRoot string, mainManifestPath string, suiteManifestPath string, devtoolsManifestPath string) error {
-	if err := runCommand(repoRoot, "cargo", []string{"build", "--release", "--manifest-path", mainManifestPath}, nil); err != nil {
-		return fmt.Errorf("robot_control release build failed: %w", err)
-	}
-
-	if err := runCommand(repoRoot, "cargo", []string{"build", "--release", "--manifest-path", suiteManifestPath}, nil); err != nil {
-		return fmt.Errorf("tools_suite release build failed: %w", err)
-	}
-
-	if err := runCommand(repoRoot, "cargo", []string{"build", "--release", "--manifest-path", devtoolsManifestPath}, nil); err != nil {
-		return fmt.Errorf("devtools release build failed: %w", err)
+func buildReleaseBinaries(repoRoot string) error {
+	if err := runCommand(repoRoot, "cargo", []string{"build", "--release", "--workspace"}, nil); err != nil {
+		return fmt.Errorf("workspace release build failed: %w", err)
 	}
 
 	return nil
@@ -3221,16 +3172,17 @@ func packageDocsBundle(repoRoot string, outputRoot string, createZip bool) error
 	return nil
 }
 
-func findISCCExecutable() string {
-	if path, err := exec.LookPath("ISCC.exe"); err == nil {
+func findMakensisExecutable() string {
+	if path, err := exec.LookPath("makensis.exe"); err == nil {
+		return path
+	}
+	if path, err := exec.LookPath("makensis"); err == nil {
 		return path
 	}
 
 	candidates := []string{
-		filepath.Join(os.Getenv("ProgramFiles(x86)"), filepath.FromSlash("Inno Setup 6/ISCC.exe")),
-		filepath.Join(os.Getenv("ProgramFiles"), filepath.FromSlash("Inno Setup 6/ISCC.exe")),
-		filepath.Join(os.Getenv("LOCALAPPDATA"), filepath.FromSlash("Programs/Inno Setup 6/ISCC.exe")),
-		filepath.Join(os.Getenv("LOCALAPPDATA"), filepath.FromSlash("Programs/JRSoftware/Inno Setup 6/ISCC.exe")),
+		filepath.Join(os.Getenv("ProgramFiles(x86)"), filepath.FromSlash("NSIS/makensis.exe")),
+		filepath.Join(os.Getenv("ProgramFiles"), filepath.FromSlash("NSIS/makensis.exe")),
 	}
 
 	for _, candidate := range candidates {
@@ -3245,15 +3197,10 @@ func findISCCExecutable() string {
 	return ""
 }
 
-func packageWindowsInstallerIExpress(repoRoot string, version string, buildTag string, mainExe string, suiteExe string, devtoolsExe string, archDoc string, outputDir string, stageDir string) (string, error) {
+func packageWindowsInstallerIExpress(repoRoot string, version string, buildTag string, mainExe string, suiteExe string, archDoc string, outputDir string, stageDir string) (string, error) {
 	iexpressExe := filepath.Join(os.Getenv("WINDIR"), filepath.FromSlash("System32/iexpress.exe"))
 	if !fileExists(iexpressExe) {
 		return "", fmt.Errorf("IExpress not found: %s", iexpressExe)
-	}
-
-	buildTagValue := strings.TrimSpace(buildTag)
-	if buildTagValue == "" {
-		buildTagValue = time.Now().Format("20060102")
 	}
 
 	tempDir := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64/iexpress-tmp"))
@@ -3274,13 +3221,10 @@ func packageWindowsInstallerIExpress(repoRoot string, version string, buildTag s
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	if err := copyFile(mainExe, filepath.Join(stageDir, "robot_control.exe")); err != nil {
+	if err := copyFile(mainExe, filepath.Join(stageDir, "robot_control_rust.exe")); err != nil {
 		return "", err
 	}
-	if err := copyFile(suiteExe, filepath.Join(stageDir, "tools_suite.exe")); err != nil {
-		return "", err
-	}
-	if err := copyFile(devtoolsExe, filepath.Join(stageDir, "devtools.exe")); err != nil {
+	if err := copyFile(suiteExe, filepath.Join(stageDir, "rust_tools_suite.exe")); err != nil {
 		return "", err
 	}
 	archDocTarget := filepath.Join(stageDir, "ARCHITECTURE_AND_USAGE.md")
@@ -3306,12 +3250,16 @@ func packageWindowsInstallerIExpress(repoRoot string, version string, buildTag s
 	}
 
 	installPs1 := filepath.Join(stageDir, "install.ps1")
-	installPs1Content := "param(\n    [string]$InstallDir\n)\n\n$ErrorActionPreference = 'Stop'\n\nif ([string]::IsNullOrWhiteSpace($InstallDir)) {\n    $InstallDir = Join-Path $env:LOCALAPPDATA 'Robot Control Suite'\n}\n\nNew-Item -ItemType Directory -Force -Path $InstallDir | Out-Null\nCopy-Item -Force (Join-Path $PSScriptRoot 'robot_control.exe') (Join-Path $InstallDir 'robot_control.exe')\nCopy-Item -Force (Join-Path $PSScriptRoot 'tools_suite.exe') (Join-Path $InstallDir 'tools_suite.exe')\nCopy-Item -Force (Join-Path $PSScriptRoot 'devtools.exe') (Join-Path $InstallDir 'devtools.exe')\nCopy-Item -Force (Join-Path $PSScriptRoot 'help_index.html') (Join-Path $InstallDir 'help_index.html')\nCopy-Item -Force (Join-Path $PSScriptRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path $InstallDir 'ARCHITECTURE_AND_USAGE.md')\nCopy-Item -Force (Join-Path $PSScriptRoot 'docs_bundle.zip') (Join-Path $InstallDir 'docs_bundle.zip')\nExpand-Archive -LiteralPath (Join-Path $InstallDir 'docs_bundle.zip') -DestinationPath (Join-Path $InstallDir 'docs') -Force\nRemove-Item (Join-Path $InstallDir 'docs_bundle.zip') -Force -ErrorAction SilentlyContinue\nStart-Process (Join-Path $InstallDir 'robot_control.exe')\n"
+	installPs1Content := "param(\n    [string]$InstallDir\n)\n\n$ErrorActionPreference = 'Stop'\n\nif ([string]::IsNullOrWhiteSpace($InstallDir)) {\n    $InstallDir = Join-Path $env:LOCALAPPDATA 'Robot Control Suite'\n}\n\nNew-Item -ItemType Directory -Force -Path $InstallDir | Out-Null\nCopy-Item -Force (Join-Path $PSScriptRoot 'robot_control_rust.exe') (Join-Path $InstallDir 'robot_control_rust.exe')\nCopy-Item -Force (Join-Path $PSScriptRoot 'rust_tools_suite.exe') (Join-Path $InstallDir 'rust_tools_suite.exe')\nCopy-Item -Force (Join-Path $PSScriptRoot 'help_index.html') (Join-Path $InstallDir 'help_index.html')\nCopy-Item -Force (Join-Path $PSScriptRoot 'ARCHITECTURE_AND_USAGE.md') (Join-Path $InstallDir 'ARCHITECTURE_AND_USAGE.md')\nCopy-Item -Force (Join-Path $PSScriptRoot 'docs_bundle.zip') (Join-Path $InstallDir 'docs_bundle.zip')\nExpand-Archive -LiteralPath (Join-Path $InstallDir 'docs_bundle.zip') -DestinationPath (Join-Path $InstallDir 'docs') -Force\nRemove-Item (Join-Path $InstallDir 'docs_bundle.zip') -Force -ErrorAction SilentlyContinue\nStart-Process (Join-Path $InstallDir 'robot_control_rust.exe')\n"
 	if err := writeTextFile(installPs1, installPs1Content, 0o644); err != nil {
 		return "", err
 	}
 
-	outputExe := filepath.Join(outputDir, fmt.Sprintf("robot_control_suite_%s_windows_x64_%s-setup.exe", version, buildTagValue))
+	outputName := fmt.Sprintf("robot_control_suite_%s_windows_x64-setup.exe", version)
+	if buildTagValue := strings.TrimSpace(buildTag); buildTagValue != "" {
+		outputName = fmt.Sprintf("robot_control_suite_%s_windows_x64_%s-setup.exe", version, buildTagValue)
+	}
+	outputExe := filepath.Join(outputDir, outputName)
 	sedPath := filepath.Join(tempDir, "robot_control_suite.sed")
 	sedContent := `[Version]
 Class=IEXPRESS
@@ -3337,13 +3285,12 @@ UserQuietInstCmd=install.cmd
 SourceFiles=SourceFiles
 [Strings]
 FILE0=install.cmd
-FILE1=robot_control.exe
-FILE2=tools_suite.exe
-FILE3=devtools.exe
-FILE4=help_index.html
-FILE5=docs_bundle.zip
-FILE6=ARCHITECTURE_AND_USAGE.md
-FILE7=install.ps1
+FILE1=robot_control_rust.exe
+FILE2=rust_tools_suite.exe
+FILE3=help_index.html
+FILE4=docs_bundle.zip
+FILE5=ARCHITECTURE_AND_USAGE.md
+FILE6=install.ps1
 [SourceFiles]
 SourceFiles0=__STAGE__
 [SourceFiles0]
@@ -3354,7 +3301,6 @@ SourceFiles0=__STAGE__
 %FILE4%=
 %FILE5%=
 %FILE6%=
-%FILE7%=
 `
 	sedContent = strings.ReplaceAll(sedContent, "__TARGET__", outputExe)
 	sedContent = strings.ReplaceAll(sedContent, "__VERSION__", version)
@@ -3418,6 +3364,64 @@ func writeTextFile(path string, content string, perm os.FileMode) error {
 		return fmt.Errorf("failed to write file %s: %w", path, err)
 	}
 	return nil
+}
+
+func writeReleaseChecksums(outputDir string) (string, error) {
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read output dir %s: %w", outputDir, err)
+	}
+
+	artifactPaths := make([]string, 0)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.EqualFold(name, "checksums-sha256.txt") {
+			continue
+		}
+		switch strings.ToLower(filepath.Ext(name)) {
+		case ".deb", ".exe", ".zip":
+			artifactPaths = append(artifactPaths, filepath.Join(outputDir, name))
+		}
+	}
+	sort.Strings(artifactPaths)
+	if len(artifactPaths) == 0 {
+		return "", fmt.Errorf("no release artifacts found in %s", outputDir)
+	}
+
+	var builder strings.Builder
+	for _, artifactPath := range artifactPaths {
+		sum, err := sha256File(artifactPath)
+		if err != nil {
+			return "", err
+		}
+		builder.WriteString(sum)
+		builder.WriteString("  ")
+		builder.WriteString(filepath.Base(artifactPath))
+		builder.WriteByte('\n')
+	}
+
+	checksumPath := filepath.Join(outputDir, "checksums-sha256.txt")
+	if err := writeTextFile(checksumPath, builder.String(), 0o644); err != nil {
+		return "", err
+	}
+	return checksumPath, nil
+}
+
+func sha256File(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to open %s for checksum: %w", path, err)
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", fmt.Errorf("failed to hash %s: %w", path, err)
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
 func removeIfExists(path string) error {
@@ -3583,8 +3587,10 @@ func collectReleaseState(repoRoot string, skipRemote bool) (releaseStateSnapshot
 	}
 
 	remoteTags := []string{}
+	remoteTagRefs := map[string]string{}
 	if !skipRemote {
-		remoteTags = getRemoteSemverTagsForSync(repoRoot)
+		remoteTagRefs = getRemoteSemverTagRefsForSync(repoRoot)
+		remoteTags = uniqueSortedStrings(mapKeys(remoteTagRefs))
 	}
 
 	noteMap, err := getReleaseNoteMap(releaseNotesDir)
@@ -3593,6 +3599,7 @@ func collectReleaseState(repoRoot string, skipRemote bool) (releaseStateSnapshot
 	}
 
 	noteTags := uniqueSortedStrings(mapKeys(noteMap))
+	currentReleaseTag := currentWorkspaceReleaseTag(repoRoot)
 
 	localOnlyTags := []string{}
 	if len(remoteTags) > 0 {
@@ -3604,8 +3611,13 @@ func collectReleaseState(repoRoot string, skipRemote bool) (releaseStateSnapshot
 	}
 
 	orphanNotes := make([]string, 0)
+	pendingNotes := make([]string, 0)
 	for _, tag := range noteTags {
 		if !containsString(localTags, tag) {
+			if tag == currentReleaseTag {
+				pendingNotes = append(pendingNotes, tag)
+				continue
+			}
 			orphanNotes = append(orphanNotes, tag)
 		}
 	}
@@ -3617,6 +3629,27 @@ func collectReleaseState(repoRoot string, skipRemote bool) (releaseStateSnapshot
 		}
 	}
 
+	tagMismatches := []tagRefMismatch{}
+	if len(remoteTagRefs) > 0 {
+		localTagRefs := getLocalSemverTagRefs(repoRoot, localTags)
+		for tag, remoteRef := range remoteTagRefs {
+			localRef, exists := localTagRefs[tag]
+			if !exists {
+				continue
+			}
+			if localRef != remoteRef {
+				tagMismatches = append(tagMismatches, tagRefMismatch{
+					Tag:    tag,
+					Local:  localRef,
+					Remote: remoteRef,
+				})
+			}
+		}
+		sort.Slice(tagMismatches, func(i, j int) bool {
+			return tagMismatches[i].Tag < tagMismatches[j].Tag
+		})
+	}
+
 	snapshot.LocalTags = localTags
 	snapshot.RemoteTags = remoteTags
 	snapshot.NoteMap = noteMap
@@ -3624,6 +3657,8 @@ func collectReleaseState(repoRoot string, skipRemote bool) (releaseStateSnapshot
 	snapshot.LocalOnlyTags = uniqueSortedStrings(localOnlyTags)
 	snapshot.OrphanNotes = uniqueSortedStrings(orphanNotes)
 	snapshot.OrphanTags = uniqueSortedStrings(orphanTags)
+	snapshot.PendingNotes = uniqueSortedStrings(pendingNotes)
+	snapshot.TagMismatches = tagMismatches
 
 	return snapshot, nil
 }
@@ -3636,6 +3671,8 @@ func printReleaseStateSummary(snapshot releaseStateSnapshot) {
 	fmt.Printf("- Local-only tags (not on remote): %d\n", len(snapshot.LocalOnlyTags))
 	fmt.Printf("- Orphan notes (no local tag): %d\n", len(snapshot.OrphanNotes))
 	fmt.Printf("- Orphan tags (no release note): %d\n", len(snapshot.OrphanTags))
+	fmt.Printf("- Pending current release notes: %d\n", len(snapshot.PendingNotes))
+	fmt.Printf("- Local/remote tag ref mismatches: %d\n", len(snapshot.TagMismatches))
 
 	if len(snapshot.LocalOnlyTags) > 0 {
 		fmt.Println("Local-only tags:")
@@ -3655,6 +3692,20 @@ func printReleaseStateSummary(snapshot releaseStateSnapshot) {
 		fmt.Println("Orphan tags:")
 		for _, tag := range snapshot.OrphanTags {
 			fmt.Printf("  %s\n", tag)
+		}
+	}
+
+	if len(snapshot.PendingNotes) > 0 {
+		fmt.Println("Pending current release notes:")
+		for _, tag := range snapshot.PendingNotes {
+			fmt.Printf("  RELEASE_NOTES_%s.md\n", tag)
+		}
+	}
+
+	if len(snapshot.TagMismatches) > 0 {
+		fmt.Println("Local/remote tag ref mismatches:")
+		for _, mismatch := range snapshot.TagMismatches {
+			fmt.Printf("  %s local=%s remote=%s\n", mismatch.Tag, mismatch.Local, mismatch.Remote)
 		}
 	}
 }
@@ -3681,27 +3732,57 @@ func getLocalSemverTags(repoRoot string) ([]string, error) {
 	return uniqueSortedStrings(tags), nil
 }
 
-func getRemoteSemverTagsForSync(repoRoot string) []string {
-	if _, err := runCommandCapture(repoRoot, "git", []string{"fetch", "--tags", "--prune", "--quiet"}); err != nil {
-		fmt.Fprintln(os.Stderr, "Warning: failed to fetch remote tags, skip remote sync check.")
-		return []string{}
+func getLocalSemverTagRefs(repoRoot string, tags []string) map[string]string {
+	refs := make(map[string]string, len(tags))
+	for _, tag := range tags {
+		output, err := runCommandCapture(repoRoot, "git", []string{"rev-parse", tag + "^{}"})
+		if err != nil {
+			continue
+		}
+		refs[tag] = strings.TrimSpace(output)
 	}
 
+	return refs
+}
+
+func getRemoteSemverTagRefsForSync(repoRoot string) map[string]string {
 	output, err := runCommandCapture(repoRoot, "git", []string{"ls-remote", "--tags", "origin", "v*"})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Warning: failed to list remote tags, skip remote sync check.")
-		return []string{}
+		return map[string]string{}
 	}
 
-	return parseRemoteSemverTags(output)
+	return parseRemoteSemverTagRefs(output)
+}
+
+func getRemoteSemverTagsForSync(repoRoot string) []string {
+	return uniqueSortedStrings(mapKeys(getRemoteSemverTagRefsForSync(repoRoot)))
+}
+
+func currentWorkspaceReleaseTag(repoRoot string) string {
+	version, err := parseManifestVersion(filepath.Join(repoRoot, "Cargo.toml"))
+	if err != nil {
+		return ""
+	}
+
+	return "v" + version
+}
+
+func forceFetchRemoteTag(repoRoot string, tag string) error {
+	if strings.TrimSpace(tag) == "" {
+		return errors.New("tag must not be empty")
+	}
+
+	refspec := fmt.Sprintf("+refs/tags/%s:refs/tags/%s", tag, tag)
+	if err := runCommand(repoRoot, "git", []string{"fetch", "origin", refspec, "--quiet"}, nil); err != nil {
+		return fmt.Errorf("failed to sync local tag %s from origin: %w", tag, err)
+	}
+
+	return nil
 }
 
 func getRemoteSemverTagsForIndex(repoRoot string, skipRemote bool) ([]string, bool) {
 	if skipRemote {
-		return []string{}, false
-	}
-
-	if _, err := runCommandCapture(repoRoot, "git", []string{"fetch", "--tags", "--prune", "--quiet"}); err != nil {
 		return []string{}, false
 	}
 
@@ -3711,6 +3792,44 @@ func getRemoteSemverTagsForIndex(repoRoot string, skipRemote bool) ([]string, bo
 	}
 
 	return parseRemoteSemverTags(output), true
+}
+
+func parseRemoteSemverTagRefs(output string) map[string]string {
+	lines := strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n")
+	refs := make(map[string]string)
+	peeled := make(map[string]bool)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Split(line, "\t")
+		if len(parts) < 2 {
+			continue
+		}
+
+		objectID := strings.TrimSpace(parts[0])
+		ref := strings.TrimSpace(parts[1])
+		isPeeled := strings.HasSuffix(ref, "^{}")
+		ref = strings.TrimSuffix(ref, "^{}")
+		if !strings.HasPrefix(ref, "refs/tags/") {
+			continue
+		}
+
+		tag := strings.TrimPrefix(ref, "refs/tags/")
+		if _, ok := parseSemverTagInfo(tag); !ok {
+			continue
+		}
+
+		if isPeeled || !peeled[tag] {
+			refs[tag] = objectID
+			peeled[tag] = isPeeled
+		}
+	}
+
+	return refs
 }
 
 func parseRemoteSemverTags(output string) []string {
@@ -3793,6 +3912,7 @@ func updateReleaseIndex(repoRoot string, skipRemote bool) error {
 	}
 
 	remoteTags, remoteEnabled := getRemoteSemverTagsForIndex(repoRoot, skipRemote)
+	currentReleaseTag := currentWorkspaceReleaseTag(repoRoot)
 
 	allTags := uniqueSortedStrings(append(mapKeys(noteMap), localTags...))
 	rows := make([]releaseIndexRow, 0, len(allTags))
@@ -3811,6 +3931,8 @@ func updateReleaseIndex(repoRoot string, skipRemote bool) error {
 		localTagStatus := "missing"
 		if containsString(localTags, tag) {
 			localTagStatus = "present"
+		} else if tag == currentReleaseTag {
+			localTagStatus = "pending"
 		}
 
 		remoteTagStatus := "unknown"
@@ -4718,7 +4840,7 @@ func printUsage() {
 	fmt.Println("  smart-bump [--part patch|minor|major] [--push] [--no-verify] [--allow-dirty] [--no-tag] [--skip-release-state-audit] [--skip-process-cleanup] [--skip-workspace-guard]")
 	fmt.Println("  smart-rollback --tag <vX.Y.Z> [--owner <owner>] [--repo <repo>] [--delete-release] [--delete-remote-tag] [--delete-local-tag] [--revert-last-commit] [--push-revert] [--no-verify] [--skip-process-cleanup] [--skip-workspace-guard] [--skip-index-refresh]")
 	fmt.Println("  pr-helper [--check|--create|--merge] [--draft] [--title <text>] [--body <text>] [--base <branch>] [--head <branch>] [--auto-fill]")
-	fmt.Println("  release-sync [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote] [--strict]")
+	fmt.Println("  release-sync [--mode audit|apply] [--prune-local-tags-not-on-remote] [--sync-local-tags-to-remote] [--clean-orphan-notes] [--skip-remote] [--strict]")
 	fmt.Println("  workflow-seal [--mode audit|apply] [--prune-local-tags-not-on-remote] [--clean-orphan-notes] [--skip-remote]")
 	fmt.Println("  workspace-cleanup [--mode audit|apply] [--strict]")
 	fmt.Println("  workspace-guard [--mode audit|apply] [--strict] [--use-staged-paths]")

@@ -79,13 +79,6 @@ impl Tr {
         }
     }
 
-    pub fn apply(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Apply",
-            Language::Chinese => "应用",
-        }
-    }
-
     pub fn reset(lang: Language) -> &'static str {
         match lang {
             Language::English => "Reset",
@@ -104,13 +97,6 @@ impl Tr {
         match lang {
             Language::English => "Stop",
             Language::Chinese => "停止",
-        }
-    }
-
-    pub fn ready(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Ready",
-            Language::Chinese => "就绪",
         }
     }
 
@@ -814,33 +800,12 @@ impl Tr {
         }
     }
 
-    pub fn control_active(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Control Active",
-            Language::Chinese => "控制运行中",
-        }
-    }
-
     // ─── 控制算法选择 ──────────────────────────────────────
-
-    pub fn control_algorithm(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Control Algorithm",
-            Language::Chinese => "控制算法",
-        }
-    }
 
     pub fn algorithm_select(lang: Language) -> &'static str {
         match lang {
             Language::English => "Algorithm Selection",
             Language::Chinese => "算法选择",
-        }
-    }
-
-    pub fn algorithm_description(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Algorithm Description",
-            Language::Chinese => "算法描述",
         }
     }
 
@@ -1506,13 +1471,6 @@ impl Tr {
         }
     }
 
-    pub fn reset_pid(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Reset PID State",
-            Language::Chinese => "重置 PID 状态",
-        }
-    }
-
     pub fn copied(lang: Language) -> &'static str {
         match lang {
             Language::English => "Copied to clipboard",
@@ -1795,12 +1753,6 @@ impl Tr {
         match lang {
             Language::English => "Export Logs (CSV)",
             Language::Chinese => "导出日志 (CSV)",
-        }
-    }
-    pub fn menu_import_preset(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Import Preset...",
-            Language::Chinese => "导入预设...",
         }
     }
     pub fn menu_preferences(lang: Language) -> &'static str {

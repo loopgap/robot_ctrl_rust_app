@@ -64,6 +64,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             ui.spacing_mut().item_spacing.x = 10.0;
             ui.label(RichText::new(format!("{}:", Tr::template(lang))).strong());
             let names: Vec<String> = state
+                .protocol
                 .packet_templates
                 .iter()
                 .map(|t| t.name.clone())
@@ -82,24 +83,31 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                 });
 
             if ui.button(Tr::new_template(lang)).clicked() {
-                state.packet_templates.push(PacketTemplate::default());
-                state.ui.packet_template_idx = state.packet_templates.len() - 1;
+                state
+                    .protocol
+                    .packet_templates
+                    .push(PacketTemplate::default());
+                state.ui.packet_template_idx = state.protocol.packet_templates.len() - 1;
             }
 
-            if state.packet_templates.len() > 1
+            if state.protocol.packet_templates.len() > 1
                 && ui.button(Tr::delete(lang)).clicked()
-                && state.ui.packet_template_idx < state.packet_templates.len()
+                && state.ui.packet_template_idx < state.protocol.packet_templates.len()
             {
-                state.packet_templates.remove(state.ui.packet_template_idx);
-                if state.ui.packet_template_idx >= state.packet_templates.len() {
-                    state.ui.packet_template_idx = state.packet_templates.len().saturating_sub(1);
+                state
+                    .protocol
+                    .packet_templates
+                    .remove(state.ui.packet_template_idx);
+                if state.ui.packet_template_idx >= state.protocol.packet_templates.len() {
+                    state.ui.packet_template_idx =
+                        state.protocol.packet_templates.len().saturating_sub(1);
                 }
             }
         });
     });
 
     let idx = state.ui.packet_template_idx;
-    if idx >= state.packet_templates.len() {
+    if idx >= state.protocol.packet_templates.len() {
         return;
     }
 
@@ -112,39 +120,41 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             .spacing([16.0, 8.0])
             .show(ui, |ui| {
                 ui.label(format!("{}:", Tr::name(lang)));
-                ui.text_edit_singleline(&mut state.packet_templates[idx].name);
+                ui.text_edit_singleline(&mut state.protocol.packet_templates[idx].name);
                 ui.label(format!("{}:", Tr::description(lang)));
-                ui.text_edit_singleline(&mut state.packet_templates[idx].description);
+                ui.text_edit_singleline(&mut state.protocol.packet_templates[idx].description);
                 ui.end_row();
 
                 ui.label(format!("{}:", Tr::header_hex(lang)));
                 ui.add(
-                    egui::TextEdit::singleline(&mut state.packet_templates[idx].header_hex)
-                        .desired_width(120.0),
+                    egui::TextEdit::singleline(
+                        &mut state.protocol.packet_templates[idx].header_hex,
+                    )
+                    .desired_width(120.0),
                 );
                 ui.label(format!("{}:", Tr::tail_hex(lang)));
                 ui.add(
-                    egui::TextEdit::singleline(&mut state.packet_templates[idx].tail_hex)
+                    egui::TextEdit::singleline(&mut state.protocol.packet_templates[idx].tail_hex)
                         .desired_width(120.0),
                 );
                 ui.end_row();
 
                 ui.label(format!("{}:", Tr::checksum(lang)));
-                let current_cs = state.packet_templates[idx].checksum_type;
+                let current_cs = state.protocol.packet_templates[idx].checksum_type;
                 egui::ComboBox::from_id_salt("checksum_combo")
                     .selected_text(format!("{}", current_cs))
                     .width(150.0)
                     .show_ui(ui, |ui| {
                         for &cs in ChecksumType::all() {
                             ui.selectable_value(
-                                &mut state.packet_templates[idx].checksum_type,
+                                &mut state.protocol.packet_templates[idx].checksum_type,
                                 cs,
                                 format!("{}", cs),
                             );
                         }
                     });
                 ui.checkbox(
-                    &mut state.packet_templates[idx].include_length,
+                    &mut state.protocol.packet_templates[idx].include_length,
                     Tr::include_length(lang),
                 );
                 ui.end_row();
@@ -159,7 +169,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             ui.label(RichText::new(Tr::fields(lang)).size(15.0).strong());
             ui.add_space(12.0);
             if ui.button(Tr::add_field(lang)).clicked() {
-                state.packet_templates[idx]
+                state.protocol.packet_templates[idx]
                     .fields
                     .push(PacketField::default());
             }
@@ -172,7 +182,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             .max_height(220.0)
             .id_salt("builder_fields_scroll")
             .show(ui, |ui| {
-                let fields_len = state.packet_templates[idx].fields.len();
+                let fields_len = state.protocol.packet_templates[idx].fields.len();
                 for fi in 0..fields_len {
                     egui::Frame::new()
                         .fill(Color32::from_rgba_premultiplied(40, 40, 55, 200))
@@ -183,24 +193,25 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                             ui.horizontal_wrapped(|ui| {
                                 ui.spacing_mut().item_spacing.x = 8.0;
                                 ui.checkbox(
-                                    &mut state.packet_templates[idx].fields[fi].enabled,
+                                    &mut state.protocol.packet_templates[idx].fields[fi].enabled,
                                     "",
                                 );
                                 ui.add(
                                     egui::TextEdit::singleline(
-                                        &mut state.packet_templates[idx].fields[fi].name,
+                                        &mut state.protocol.packet_templates[idx].fields[fi].name,
                                     )
                                     .desired_width(90.0),
                                 );
 
-                                let ft = state.packet_templates[idx].fields[fi].field_type;
+                                let ft = state.protocol.packet_templates[idx].fields[fi].field_type;
                                 egui::ComboBox::from_id_salt(format!("ft_{}", fi))
                                     .selected_text(format!("{}", ft))
                                     .width(90.0)
                                     .show_ui(ui, |ui| {
                                         for &t in FieldType::all() {
                                             ui.selectable_value(
-                                                &mut state.packet_templates[idx].fields[fi]
+                                                &mut state.protocol.packet_templates[idx].fields
+                                                    [fi]
                                                     .field_type,
                                                 t,
                                                 format!("{}", t),
@@ -208,18 +219,20 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                                         }
                                     });
 
-                                let en = state.packet_templates[idx].fields[fi].endianness;
+                                let en = state.protocol.packet_templates[idx].fields[fi].endianness;
                                 egui::ComboBox::from_id_salt(format!("en_{}", fi))
                                     .selected_text(format!("{}", en))
                                     .width(55.0)
                                     .show_ui(ui, |ui| {
                                         ui.selectable_value(
-                                            &mut state.packet_templates[idx].fields[fi].endianness,
+                                            &mut state.protocol.packet_templates[idx].fields[fi]
+                                                .endianness,
                                             Endianness::Little,
                                             "LE",
                                         );
                                         ui.selectable_value(
-                                            &mut state.packet_templates[idx].fields[fi].endianness,
+                                            &mut state.protocol.packet_templates[idx].fields[fi]
+                                                .endianness,
                                             Endianness::Big,
                                             "BE",
                                         );
@@ -227,7 +240,8 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
 
                                 ui.add(
                                     egui::TextEdit::singleline(
-                                        &mut state.packet_templates[idx].fields[fi].value_str,
+                                        &mut state.protocol.packet_templates[idx].fields[fi]
+                                            .value_str,
                                     )
                                     .desired_width(110.0),
                                 );
@@ -241,8 +255,8 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             });
 
         if let Some(ri) = remove_idx {
-            if state.packet_templates[idx].fields.len() > 1 {
-                state.packet_templates[idx].fields.remove(ri);
+            if state.protocol.packet_templates[idx].fields.len() > 1 {
+                state.protocol.packet_templates[idx].fields.remove(ri);
             }
         }
     });
@@ -250,7 +264,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     // ─── 构建预览 ────────────────────────────────────────
-    let built = state.packet_templates[idx].build();
+    let built = state.protocol.packet_templates[idx].build();
     let hex_str = bytes_to_hex(&built);
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::packet_preview(lang)).size(15.0).strong());
@@ -280,7 +294,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::send_packet(lang)).size(14.0))
                 .clicked()
             {
-                let data = state.packet_templates[state.ui.packet_template_idx].build();
+                let data = state.protocol.packet_templates[state.ui.packet_template_idx].build();
                 match state.send_data(&data) {
                     Ok(()) => state.status_message = Tr::sent_bytes(data.len(), lang),
                     Err(e) => state.status_message = Tr::send_error(&e, lang),
@@ -311,6 +325,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
             ui.spacing_mut().item_spacing.x = 10.0;
             ui.label(RichText::new(format!("{}:", Tr::parser_template(lang))).strong());
             let names: Vec<String> = state
+                .protocol
                 .packet_templates
                 .iter()
                 .map(|t| t.name.clone())
@@ -376,7 +391,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
                 .button(RichText::new(Tr::clear(lang)).size(13.0))
                 .clicked()
             {
-                state.parsed_packets.clear();
+                state.protocol.parsed_packets.clear();
                 state.ui.parser_last_auto_input.clear();
             }
 
@@ -384,7 +399,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
                 RichText::new(format!(
                     "{}: {}",
                     Tr::parsed_count(lang),
-                    state.parsed_packets.len()
+                    state.protocol.parsed_packets.len()
                 ))
                 .size(12.0)
                 .color(Color32::GRAY),
@@ -395,7 +410,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     // ─── 解析结果展示 ─────────────────────────────────────
-    if state.parsed_packets.is_empty() {
+    if state.protocol.parsed_packets.is_empty() {
         ui.vertical_centered(|ui| {
             ui.add_space(40.0);
             ui.label(
@@ -415,10 +430,10 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
         .id_salt("parsed_packets_scroll")
         .show(ui, |ui| {
             // Show most recent first
-            for (pi, pkt) in state.parsed_packets.iter().rev().enumerate() {
+            for (pi, pkt) in state.protocol.parsed_packets.iter().rev().enumerate() {
                 let header_text = format!(
                     "#{} {} [{}]  Checksum: {}",
-                    state.parsed_packets.len() - pi,
+                    state.protocol.parsed_packets.len() - pi,
                     pkt.timestamp,
                     pkt.template_name,
                     if pkt.checksum_ok { "OK" } else { "FAIL" },
@@ -572,25 +587,26 @@ fn do_parse(state: &mut AppState) {
     }
 
     let tidx = state.ui.parser_template_idx;
-    let result = if tidx < state.packet_templates.len() {
+    let result = if tidx < state.protocol.packet_templates.len() {
         // Try specific template first, then fallback to auto
-        let tmpl = state.packet_templates[tidx].clone();
+        let tmpl = state.protocol.packet_templates[tidx].clone();
         state
+            .protocol
             .packet_parser
             .parse_with_template(&data, &tmpl)
-            .or_else(|| state.packet_parser.try_parse(&data))
+            .or_else(|| state.protocol.packet_parser.try_parse(&data))
     } else {
-        state.packet_parser.try_parse(&data)
+        state.protocol.packet_parser.try_parse(&data)
     };
 
     if let Some(parsed) = result {
         let lang = state.lang();
         state.status_message = Tr::parse_success(&parsed.template_name, parsed.fields.len(), lang);
         state.feed_parsed_to_channels(&parsed);
-        state.parsed_packets.push(parsed);
+        state.protocol.parsed_packets.push(parsed);
         // Keep at most 200 parsed packets
-        if state.parsed_packets.len() > 200 {
-            state.parsed_packets.remove(0);
+        if state.protocol.parsed_packets.len() > 200 {
+            state.protocol.parsed_packets.remove(0);
         }
     } else {
         let lang = state.lang();
@@ -631,4 +647,37 @@ fn parse_hex_input(input: &str) -> Vec<u8> {
     }
 
     bytes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_hex_basic() {
+        assert_eq!(
+            parse_hex_input("48 65 6C 6C 6F"),
+            vec![72, 101, 108, 108, 111]
+        );
+    }
+
+    #[test]
+    fn test_parse_hex_no_spaces() {
+        assert_eq!(parse_hex_input("48656C6C6F"), vec![72, 101, 108, 108, 111]);
+    }
+
+    #[test]
+    fn test_parse_hex_empty() {
+        assert_eq!(parse_hex_input(""), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn test_parse_hex_invalid() {
+        assert_eq!(parse_hex_input("ZZ"), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn test_parse_hex_mixed_case() {
+        assert_eq!(parse_hex_input("4a 4B"), vec![0x4A, 0x4B]);
+    }
 }

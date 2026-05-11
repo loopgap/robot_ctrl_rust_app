@@ -24,6 +24,10 @@ impl ChecksumAlgo {
     }
 }
 
+/// 校验和计算工具
+///
+/// 支持 CRC32、FNV1a-64、SHA256 三种算法。
+/// 可对输入文本或文件计算校验和。
 pub struct ChecksumTool {
     input: String,
     expected: String,
@@ -61,11 +65,11 @@ impl ChecksumTool {
         self.exported = false;
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 

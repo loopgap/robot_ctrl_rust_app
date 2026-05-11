@@ -4,9 +4,6 @@ use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{Color32, RichText, Ui};
 use std::path::PathBuf;
 
-#[derive(Default)]
-pub struct ProtocolAnalyzer {}
-
 fn tr_filters(lang: Language) -> &'static str {
     match lang {
         Language::English => "Filters",
@@ -119,6 +116,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         section_title(ui, tr_results(lang));
 
         let filtered: Vec<_> = state
+            .log
             .log_entries
             .iter()
             .rev()
@@ -180,7 +178,7 @@ pub fn export_analysis_csv(state: &AppState) -> Result<PathBuf, String> {
     let file_path = export_dir.join(file_name);
 
     let mut csv = String::from("timestamp,channel,direction,display_mode,data\n");
-    for entry in &state.log_entries {
+    for entry in &state.log.log_entries {
         let direction = direction_label(entry.direction);
         let mode = match entry.display_mode {
             crate::app::DisplayMode::Hex => "HEX",
@@ -199,4 +197,32 @@ pub fn export_analysis_csv(state: &AppState) -> Result<PathBuf, String> {
 
     std::fs::write(&file_path, csv).map_err(|e| format!("write export file failed: {}", e))?;
     Ok(file_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::LogDirection;
+
+    #[test]
+    fn test_csv_escape_simple() {
+        assert_eq!(csv_escape("hello"), "\"hello\"");
+    }
+
+    #[test]
+    fn test_csv_escape_with_comma() {
+        assert_eq!(csv_escape("a,b"), "\"a,b\"");
+    }
+
+    #[test]
+    fn test_csv_escape_with_quotes() {
+        assert_eq!(csv_escape("a\"b"), "\"a\"\"b\"");
+    }
+
+    #[test]
+    fn test_direction_label() {
+        assert_eq!(direction_label(LogDirection::Tx), "TX");
+        assert_eq!(direction_label(LogDirection::Rx), "RX");
+        assert_eq!(direction_label(LogDirection::Info), "INFO");
+    }
 }

@@ -448,6 +448,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
         let node_ratio = node_id as f32 / 127.0;
         let can_entries = state
+            .log
             .log_entries
             .iter()
             .filter(|e| e.channel.to_ascii_lowercase().contains("can"))
@@ -455,7 +456,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         let health_ratio = if can_entries == 0 {
             1.0
         } else {
-            (1.0 - (state.can.dropped_frames as f32 / can_entries as f32)).clamp(0.0, 1.0)
+            (1.0 - (state.conn.can.dropped_frames as f32 / can_entries as f32)).clamp(0.0, 1.0)
         };
 
         draw_meter(
@@ -469,7 +470,10 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             ui,
             "Bus Health",
             health_ratio,
-            format!("Dropped {} / {}", state.can.dropped_frames, can_entries),
+            format!(
+                "Dropped {} / {}",
+                state.conn.can.dropped_frames, can_entries
+            ),
             true,
         );
         draw_meter(
@@ -740,13 +744,14 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
         ui.horizontal_wrapped(|ui| {
             if ui.button("加载 CiA 402 预设").clicked() {
-                state.canopen_pdo_configs = preset_pdo_configs();
+                state.protocol.canopen_pdo_configs = preset_pdo_configs();
                 state
+                    .protocol
                     .canopen_log
                     .push("[INFO] Loaded CiA 402 preset PDO configs".into());
             }
             if ui.button("新增 PDO").clicked() {
-                let pdo_count = state.canopen_pdo_configs.len();
+                let pdo_count = state.protocol.canopen_pdo_configs.len();
                 let new_pdo = PdoConfig {
                     name: format!("PDO{}", pdo_count + 1),
                     node_id,
@@ -757,13 +762,15 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     },
                     ..PdoConfig::default()
                 };
-                state.canopen_pdo_configs.push(new_pdo);
+                state.protocol.canopen_pdo_configs.push(new_pdo);
             }
             if ui.button("导出 JSON").clicked() {
-                if let Ok(json) = serde_json::to_string_pretty(&state.canopen_pdo_configs) {
+                if let Ok(json) = serde_json::to_string_pretty(&state.protocol.canopen_pdo_configs)
+                {
                     ui.ctx().copy_text(json.clone());
                     state.status_message = "PDO configs exported to clipboard".into();
                     state
+                        .protocol
                         .canopen_log
                         .push("[INFO] PDO configs exported to clipboard".into());
                 }
@@ -774,13 +781,14 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     serde_json::from_str::<Vec<PdoConfig>>(&state.ui.canopen_decode_input)
                 {
                     let count = configs.len();
-                    state.canopen_pdo_configs = configs;
+                    state.protocol.canopen_pdo_configs = configs;
                     state.status_message = format!("Imported {} PDO configs", count);
                     state
+                        .protocol
                         .canopen_log
                         .push(format!("[INFO] Imported {} PDO configs from input", count));
                 } else if let Some(config) = PdoConfig::from_json(&state.ui.canopen_decode_input) {
-                    state.canopen_pdo_configs.push(config);
+                    state.protocol.canopen_pdo_configs.push(config);
                     state.status_message = "Imported 1 PDO config".into();
                 }
             }
@@ -791,10 +799,10 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         // PDO 列表
         let mut remove_idx = None;
         let mut send_commands: Vec<(String, u16, Vec<u8>)> = Vec::new();
-        let pdo_count = state.canopen_pdo_configs.len();
+        let pdo_count = state.protocol.canopen_pdo_configs.len();
 
         for pdo_idx in 0..pdo_count {
-            let pdo = &state.canopen_pdo_configs[pdo_idx];
+            let pdo = &state.protocol.canopen_pdo_configs[pdo_idx];
             let total_bits = pdo.total_bits();
             let total_bytes = pdo.total_bytes();
             let dir_color = if pdo.direction == PdoDirection::Transmit {
@@ -819,7 +827,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                         ui.label(
                             RichText::new(format!(
                                 "{}  ",
-                                state.canopen_pdo_configs[pdo_idx].direction
+                                state.protocol.canopen_pdo_configs[pdo_idx].direction
                             ))
                             .color(dir_color)
                             .strong(),
@@ -860,7 +868,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                 ui.end_row();
 
                                 let mut bit_off = 0u32;
-                                for m in &state.canopen_pdo_configs[pdo_idx].mappings {
+                                for m in &state.protocol.canopen_pdo_configs[pdo_idx].mappings {
                                     ui.label(
                                         RichText::new(&m.name)
                                             .size(10.5)
@@ -895,8 +903,8 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     ui.horizontal_wrapped(|ui| {
                         if ui.small_button("发送").clicked() {
                             let values: Vec<f64> = (0..mappings_count).map(|_| 0.0).collect();
-                            let frame =
-                                state.canopen_pdo_configs[pdo_idx].build_from_values(&values);
+                            let frame = state.protocol.canopen_pdo_configs[pdo_idx]
+                                .build_from_values(&values);
                             send_commands.push((
                                 format!("PDO/{}", pdo_name),
                                 frame.cob_id,
@@ -905,8 +913,8 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                         }
                         if ui.small_button("复制帧").clicked() {
                             let values: Vec<f64> = (0..mappings_count).map(|_| 0.0).collect();
-                            let frame =
-                                state.canopen_pdo_configs[pdo_idx].build_from_values(&values);
+                            let frame = state.protocol.canopen_pdo_configs[pdo_idx]
+                                .build_from_values(&values);
                             ui.ctx().copy_text(format!(
                                 "ID=0x{:03X} DATA={}",
                                 frame.cob_id,
@@ -927,16 +935,16 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         }
 
         if let Some(idx) = remove_idx {
-            if idx < state.canopen_pdo_configs.len() {
-                state.canopen_pdo_configs.remove(idx);
+            if idx < state.protocol.canopen_pdo_configs.len() {
+                state.protocol.canopen_pdo_configs.remove(idx);
             }
         }
 
         // PDO 段可视化
-        if !state.canopen_pdo_configs.is_empty() {
+        if !state.protocol.canopen_pdo_configs.is_empty() {
             ui.add_space(6.0);
             ui.label(RichText::new("PDO Payload Map").strong().size(12.0));
-            for pdo in &state.canopen_pdo_configs {
+            for pdo in &state.protocol.canopen_pdo_configs {
                 if !pdo.enabled || pdo.mappings.is_empty() {
                     continue;
                 }
@@ -985,7 +993,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     // ═══════════════════════════════════════════════════════════════
     // PDO 数据解码器
     // ═══════════════════════════════════════════════════════════════
-    if !state.canopen_pdo_configs.is_empty() {
+    if !state.protocol.canopen_pdo_configs.is_empty() {
         settings_card(ui, |ui| {
             ui.label(
                 RichText::new("PDO 实时解码 / PDO Data Decoder")
@@ -1005,7 +1013,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             let decode_data = parse_hex_string(&state.ui.canopen_pdo_decode_hex);
             if !decode_data.is_empty() {
                 ui.add_space(4.0);
-                for pdo in &state.canopen_pdo_configs {
+                for pdo in &state.protocol.canopen_pdo_configs {
                     if !pdo.enabled {
                         continue;
                     }
@@ -1256,7 +1264,7 @@ fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
 }
 
 fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
-    if !state.canopen_log.is_empty() {
+    if !state.protocol.canopen_log.is_empty() {
         ui.add_space(8.0);
         settings_card(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -1266,14 +1274,14 @@ fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
                         .size(15.0),
                 );
                 if ui.button("清空").clicked() {
-                    state.canopen_log.clear();
+                    state.protocol.canopen_log.clear();
                 }
             });
             ui.add_space(6.0);
             egui::ScrollArea::vertical()
                 .max_height(150.0)
                 .show(ui, |ui| {
-                    for line in state.canopen_log.iter().rev().take(80) {
+                    for line in state.protocol.canopen_log.iter().rev().take(80) {
                         ui.label(
                             RichText::new(line)
                                 .monospace()
@@ -1290,13 +1298,16 @@ fn send_canopen_frame(state: &mut AppState, tag: &str, cob_id: u16, data: &[u8])
     match state.send_data(data) {
         Ok(()) => {
             let line = format!("[TX {}] ID={:#05X} {}", tag, cob_id, bytes_to_hex(data));
-            state.canopen_log.push(line.clone());
+            state.protocol.canopen_log.push(line.clone());
             state.status_message = format!("CANopen sent {} bytes", data.len());
             state.add_info_log(&line);
         }
         Err(e) => {
             state.status_message = format!("CANopen send error: {}", e);
-            state.canopen_log.push(format!("[ERR {}] {}", tag, e));
+            state
+                .protocol
+                .canopen_log
+                .push(format!("[ERR {}] {}", tag, e));
         }
     }
 }
@@ -1458,4 +1469,39 @@ fn draw_pdo_badge(ui: &mut Ui, text: &str, ok: bool) {
         .show(ui, |ui| {
             ui.label(RichText::new(text).color(fg).strong().size(10.0));
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_u8_decimal() {
+        assert_eq!(parse_u8_text("255"), Some(255));
+    }
+
+    #[test]
+    fn test_parse_u8_hex() {
+        assert_eq!(parse_u8_text("0xFF"), Some(255));
+    }
+
+    #[test]
+    fn test_parse_u8_invalid() {
+        assert_eq!(parse_u8_text("abc"), None);
+    }
+
+    #[test]
+    fn test_parse_u16_decimal() {
+        assert_eq!(parse_u16_text("65535"), Some(65535));
+    }
+
+    #[test]
+    fn test_parse_u16_hex() {
+        assert_eq!(parse_u16_text("0xFFFF"), Some(65535));
+    }
+
+    #[test]
+    fn test_parse_u32_hex() {
+        assert_eq!(parse_u32_text("0xFFFFFFFF"), Some(0xFFFFFFFF));
+    }
 }

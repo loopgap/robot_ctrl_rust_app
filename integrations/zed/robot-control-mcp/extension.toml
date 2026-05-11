@@ -1,0 +1,10 @@
+id = "robot-control-mcp"
+name = "Robot Control MCP"
+version = "0.1.9"
+schema_version = 1
+authors = ["Robot Control Team"]
+description = "Zed MCP context server launcher for robot_control_mcp."
+repository = "https://github.com/loopgap/robot_ctrl_rust_app"
+
+[context_servers."robot-control-mcp"]
+name = "Robot Control MCP"

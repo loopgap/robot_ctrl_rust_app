@@ -16,7 +16,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.label(RichText::new(format!("{}:", Tr::channels(lang))).strong());
 
             // 逐个通道显示启用复选框 + 类型指示 + 来源
-            for (i, ch) in state.data_channels.iter_mut().enumerate() {
+            for (i, ch) in state.viz.data_channels.iter_mut().enumerate() {
                 let source_text = match &ch.source {
                     DataSource::RobotState(field) => format!("Robot/{}", field),
                     DataSource::PacketField {
@@ -39,7 +39,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.collapsing(Tr::viz_channel_config(lang), |ui| {
             // 现有通道的可视化类型修改
             let mut to_remove = None;
-            for (i, ch) in state.data_channels.iter_mut().enumerate() {
+            for (i, ch) in state.viz.data_channels.iter_mut().enumerate() {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!("{}:", ch.name));
                     egui::ComboBox::from_id_salt(format!("viz_type_{}", i))
@@ -65,9 +65,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 });
             }
             if let Some(idx) = to_remove {
-                state.data_channels.remove(idx);
-                if idx < state.channel_buffers.len() {
-                    state.channel_buffers.remove(idx);
+                state.viz.data_channels.remove(idx);
+                if idx < state.viz.channel_buffers.len() {
+                    state.viz.channel_buffers.remove(idx);
                 }
             }
 
@@ -168,7 +168,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         [200, 200, 50],
                         [100, 200, 200],
                     ];
-                    let c = colors[state.data_channels.len() % colors.len()];
+                    let c = colors[state.viz.data_channels.len() % colors.len()];
                     use crate::models::data_channel::DataChannel;
                     let source = if state.ui.viz_source_type == 0 {
                         let field = match state.ui.viz_add_source_idx {
@@ -194,8 +194,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         }
                     };
                     let ch = DataChannel::new(&state.ui.viz_add_channel_name, source, vt, c);
-                    state.data_channels.push(ch);
+                    state.viz.data_channels.push(ch);
                     state
+                        .viz
                         .channel_buffers
                         .push(crate::models::data_channel::TimeSeriesBuffer::default());
                     state.ui.viz_add_channel_name.clear();
@@ -212,19 +213,22 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.label(format!(
                 "{}: {} / 2000",
                 Tr::data_points(lang),
-                state.state_history.len()
+                state.control.state_history.len()
             ));
-            if state.channel_overflow_events > 0 {
+            if state.viz.channel_overflow_events > 0 {
                 ui.separator();
                 ui.label(
-                    RichText::new(format!("Dropped points: {}", state.channel_overflow_events))
-                        .color(Color32::from_rgb(255, 180, 120)),
+                    RichText::new(format!(
+                        "Dropped points: {}",
+                        state.viz.channel_overflow_events
+                    ))
+                    .color(Color32::from_rgb(255, 180, 120)),
                 );
             }
             ui.separator();
             if ui.button(Tr::clear_history(lang)).clicked() {
-                state.state_history.clear();
-                for buf in &mut state.channel_buffers {
+                state.control.state_history.clear();
+                for buf in &mut state.viz.channel_buffers {
                     buf.clear();
                 }
                 state.status_message = Tr::clear_history(lang).into();
@@ -234,7 +238,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    if state.state_history.is_empty() && state.channel_buffers.iter().all(|b| b.data.is_empty()) {
+    if state.control.state_history.is_empty()
+        && state.viz.channel_buffers.iter().all(|b| b.data.is_empty())
+    {
         ui.add_space(24.0);
         ui.label(
             RichText::new(Tr::no_data_hint(lang))
@@ -247,19 +253,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     // ─── 更新通道缓冲区 ─────────────────────────────────
     // (Sync RobotState-based channels from state_history)
-    while state.channel_buffers.len() < state.data_channels.len() {
+    while state.viz.channel_buffers.len() < state.viz.data_channels.len() {
         state
+            .viz
             .channel_buffers
             .push(crate::models::data_channel::TimeSeriesBuffer::default());
     }
     let mut dropped_total = 0usize;
-    for (i, ch) in state.data_channels.iter().enumerate() {
+    for (i, ch) in state.viz.data_channels.iter().enumerate() {
         if let DataSource::RobotState(field) = &ch.source {
-            let buf = &mut state.channel_buffers[i];
-            let expected_len = state.state_history.len();
+            let buf = &mut state.viz.channel_buffers[i];
+            let expected_len = state.control.state_history.len();
             if buf.data.len() < expected_len {
                 let start = buf.data.len();
-                for s in &state.state_history[start..] {
+                for s in &state.control.state_history[start..] {
                     let v = match field {
                         RobotStateField::Position => s.position,
                         RobotStateField::Velocity => s.velocity,
@@ -283,6 +290,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     // ─── 渲染各通道 ─────────────────────────────────────
     // Split channels by viz type for efficient rendering
     let enabled_channels: Vec<(usize, &crate::models::data_channel::DataChannel)> = state
+        .viz
         .data_channels
         .iter()
         .enumerate()
@@ -335,8 +343,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 for &&(idx, ch) in &line_scatter {
                     let [r, g, b] = ch.color;
                     let color = Color32::from_rgb(r, g, b);
-                    if idx < state.channel_buffers.len() {
-                        let pts = state.channel_buffers[idx].as_plot_points();
+                    if idx < state.viz.channel_buffers.len() {
+                        let pts = state.viz.channel_buffers[idx].as_plot_points();
                         let plot_pts: PlotPoints = pts.into_iter().collect();
                         match ch.viz_type {
                             VizType::Line => {
@@ -369,8 +377,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 for (bar_i, &&(idx, ch)) in bars.iter().enumerate() {
                     let [r, g, b] = ch.color;
                     let color = Color32::from_rgb(r, g, b);
-                    if idx < state.channel_buffers.len() {
-                        let data = state.channel_buffers[idx].last_n(50);
+                    if idx < state.viz.channel_buffers.len() {
+                        let data = state.viz.channel_buffers[idx].last_n(50);
                         let bar_items: Vec<Bar> = data
                             .iter()
                             .enumerate()
@@ -391,8 +399,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     if !gauges.is_empty() {
         ui.horizontal_wrapped(|ui| {
             for &&(idx, ch) in &gauges {
-                if idx < state.channel_buffers.len() {
-                    let stats = state.channel_buffers[idx].statistics();
+                if idx < state.viz.channel_buffers.len() {
+                    let stats = state.viz.channel_buffers[idx].statistics();
                     let [r, g, b] = ch.color;
                     let color = Color32::from_rgb(r, g, b);
                     egui::Frame::group(ui.style())
@@ -439,8 +447,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 for &&(idx, ch) in &histograms {
                     let [r, g, b] = ch.color;
                     let color = Color32::from_rgb(r, g, b);
-                    if idx < state.channel_buffers.len() {
-                        let hist = state.channel_buffers[idx].histogram(20);
+                    if idx < state.viz.channel_buffers.len() {
+                        let hist = state.viz.channel_buffers[idx].histogram(20);
                         let bars: Vec<Bar> = hist
                             .iter()
                             .map(|&(center, count)| {
@@ -474,8 +482,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         ui.end_row();
 
                         for &&(idx, ch) in &tables {
-                            if idx < state.channel_buffers.len() {
-                                let stats = state.channel_buffers[idx].statistics();
+                            if idx < state.viz.channel_buffers.len() {
+                                let stats = state.viz.channel_buffers[idx].statistics();
                                 let [r, g, b] = ch.color;
                                 ui.colored_label(Color32::from_rgb(r, g, b), &ch.name);
                                 ui.label(format!("{:.4}", stats.last));

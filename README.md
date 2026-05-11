@@ -22,17 +22,11 @@
 
 ## 子目录导航
 
-- `crates/robot_control`
+- `robot_control_rust`
   机器人控制主应用源码（workspace crate）。
 
-- `crates/tools_suite`
+- `rust_tools_suite`
   聚合工具套件源码（workspace crate）。
-
-- `crates/devtools`
-  工作区验证与发布辅助工具（workspace crate）。
-
-- `robot_control_rust`
-  历史兼容目录，保留补充说明文档与迁移参考。
 
 - `docs`
   使用 `mdBook` 生成的在线交互式说明站点，覆盖安装、操作、发布与排障。
@@ -46,7 +40,7 @@
 |--------|----------|------|
 | **CI** | PR / push 到 `main`/`develop` | Workspace 校验、格式、Clippy、测试、文档全量阻断（失败即终止，不自动回推） |
 | **Security Audit** | 每周一 / 依赖变更 / 手动触发 | `cargo-audit` 与 `cargo-deny` 严格门禁 |
-| **Release** | push tag `v*` | 校验 tag 策略后发布可用资产（`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
+| **Release** | push tag `v*` | 校验 tag 策略后发布可用资产（`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`），并同步 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 到远端 Release 正文 |
 
 ### 本地终端与交互测试
 
@@ -59,7 +53,7 @@
 .\scripts\task.ps1 smart-bump -BumpPart patch -BumpPush
 
 # 直接运行统一工具套件
-cargo run --release -p tools_suite
+cargo run --release -p rust_tools_suite
 ```
 
 ## 失败后的建议格式与智能修复
@@ -81,16 +75,17 @@ cargo run --release -p tools_suite
 1. 在 `main` 分支完成并通过 `.\scripts\task.ps1 preflight`。
 2. 执行 `.\scripts\task.ps1 smart-bump -BumpPart patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
-4. 在 Release 页面验证必需资产：`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`。
+4. 在 Release 页面验证必需资产：`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`。
 
-## Release v0.2.1 验证清单
+## Release v0.1.9 验证清单
 
-当发布标签为 `v0.2.1` 时，至少完成以下核验：
+当发布标签为 `v0.1.9` 时，至少完成以下核验：
 
-1. 校验 Tag 归属：`v0.2.1` 必须可追溯到 `origin/main`。
-2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_v0.2.1.md` 结构校验。
+1. 校验 Tag 归属：`v0.1.9` 必须可追溯到 `origin/main`。
+2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_v0.1.9.md` 结构校验。
 3. 校验资产完整性：
   - `robot_control_suite_*_windows_x64-setup.exe`
+  - `robot_control_suite_*_windows_x64_portable.zip`
   - `robot_control_suite_*_amd64.deb`
   - `checksums-sha256.txt`
 4. 下载并对比 SHA256，确保与 `checksums-sha256.txt` 一致。

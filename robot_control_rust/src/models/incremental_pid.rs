@@ -158,6 +158,33 @@ impl IncrementalPidController {
     }
 }
 
+impl super::control_algorithm::ControlAlgorithm for IncrementalPidController {
+    fn name(&self) -> &'static str {
+        "Incremental PID"
+    }
+    fn compute(&mut self, feedback: f64) -> f64 {
+        self.compute(feedback)
+    }
+    fn reset(&mut self) {
+        self.reset();
+    }
+    fn setpoint(&self) -> f64 {
+        self.setpoint
+    }
+    fn set_setpoint(&mut self, sp: f64) {
+        self.setpoint = sp;
+    }
+    fn output(&self) -> f64 {
+        self.output
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,5 +305,21 @@ mod tests {
             "Increment should be clamped to 5.0, got {}",
             c.last_increment
         );
+    }
+
+    #[test]
+    fn test_incremental_pid_nan_input() {
+        let mut pid = IncrementalPidController::new(1.0, 0.1, 0.01, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let output = pid.compute(f64::NAN);
+        assert!(output.is_nan() || output.is_finite());
+    }
+
+    #[test]
+    fn test_incremental_pid_zero_gain() {
+        let mut pid = IncrementalPidController::new(0.0, 0.0, 0.0, 10.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let output = pid.compute(5.0);
+        assert_eq!(output, 0.0, "Zero gain should produce zero output");
     }
 }

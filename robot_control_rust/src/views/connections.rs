@@ -32,7 +32,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    settings_card(ui, |ui| match state.active_conn {
+    settings_card(ui, |ui| match state.conn.active_conn {
         ConnectionType::Serial => show_serial_config(ui, state),
         ConnectionType::Usb => show_usb_config(ui, state),
         ConnectionType::Tcp | ConnectionType::ModbusTcp => show_tcp_config(ui, state),
@@ -71,9 +71,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .button(RichText::new("Start MCP").color(Color32::from_rgb(120, 220, 120)))
                     .clicked()
                 {
-                    if let Err(e) = state.start_mcp_server() {
-                        state.report_error(format!("MCP start failed: {}", e));
-                    }
+                    state.start_mcp_server();
                 }
                 ui.label(RichText::new("Stopped").color(Color32::GRAY));
             }
@@ -97,7 +95,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 {
                     state.disconnect_active();
                     state.status_message =
-                        format!("{} {}", state.active_conn, Tr::disconnected(lang));
+                        format!("{} {}", state.conn.active_conn, Tr::disconnected(lang));
                 }
                 let (r, g, b) = state.active_status().color_rgb();
                 ui.label(
@@ -116,7 +114,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     match state.connect_active() {
                         Ok(()) => {
                             state.status_message =
-                                format!("{} {}!", state.active_conn, Tr::connected(lang))
+                                format!("{} {}!", state.conn.active_conn, Tr::connected(lang))
                         }
                         Err(e) => state.report_error(format!("{}: {}", Tr::error_label(lang), e)),
                     }
@@ -188,30 +186,35 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal_wrapped(|ui| {
         ui.label(format!("{}:", Tr::port(lang)));
         egui::ComboBox::from_id_salt("serial_port_combo")
-            .selected_text(if state.serial.config.port_name.is_empty() {
+            .selected_text(if state.conn.serial.config.port_name.is_empty() {
                 Tr::select_port(lang)
             } else {
-                &state.serial.config.port_name
+                &state.conn.serial.config.port_name
             })
             .width(220.0)
             .show_ui(ui, |ui| {
-                for port in &state.available_ports {
-                    ui.selectable_value(&mut state.serial.config.port_name, port.clone(), port);
+                for port in &state.conn.available_ports {
+                    ui.selectable_value(
+                        &mut state.conn.serial.config.port_name,
+                        port.clone(),
+                        port,
+                    );
                 }
             });
         if ui.button(Tr::refresh(lang)).clicked() {
             state.refresh_ports();
         }
-        if state.serial.config.port_name.trim().is_empty()
-            && !state.available_ports.is_empty()
+        if state.conn.serial.config.port_name.trim().is_empty()
+            && !state.conn.available_ports.is_empty()
             && ui.button("Use first").clicked()
         {
-            state.serial.config.port_name = state.available_ports[0].clone();
+            state.conn.serial.config.port_name = state.conn.available_ports[0].clone();
         }
     });
 
-    if !state.serial.config.port_name.trim().is_empty() {
-        let info = crate::services::SerialService::get_port_info(&state.serial.config.port_name);
+    if !state.conn.serial.config.port_name.trim().is_empty() {
+        let info =
+            crate::services::SerialService::get_port_info(&state.conn.serial.config.port_name);
         ui.add_space(4.0);
         ui.label(
             RichText::new(format!("Port info: {}", info))
@@ -222,10 +225,10 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(8.0);
 
-    if (state.active_conn == ConnectionType::Serial
-        || state.active_conn == ConnectionType::Usb
-        || state.active_conn == ConnectionType::ModbusRtu)
-        && state.available_ports.is_empty()
+    if (state.conn.active_conn == ConnectionType::Serial
+        || state.conn.active_conn == ConnectionType::Usb
+        || state.conn.active_conn == ConnectionType::ModbusRtu)
+        && state.conn.available_ports.is_empty()
     {
         ui.label(
             RichText::new("Port scan may still be running...")
@@ -239,7 +242,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
         ui.label(format!("{}:", Tr::baud_rate(lang)));
         let bauds = SerialConfig::baud_rates();
         egui::ComboBox::from_id_salt("baud_combo")
-            .selected_text(format!("{}", state.serial.config.baud_rate))
+            .selected_text(format!("{}", state.conn.serial.config.baud_rate))
             .width(130.0)
             .show_ui(ui, |ui| {
                 for (i, &baud) in bauds.iter().enumerate() {
@@ -247,7 +250,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
                         .selectable_value(&mut state.ui.serial_baud_idx, i, format!("{}", baud))
                         .clicked()
                     {
-                        state.serial.config.baud_rate = baud;
+                        state.conn.serial.config.baud_rate = baud;
                     }
                 }
             });
@@ -262,12 +265,12 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
             // 数据位
             ui.label(format!("{}:", Tr::data_bits(lang)));
             egui::ComboBox::from_id_salt("databits_combo")
-                .selected_text(format!("{}", state.serial.config.data_bits))
+                .selected_text(format!("{}", state.conn.serial.config.data_bits))
                 .width(70.0)
                 .show_ui(ui, |ui| {
                     for &d in SerialConfig::data_bits_options() {
                         ui.selectable_value(
-                            &mut state.serial.config.data_bits,
+                            &mut state.conn.serial.config.data_bits,
                             d,
                             format!("{}", d),
                         );
@@ -279,12 +282,12 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
             // 停止位
             ui.label(format!("{}:", Tr::stop_bits(lang)));
             egui::ComboBox::from_id_salt("stopbits_combo")
-                .selected_text(format!("{}", state.serial.config.stop_bits))
+                .selected_text(format!("{}", state.conn.serial.config.stop_bits))
                 .width(70.0)
                 .show_ui(ui, |ui| {
                     for &s in SerialConfig::stop_bits_options() {
                         ui.selectable_value(
-                            &mut state.serial.config.stop_bits,
+                            &mut state.conn.serial.config.stop_bits,
                             s,
                             format!("{}", s),
                         );
@@ -295,11 +298,11 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
             // 校验
             ui.label(format!("{}:", Tr::parity(lang)));
             egui::ComboBox::from_id_salt("parity_combo")
-                .selected_text(&state.serial.config.parity)
+                .selected_text(&state.conn.serial.config.parity)
                 .width(110.0)
                 .show_ui(ui, |ui| {
                     for &p in SerialConfig::parity_options() {
-                        ui.selectable_value(&mut state.serial.config.parity, p.to_string(), p);
+                        ui.selectable_value(&mut state.conn.serial.config.parity, p.to_string(), p);
                     }
                 });
 
@@ -308,12 +311,12 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
             // 流控
             ui.label(format!("{}:", Tr::flow_control(lang)));
             egui::ComboBox::from_id_salt("flow_combo")
-                .selected_text(&state.serial.config.flow_control)
+                .selected_text(&state.conn.serial.config.flow_control)
                 .width(170.0)
                 .show_ui(ui, |ui| {
                     for &fc in SerialConfig::flow_control_options() {
                         ui.selectable_value(
-                            &mut state.serial.config.flow_control,
+                            &mut state.conn.serial.config.flow_control,
                             fc.to_string(),
                             fc,
                         );
@@ -325,10 +328,10 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
     // 可用端口列表
     ui.add_space(12.0);
     ui.collapsing(Tr::available_ports(lang), |ui| {
-        if state.available_ports.is_empty() {
+        if state.conn.available_ports.is_empty() {
             ui.label(Tr::no_ports_found(lang));
         } else {
-            for port in &state.available_ports {
+            for port in &state.conn.available_ports {
                 ui.label(format!("- {}", port));
             }
         }
@@ -371,10 +374,10 @@ fn show_tcp_config(ui: &mut Ui, state: &mut AppState) {
             ui.end_row();
         });
 
-    if state.tcp.is_connected() && !state.tcp.connected_clients.is_empty() {
+    if state.conn.tcp.is_connected() && !state.conn.tcp.connected_clients.is_empty() {
         ui.add_space(8.0);
         ui.collapsing(Tr::connected_clients(lang), |ui| {
-            for client in &state.tcp.connected_clients {
+            for client in &state.conn.tcp.connected_clients {
                 ui.label(format!("- {}", client));
             }
         });
@@ -441,7 +444,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
         let selected_text = bitrates
             .get(state.ui.can_bitrate_idx)
             .map(|(_, label)| label.to_string())
-            .unwrap_or_else(|| format!("{} kbps", state.can.bitrate / 1000));
+            .unwrap_or_else(|| format!("{} kbps", state.conn.can.bitrate / 1000));
         egui::ComboBox::from_id_salt("can_arb_bitrate")
             .selected_text(&selected_text)
             .width(160.0)
@@ -451,7 +454,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
                         .selectable_value(&mut state.ui.can_bitrate_idx, i, label)
                         .clicked()
                     {
-                        state.can.bitrate = rate;
+                        state.conn.can.bitrate = rate;
                     }
                 }
             });
@@ -469,7 +472,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
         let sp_text = sp_opts
             .get(state.ui.can_sample_point_idx)
             .map(|(_, label)| label.to_string())
-            .unwrap_or_else(|| format!("{:.1}%", state.can.config_sample_point * 100.0));
+            .unwrap_or_else(|| format!("{:.1}%", state.conn.can.config_sample_point * 100.0));
         egui::ComboBox::from_id_salt("can_arb_sp")
             .selected_text(&sp_text)
             .width(100.0)
@@ -479,7 +482,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
                         .selectable_value(&mut state.ui.can_sample_point_idx, i, label)
                         .clicked()
                     {
-                        state.can.config_sample_point = sp;
+                        state.conn.can.config_sample_point = sp;
                     }
                 }
             });
@@ -504,9 +507,9 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(8.0);
 
     // ─── CAN FD 启用 ─────────────────────────────────────
-    ui.checkbox(&mut state.can.fd_enabled, Tr::enable_can_fd(lang));
+    ui.checkbox(&mut state.conn.can.fd_enabled, Tr::enable_can_fd(lang));
 
-    if state.can.fd_enabled {
+    if state.conn.can.fd_enabled {
         ui.add_space(6.0);
 
         // ─── 数据段波特率 ────────────────────────────────
@@ -519,7 +522,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
             let dr_text = data_rates
                 .get(state.ui.can_data_bitrate_idx)
                 .map(|(_, label)| label.to_string())
-                .unwrap_or_else(|| format!("{} Mbps", state.can.data_bitrate / 1_000_000));
+                .unwrap_or_else(|| format!("{} Mbps", state.conn.can.data_bitrate / 1_000_000));
             egui::ComboBox::from_id_salt("can_data_bitrate_v2")
                 .selected_text(&dr_text)
                 .width(160.0)
@@ -529,7 +532,7 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
                             .selectable_value(&mut state.ui.can_data_bitrate_idx, i, label)
                             .clicked()
                         {
-                            state.can.data_bitrate = rate;
+                            state.conn.can.data_bitrate = rate;
                         }
                     }
                 });
@@ -583,15 +586,21 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
     // ─── 高级选项 ────────────────────────────────────────
     ui.collapsing(Tr::advanced_options(lang), |ui| {
         ui.add_space(4.0);
-        ui.checkbox(&mut state.can.config_termination, Tr::can_termination(lang));
-        ui.checkbox(&mut state.can.config_listen_only, Tr::can_listen_only(lang));
-        ui.checkbox(&mut state.can.config_loopback, Tr::can_loopback(lang));
         ui.checkbox(
-            &mut state.can.config_auto_retransmit,
+            &mut state.conn.can.config_termination,
+            Tr::can_termination(lang),
+        );
+        ui.checkbox(
+            &mut state.conn.can.config_listen_only,
+            Tr::can_listen_only(lang),
+        );
+        ui.checkbox(&mut state.conn.can.config_loopback, Tr::can_loopback(lang));
+        ui.checkbox(
+            &mut state.conn.can.config_auto_retransmit,
             Tr::can_auto_retransmit(lang),
         );
         ui.checkbox(
-            &mut state.can.config_error_reporting,
+            &mut state.conn.can.config_error_reporting,
             Tr::can_error_reporting(lang),
         );
     });
@@ -602,19 +611,19 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label(format!(
             "TX: {}  |  RX: {}  |  Bus Load: {:.1}%",
-            state.can.frame_count_tx, state.can.frame_count_rx, state.can.bus_load
+            state.conn.can.frame_count_tx, state.conn.can.frame_count_rx, state.conn.can.bus_load
         ));
     });
 
     ui.add_space(6.0);
 
-    let can_btn_text = if state.can.is_running {
+    let can_btn_text = if state.conn.can.is_running {
         Tr::stop(lang).to_string()
     } else {
         Tr::start(lang).to_string()
     };
     if ui.button(can_btn_text).clicked() {
-        state.can.is_running = !state.can.is_running;
+        state.conn.can.is_running = !state.conn.can.is_running;
     }
 }
 
@@ -640,7 +649,7 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
                         .selectable_value(&mut state.ui.usb_protocol_idx, i, format!("{}", proto))
                         .clicked()
                     {
-                        state.usb_config.protocol = proto;
+                        state.conn.usb_config.protocol = proto;
                     }
                 }
             });
@@ -682,7 +691,7 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
                         .selectable_value(&mut state.ui.usb_speed_idx, i, format!("{}", speed))
                         .clicked()
                     {
-                        state.usb_config.speed = speed;
+                        state.conn.usb_config.speed = speed;
                     }
                 }
             });
@@ -719,25 +728,25 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
             ui.label(format!(
                 "{}: 0x{:02X}",
                 Tr::usb_endpoint_in(lang),
-                state.usb_config.endpoint_in
+                state.conn.usb_config.endpoint_in
             ));
             ui.add_space(16.0);
             ui.label(format!(
                 "{}: 0x{:02X}",
                 Tr::usb_endpoint_out(lang),
-                state.usb_config.endpoint_out
+                state.conn.usb_config.endpoint_out
             ));
         });
         ui.add_space(4.0);
         ui.label(format!(
             "{}: {} bytes",
             Tr::usb_max_packet_size(lang),
-            state.usb_config.max_packet_size
+            state.conn.usb_config.max_packet_size
         ));
         ui.label(format!(
             "{}: {}",
             Tr::usb_interface(lang),
-            state.usb_config.interface_num
+            state.conn.usb_config.interface_num
         ));
     });
 
@@ -767,15 +776,19 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             ui.label(format!("{}:", Tr::port(lang)));
             egui::ComboBox::from_id_salt("usb_cdc_port_combo")
-                .selected_text(if state.serial.config.port_name.is_empty() {
+                .selected_text(if state.conn.serial.config.port_name.is_empty() {
                     Tr::select_port(lang)
                 } else {
-                    &state.serial.config.port_name
+                    &state.conn.serial.config.port_name
                 })
                 .width(220.0)
                 .show_ui(ui, |ui| {
-                    for port in &state.available_ports {
-                        ui.selectable_value(&mut state.serial.config.port_name, port.clone(), port);
+                    for port in &state.conn.available_ports {
+                        ui.selectable_value(
+                            &mut state.conn.serial.config.port_name,
+                            port.clone(),
+                            port,
+                        );
                     }
                 });
             if ui.button(Tr::refresh(lang)).clicked() {
@@ -805,13 +818,13 @@ fn show_modbus_rtu_config(ui: &mut Ui, state: &mut AppState) {
         ui.label(format!(
             "{}: {}  |  {}: {}",
             Tr::port(lang),
-            if state.serial.config.port_name.is_empty() {
+            if state.conn.serial.config.port_name.is_empty() {
                 "(none)"
             } else {
-                &state.serial.config.port_name
+                &state.conn.serial.config.port_name
             },
             Tr::baud_rate(lang),
-            state.serial.config.baud_rate
+            state.conn.serial.config.baud_rate
         ));
     });
 }

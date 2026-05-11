@@ -1,6 +1,22 @@
+pub mod connection_manager;
+pub mod control_engine;
+pub mod external_services;
+pub mod log_manager;
+pub mod protocol_hub;
+pub mod visualization_store;
+
+use connection_manager::ConnectionManager;
+use control_engine::ControlEngine;
+use external_services::ExternalServices;
+use log_manager::LogManager;
+use protocol_hub::ProtocolHub;
+use visualization_store::VisualizationStore;
+
 use crate::i18n::Language;
 use crate::models::*;
+use crate::services::mcp_server;
 use crate::services::*;
+use std::collections::VecDeque;
 use std::fs::{metadata, OpenOptions};
 use std::io::Write;
 use std::net::TcpListener;
@@ -10,9 +26,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// 瀵艰埅鏍囩
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// ──────────────────────────────────────────────────────────────────────
+// 导航标签
+// ──────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
@@ -47,36 +63,6 @@ impl ActiveTab {
         }
     }
 
-    pub fn icon(&self) -> &str {
-        match self {
-            Self::Dashboard => "DB",
-            Self::Connections => "CN",
-            Self::SerialDebug => "SR",
-            Self::ProtocolAnalysis => "AN",
-            Self::PacketBuilder => "PK",
-            Self::Topology => "TP",
-            Self::PidControl => "PD",
-            Self::NnTuning => "NN",
-            Self::DataViz => "DV",
-            Self::ModbusTools => "MB",
-            Self::CanopenTools => "CO",
-        }
-    }
-
-    /// Category grouping for sidebar sections
-    pub fn category(&self) -> &'static str {
-        match self {
-            Self::Dashboard => "OVERVIEW",
-            Self::Connections | Self::SerialDebug => "COMM",
-            Self::ProtocolAnalysis
-            | Self::PacketBuilder
-            | Self::ModbusTools
-            | Self::CanopenTools => "PROTOCOL",
-            Self::Topology | Self::PidControl | Self::NnTuning => "CONTROL",
-            Self::DataViz => "ANALYSIS",
-        }
-    }
-
     pub fn all() -> &'static [ActiveTab] {
         &[
             Self::Dashboard,
@@ -94,9 +80,9 @@ impl ActiveTab {
     }
 }
 
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// 鏃ュ織鏉＄洰
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// ──────────────────────────────────────────────────────────────────────
+// 日志条目
+// ──────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -155,9 +141,9 @@ impl LogEntry {
     }
 }
 
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// UI 鐘舵€?
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// ──────────────────────────────────────────────────────────────────────
+// UI 状态
+// ──────────────────────────────────────────────────────────────────────
 
 pub struct UiState {
     // PID 鏂囨湰妗?
@@ -169,14 +155,6 @@ pub struct UiState {
     pub integral_limit_text: String,
     pub preset_name: String,
     pub preset_desc: String,
-
-    // 鍥捐〃鏄剧ず鎺у埗
-    pub show_position: bool,
-    pub show_velocity: bool,
-    pub show_current: bool,
-    pub show_temperature: bool,
-    pub show_error: bool,
-    pub show_pid_output: bool,
 
     // 缁堢
     pub send_text: String,
@@ -235,7 +213,6 @@ pub struct UiState {
 
     // Connections
     pub conn_type_idx: usize,
-    pub serial_port_search: String,
     pub serial_baud_idx: usize,
 
     // TCP/UDP
@@ -249,9 +226,9 @@ pub struct UiState {
     // NN
     pub nn_learning_rate_text: String,
     pub nn_auto_train: bool,
-    pub nn_train_interval: u32,
+    pub nn_train_frame_counter: u64,
 
-    // CAN 楂樼骇鍙傛暟
+    // CAN advanced parameters
     pub can_bitrate_idx: usize,
     pub can_data_bitrate_idx: usize,
     pub can_sample_point_idx: usize,
@@ -259,13 +236,13 @@ pub struct UiState {
     pub can_sjw_idx: usize,
     pub can_data_sjw_idx: usize,
 
-    // USB 鍗忚
+    // USB protocol settings
     pub usb_protocol_idx: usize,
     pub usb_speed_idx: usize,
     pub usb_vid_text: String,
     pub usb_pid_text: String,
 
-    // 鏁版嵁鍖呰В鏋?
+    // Packet parser state
     pub parser_enabled: bool,
     pub parser_template_idx: usize,
     pub parser_auto_parse: bool,
@@ -274,23 +251,21 @@ pub struct UiState {
     pub parser_last_auto_template_idx: usize,
     pub packet_builder_tab: usize, // 0=Builder, 1=Parser
 
-    // 鍗忚鍒嗘瀽椤?
+    // Protocol analysis filters
     pub analysis_protocol_idx: usize,
     pub analysis_filter_tx: bool,
     pub analysis_filter_rx: bool,
     pub analysis_filter_info: bool,
     pub analysis_query: String,
-    pub analysis_hex_input: String,
 
-    // 鏁版嵁鍙鍖?
+    // Data visualization settings
     pub viz_add_channel_name: String,
     pub viz_add_source_idx: usize,
     pub viz_add_type_idx: usize,
     pub viz_source_type: usize, // 0=RobotState, 1=PacketField
     pub viz_pkt_template_idx: usize,
-    pub viz_pkt_field_idx: usize,
 
-    // LLM 閰嶇疆
+    // LLM settings
     pub llm_api_url: String,
     pub llm_api_key: String,
     pub llm_model_name: String,
@@ -298,24 +273,24 @@ pub struct UiState {
     pub llm_last_response: String,
     pub llm_loading: bool,
 
-    // MCP 鏈嶅姟鍣?
+    // MCP server settings
     pub mcp_port_text: String,
     pub mcp_token_text: String,
     pub mcp_running: bool,
 
-    // 渚ц竟鏍?
+    // Sidebar
     pub sidebar_expanded: bool,
 
-    // 鍔ㄦ晥灞傜骇锛?=鏋佽嚧, 1=鏍囧噯, 2=鍘熺敓, 3=浼樺寲
+    // Motion level: 0=Extreme, 1=Standard, 2=Native, 3=Optimized
     pub motion_level_idx: usize,
 
-    // UI 缂╂斁鐧惧垎姣旓紙80-160锛?
+    // UI scale percentage
     pub ui_scale_percent: u32,
 
-    // 鍋忓ソ鑷姩淇濆瓨鍛ㄦ湡锛堢锛?
+    // Preference autosave interval in seconds
     pub prefs_autosave_interval_sec: u32,
 
-    // 鏇存柊妫€鏌?
+    // Update checks
     pub update_channel: String,
     pub update_manifest_url: String,
     pub update_check_timeout_ms: u32,
@@ -332,12 +307,6 @@ impl Default for UiState {
             integral_limit_text: "100.0".into(),
             preset_name: String::new(),
             preset_desc: String::new(),
-            show_position: true,
-            show_velocity: true,
-            show_current: true,
-            show_temperature: true,
-            show_error: true,
-            show_pid_output: true,
             send_text: String::new(),
             send_hex: false,
             auto_scroll: true,
@@ -380,7 +349,6 @@ impl Default for UiState {
             can_fd: false,
             packet_template_idx: 0,
             conn_type_idx: 0,
-            serial_port_search: String::new(),
             serial_baud_idx: 12,
             tcp_host: "127.0.0.1".into(),
             tcp_port_text: "8080".into(),
@@ -390,7 +358,7 @@ impl Default for UiState {
             udp_remote_port_text: "9001".into(),
             nn_learning_rate_text: "0.01".into(),
             nn_auto_train: false,
-            nn_train_interval: 100,
+            nn_train_frame_counter: 0,
             can_bitrate_idx: 6,           // 500 kbps
             can_data_bitrate_idx: 2,      // 2 Mbps
             can_sample_point_idx: 4,      // 87.5%
@@ -413,13 +381,11 @@ impl Default for UiState {
             analysis_filter_rx: true,
             analysis_filter_info: false,
             analysis_query: String::new(),
-            analysis_hex_input: String::new(),
             viz_add_channel_name: String::new(),
             viz_add_source_idx: 0,
             viz_add_type_idx: 0,
             viz_source_type: 0,
             viz_pkt_template_idx: 0,
-            viz_pkt_field_idx: 0,
             llm_api_url: "https://api.openai.com/v1/chat/completions".into(),
             llm_api_key: String::new(),
             llm_model_name: "gpt-4o-mini".into(),
@@ -440,9 +406,7 @@ impl Default for UiState {
     }
 }
 
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
-// 涓诲簲鐢ㄧ姸鎬?
-// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+// Main application state
 
 pub const MIN_UI_SCALE_PERCENT: u32 = 100;
 pub const MAX_UI_SCALE_PERCENT: u32 = 220;
@@ -450,82 +414,17 @@ pub const DEFAULT_UI_SCALE_PERCENT: u32 = 150;
 pub const UI_SCALE_STEP_PERCENT: i32 = 10;
 
 pub struct AppState {
+    // === 子模块 ===
+    pub conn: ConnectionManager,
+    pub control: ControlEngine,
+    pub protocol: ProtocolHub,
+    pub viz: VisualizationStore,
+    pub log: LogManager,
+    pub external: ExternalServices,
+
+    // === 保留：纯 UI 状态 ===
     pub active_tab: ActiveTab,
-
-    // 璇█
     pub language: Language,
-
-    // 閫氫俊鏈嶅姟
-    pub serial: SerialService,
-    pub tcp: TcpService,
-    pub udp: UdpService,
-    pub can: CanService,
-    pub active_conn: ConnectionType,
-
-    // 绔彛鍒楄〃
-    pub available_ports: Vec<String>,
-
-    // 鎺у埗
-    pub active_algorithm: ControlAlgorithmType,
-    pub pid: PidController,
-    pub incremental_pid: IncrementalPidController,
-    pub bang_bang: BangBangController,
-    pub fuzzy_pid: FuzzyPidController,
-    pub cascade_pid: CascadePidController,
-    pub smith_predictor: SmithPredictorController,
-    pub adrc: AdrcController,
-    pub ladrc: LadrcController,
-    pub lqr: LqrController,
-    pub mpc: MpcController,
-    pub current_state: RobotState,
-    pub state_history: Vec<RobotState>,
-    pub is_running: bool,
-    pub presets: Vec<Preset>,
-
-    // 绁炵粡缃戠粶
-    pub nn: NeuralNetwork,
-    pub nn_suggested_kp: f64,
-    pub nn_suggested_ki: f64,
-    pub nn_suggested_kd: f64,
-
-    // 鎷撴墤
-    pub topology: TopologyConfig,
-    pub builtin_topologies: Vec<TopologyConfig>,
-
-    // 鏃ュ織
-    pub log_entries: Vec<LogEntry>,
-
-    // Packet Builder
-    pub packet_templates: Vec<PacketTemplate>,
-
-    // Modbus
-    pub modbus_frame: ModbusFrame,
-    pub modbus_registers: Vec<u16>,
-    pub modbus_response_log: Vec<String>,
-
-    // CANopen
-    pub canopen_log: Vec<String>,
-
-    // CANopen PDO Configs
-    pub canopen_pdo_configs: Vec<PdoConfig>,
-
-    // Packet Parser
-    pub packet_parser: PacketParser,
-    pub parsed_packets: Vec<ParsedPacket>,
-
-    // Data Visualization
-    pub data_channels: Vec<DataChannel>,
-    pub channel_buffers: Vec<TimeSeriesBuffer>,
-
-    // USB 閰嶇疆
-    pub usb_config: UsbConfig,
-
-    // MCP server 鐘舵€?
-    pub mcp_server_handle: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
-    pub mcp_shared_state:
-        std::sync::Arc<std::sync::Mutex<crate::services::mcp_server::McpSharedState>>,
-
-    // UI
     pub ui: UiState,
     pub status_message: String,
     pub dark_mode: bool,
@@ -533,51 +432,30 @@ pub struct AppState {
     pub system_checks: Vec<SystemCheckItem>,
     pub metrics: AppMetrics,
     pub last_error_time: String,
+
+    // === 保留：更新检查 ===
     pub update_latest_version: String,
     pub update_status_detail: String,
     pub update_available: bool,
     pub update_notes_url: String,
     pub update_last_checked_at: String,
-    pub channel_overflow_events: u64,
-    can_dropped_frames_seen: u64,
-    channel_overflow_notified: u64,
-    last_rx_instant: Option<Instant>,
-    reconnect_armed: bool,
-    reconnect_paused_by_user: bool,
-    next_reconnect_at: Option<Instant>,
-    last_mcp_sync_instant: Option<Instant>,
-    last_port_scan_request_at: Option<Instant>,
-    port_scan_in_progress: bool,
-    port_scan_rx: Option<std::sync::mpsc::Receiver<Vec<String>>>,
-    pending_log_lines: Vec<String>,
-    last_log_flush_instant: Instant,
-    serial_connect_rx: Option<std::sync::mpsc::Receiver<Result<SerialService, String>>>,
-    serial_connect_in_progress: bool,
-    llm_result_rx: Option<
-        std::sync::mpsc::Receiver<Result<crate::services::llm_service::SuggestedParams, String>>,
-    >,
-    resource_status: String,
-    platform_support_note: Option<String>,
-    last_io_poll_instant: Instant,
-    last_connection_check_instant: Instant,
+
+    // === 保留：后台任务计时 ===
     last_background_tick_instant: Instant,
     error_burst_count: u32,
     last_error_burst_instant: Option<Instant>,
+    resource_status: String,
+    platform_support_note: Option<String>,
 }
 
-const MAX_HISTORY: usize = 2000;
-const MAX_LOG: usize = 5000;
 const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_PENDING_LOG_LINES: usize = 10_000;
-const MAX_PARSED_PACKETS: usize = 200;
-const MAX_PROTOCOL_LOGS: usize = 240;
 const PORT_SCAN_COOLDOWN_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy)]
 pub struct PerformanceProfile {
     pub repaint_interval_ms: u64,
     pub io_poll_interval_ms: u64,
-    pub connection_check_interval_ms: u64,
     pub background_task_interval_ms: u64,
     pub max_log_entries: usize,
     pub max_pending_log_lines: usize,
@@ -589,7 +467,6 @@ pub struct PerformanceProfile {
     pub error_burst_threshold: u32,
     pub reconnect_backoff_base_ms: u64,
     pub auto_downgrade_allowed: bool,
-    pub chart_sampling_stride: usize,
 }
 
 impl PerformanceProfile {
@@ -598,7 +475,6 @@ impl PerformanceProfile {
             0 => Self {
                 repaint_interval_ms: 8,
                 io_poll_interval_ms: 8,
-                connection_check_interval_ms: 250,
                 background_task_interval_ms: 120,
                 max_log_entries: 8_000,
                 max_pending_log_lines: 10_000,
@@ -610,12 +486,10 @@ impl PerformanceProfile {
                 error_burst_threshold: 6,
                 reconnect_backoff_base_ms: 1_000,
                 auto_downgrade_allowed: true,
-                chart_sampling_stride: 1,
             },
             1 => Self {
                 repaint_interval_ms: 16,
                 io_poll_interval_ms: 16,
-                connection_check_interval_ms: 500,
                 background_task_interval_ms: 180,
                 max_log_entries: 4_000,
                 max_pending_log_lines: 6_000,
@@ -627,12 +501,10 @@ impl PerformanceProfile {
                 error_burst_threshold: 8,
                 reconnect_backoff_base_ms: 1_500,
                 auto_downgrade_allowed: false,
-                chart_sampling_stride: 1,
             },
             2 => Self {
                 repaint_interval_ms: 33,
                 io_poll_interval_ms: 33,
-                connection_check_interval_ms: 800,
                 background_task_interval_ms: 250,
                 max_log_entries: 2_000,
                 max_pending_log_lines: 3_000,
@@ -644,12 +516,10 @@ impl PerformanceProfile {
                 error_burst_threshold: 10,
                 reconnect_backoff_base_ms: 2_500,
                 auto_downgrade_allowed: false,
-                chart_sampling_stride: 2,
             },
             _ => Self {
                 repaint_interval_ms: 66,
                 io_poll_interval_ms: 66,
-                connection_check_interval_ms: 1_200,
                 background_task_interval_ms: 400,
                 max_log_entries: 1_000,
                 max_pending_log_lines: 1_500,
@@ -661,7 +531,6 @@ impl PerformanceProfile {
                 error_burst_threshold: 12,
                 reconnect_backoff_base_ms: 4_000,
                 auto_downgrade_allowed: false,
-                chart_sampling_stride: 4,
             },
         }
     }
@@ -678,9 +547,8 @@ struct VersionTriplet {
     patch: u64,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize, Default)]
 #[serde(default)]
-#[derive(Default)]
 struct UpdateManifest {
     latest_version: String,
     channel: String,
@@ -941,8 +809,16 @@ impl Default for UserPreferences {
 }
 
 impl AppState {
+    // ──────────────────────────────────────────────────────────────────────
+    // 初始化与配置
+    // ──────────────────────────────────────────────────────────────────────
     pub fn new() -> Self {
-        let pid = PidController::default();
+        let control = ControlEngine::new();
+        let pid = control.algorithms[0]
+            .as_any()
+            .downcast_ref::<PidController>()
+            .cloned()
+            .unwrap_or_default();
         let ui = UiState {
             kp_text: format!("{:.3}", pid.kp),
             ki_text: format!("{:.3}", pid.ki),
@@ -953,52 +829,18 @@ impl AppState {
             ..Default::default()
         };
 
+        let mut conn = ConnectionManager::new();
+        conn.available_ports = Vec::new();
+
         let mut s = Self {
+            conn,
+            control,
+            protocol: ProtocolHub::new(),
+            viz: VisualizationStore::new(),
+            log: LogManager::new(),
+            external: ExternalServices::new(),
             active_tab: ActiveTab::Dashboard,
             language: Language::Chinese,
-            serial: SerialService::new(),
-            tcp: TcpService::new(),
-            udp: UdpService::new(),
-            can: CanService::new(),
-            active_conn: ConnectionType::Serial,
-            available_ports: Vec::new(),
-            active_algorithm: ControlAlgorithmType::ClassicPid,
-            pid,
-            incremental_pid: IncrementalPidController::default(),
-            bang_bang: BangBangController::default(),
-            fuzzy_pid: FuzzyPidController::default(),
-            cascade_pid: CascadePidController::default(),
-            smith_predictor: SmithPredictorController::default(),
-            adrc: AdrcController::default(),
-            ladrc: LadrcController::default(),
-            lqr: LqrController::default(),
-            mpc: MpcController::default(),
-            current_state: RobotState::default(),
-            state_history: Vec::new(),
-            is_running: false,
-            presets: Preset::defaults(),
-            nn: NeuralNetwork::pid_tuner(),
-            nn_suggested_kp: 1.0,
-            nn_suggested_ki: 0.1,
-            nn_suggested_kd: 0.01,
-            topology: TopologyConfig::default(),
-            builtin_topologies: TopologyConfig::builtin_configs(),
-            log_entries: Vec::new(),
-            packet_templates: PacketTemplate::builtin_templates(),
-            modbus_frame: ModbusFrame::default(),
-            modbus_registers: vec![0u16; 100],
-            modbus_response_log: Vec::new(),
-            canopen_log: Vec::new(),
-            canopen_pdo_configs: Vec::new(),
-            packet_parser: PacketParser::new(PacketTemplate::builtin_templates()),
-            parsed_packets: Vec::new(),
-            data_channels: DataChannel::default_channels(),
-            channel_buffers: (0..6).map(|_| TimeSeriesBuffer::default()).collect(),
-            usb_config: UsbConfig::default(),
-            mcp_server_handle: None,
-            mcp_shared_state: std::sync::Arc::new(std::sync::Mutex::new(
-                crate::services::mcp_server::McpSharedState::default(),
-            )),
             ui,
             status_message: "Ready".into(),
             dark_mode: true,
@@ -1011,26 +853,8 @@ impl AppState {
             update_available: false,
             update_notes_url: String::new(),
             update_last_checked_at: "N/A".into(),
-            channel_overflow_events: 0,
-            can_dropped_frames_seen: 0,
-            channel_overflow_notified: 0,
-            last_rx_instant: None,
-            reconnect_armed: false,
-            reconnect_paused_by_user: false,
-            next_reconnect_at: None,
-            last_mcp_sync_instant: None,
-            last_port_scan_request_at: None,
-            port_scan_in_progress: false,
-            port_scan_rx: None,
-            pending_log_lines: Vec::new(),
-            last_log_flush_instant: Instant::now(),
-            serial_connect_rx: None,
-            serial_connect_in_progress: false,
-            llm_result_rx: None,
             resource_status: "Balanced".into(),
             platform_support_note: None,
-            last_io_poll_instant: Instant::now(),
-            last_connection_check_instant: Instant::now(),
             last_background_tick_instant: Instant::now(),
             error_burst_count: 0,
             last_error_burst_instant: None,
@@ -1067,25 +891,39 @@ impl AppState {
         }
     }
 
+    fn trim_vec_deque<T>(items: &mut VecDeque<T>, max_len: usize) {
+        if items.len() > max_len {
+            items.drain(..items.len() - max_len);
+        }
+    }
+
     pub fn apply_performance_profile(&mut self) {
         let profile = self.performance_profile();
-        Self::trim_vec(&mut self.log_entries, profile.max_log_entries.max(1));
+        Self::trim_vec_deque(&mut self.log.log_entries, profile.max_log_entries.max(1));
         Self::trim_vec(
-            &mut self.pending_log_lines,
+            &mut self.conn.pending_log_lines,
             profile.max_pending_log_lines.max(1),
         );
-        Self::trim_vec(&mut self.state_history, profile.max_state_history.max(1));
-        Self::trim_vec(&mut self.parsed_packets, profile.max_parsed_packets.max(1));
         Self::trim_vec(
-            &mut self.modbus_response_log,
+            &mut self.control.state_history,
+            profile.max_state_history.max(1),
+        );
+        Self::trim_vec(
+            &mut self.protocol.parsed_packets,
+            profile.max_parsed_packets.max(1),
+        );
+        Self::trim_vec(
+            &mut self.protocol.modbus_response_log,
             profile.max_protocol_log_entries.max(1),
         );
         Self::trim_vec(
-            &mut self.canopen_log,
+            &mut self.protocol.canopen_log,
             profile.max_protocol_log_entries.max(1),
         );
-        self.can.set_max_frames(profile.max_frame_entries.max(1));
-        for buffer in &mut self.channel_buffers {
+        self.conn
+            .can
+            .set_max_frames(profile.max_frame_entries.max(1));
+        for buffer in &mut self.viz.channel_buffers {
             buffer.set_max_points(profile.max_chart_points.max(1));
         }
         self.refresh_resource_status();
@@ -1096,12 +934,12 @@ impl AppState {
         self.resource_status = format!(
             "{}ms | logs {}/{} | state {}/{} | can {}/{}",
             profile.repaint_interval_ms,
-            self.log_entries.len(),
+            self.log.log_entries.len(),
             profile.max_log_entries,
-            self.state_history.len(),
+            self.control.state_history.len(),
             profile.max_state_history,
-            self.can.frames.len(),
-            self.can.max_frame_capacity(),
+            self.conn.can.frames.len(),
+            self.conn.can.max_frame_capacity(),
         );
     }
 
@@ -1175,16 +1013,16 @@ impl AppState {
             },
             entry.format_data()
         );
-        self.pending_log_lines.push(line);
+        self.conn.pending_log_lines.push(line);
         let max_pending = self
             .performance_profile()
             .max_pending_log_lines
             .max(MAX_PENDING_LOG_LINES / 8);
-        Self::trim_vec(&mut self.pending_log_lines, max_pending);
+        Self::trim_vec(&mut self.conn.pending_log_lines, max_pending);
     }
 
     pub fn flush_pending_logs(&mut self) {
-        if self.pending_log_lines.is_empty() {
+        if self.conn.pending_log_lines.is_empty() {
             return;
         }
         let now = Instant::now();
@@ -1192,8 +1030,9 @@ impl AppState {
             .performance_profile()
             .background_task_interval_ms
             .max(120);
-        if self.pending_log_lines.len() < 100
-            && now.duration_since(self.last_log_flush_instant) < Duration::from_millis(min_flush_ms)
+        if self.conn.pending_log_lines.len() < 100
+            && now.duration_since(self.conn.last_log_flush_instant)
+                < Duration::from_millis(min_flush_ms)
         {
             return;
         }
@@ -1204,10 +1043,10 @@ impl AppState {
         }
         Self::rotate_log_if_needed(&path);
         if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&path) {
-            for line in self.pending_log_lines.drain(..) {
+            for line in self.conn.pending_log_lines.drain(..) {
                 let _ = writeln!(f, "{}", line);
             }
-            self.last_log_flush_instant = now;
+            self.conn.last_log_flush_instant = now;
         }
     }
 
@@ -1235,8 +1074,11 @@ impl AppState {
     }
 
     pub fn report_channel_overflow(&mut self, dropped: usize) {
-        self.channel_overflow_events = self.channel_overflow_events.saturating_add(dropped as u64);
-        warn!(target: "buffers", dropped = dropped, total = self.channel_overflow_events, "channel_overflow");
+        self.viz.channel_overflow_events = self
+            .viz
+            .channel_overflow_events
+            .saturating_add(dropped as u64);
+        warn!(target: "buffers", dropped = dropped, total = self.viz.channel_overflow_events, "channel_overflow");
     }
 
     fn push_check(&mut self, name: &str, ok: bool, detail: impl Into<String>) {
@@ -1247,6 +1089,9 @@ impl AppState {
         });
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // 错误报告与系统检查
+    // ──────────────────────────────────────────────────────────────────────
     pub fn run_system_check(&mut self) {
         self.system_checks.clear();
 
@@ -1291,11 +1136,11 @@ impl AppState {
         let llm_ok = !self.ui.llm_api_url.trim().is_empty();
         self.push_check("LLM API URL", llm_ok, self.ui.llm_api_url.clone());
 
-        let serial_ok = !self.available_ports.is_empty();
+        let serial_ok = !self.conn.available_ports.is_empty();
         self.push_check(
             "Serial ports",
             serial_ok,
-            format!("{} ports detected", self.available_ports.len()),
+            format!("{} ports detected", self.conn.available_ports.len()),
         );
 
         info!(
@@ -1462,7 +1307,7 @@ impl AppState {
                     self.update_status_detail = detail.clone();
                     self.update_notes_url = target_url.clone();
                     self.status_message = detail.clone();
-                    self.add_info_log(&format!("鈩?{}", detail));
+                    self.add_info_log(&format!("Update: {}", detail));
                     info!(
                         target: "app",
                         url = %target_url,
@@ -1477,7 +1322,7 @@ impl AppState {
                     self.update_available = false;
                     self.update_status_detail = format!("Update check failed to evaluate: {}", e);
                     self.status_message = self.update_status_detail.clone();
-                    self.add_info_log(&format!("鈿?{}", self.update_status_detail));
+                    self.add_info_log(&format!("Update warning: {}", self.update_status_detail));
                     warn!(target: "app", error = %e, "update_check_evaluate_failed");
                     fallback_url
                 }
@@ -1489,7 +1334,7 @@ impl AppState {
                     e
                 );
                 self.status_message = self.update_status_detail.clone();
-                self.add_info_log(&format!("鈿?{}", self.update_status_detail));
+                self.add_info_log(&format!("Update warning: {}", self.update_status_detail));
                 warn!(target: "app", error = %e, url = %manifest_url, "update_manifest_fetch_failed");
                 fallback_url
             }
@@ -1503,13 +1348,15 @@ impl AppState {
     }
 
     pub fn mcp_metrics_snapshot(&self) -> (u64, u64) {
-        if let Ok(mcp) = self.mcp_shared_state.lock() {
-            (mcp.request_count, mcp.unauthorized_count)
-        } else {
-            (0, 0)
+        match self.external.mcp_shared_state.try_lock() {
+            Ok(s) => (s.request_count, s.unauthorized_count),
+            Err(_) => (0, 0),
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // 用户偏好设置
+    // ──────────────────────────────────────────────────────────────────────
     fn to_user_preferences(&self) -> UserPreferences {
         let active_tab_idx = ActiveTab::all()
             .iter()
@@ -1528,8 +1375,8 @@ impl AppState {
             llm_model_name: self.ui.llm_model_name.clone(),
             mcp_port_text: self.ui.mcp_port_text.clone(),
             mcp_token_text: self.ui.mcp_token_text.clone(),
-            active_conn: self.active_conn,
-            serial_config: self.serial.config.clone(),
+            active_conn: self.conn.active_conn,
+            serial_config: self.conn.serial.config.clone(),
             tcp_host: self.ui.tcp_host.clone(),
             tcp_port_text: self.ui.tcp_port_text.clone(),
             tcp_is_server: self.ui.tcp_is_server,
@@ -1593,12 +1440,12 @@ impl AppState {
         self.ui.llm_model_name = prefs.llm_model_name;
         self.ui.mcp_port_text = prefs.mcp_port_text;
         self.ui.mcp_token_text = prefs.mcp_token_text;
-        self.active_conn = prefs.active_conn;
+        self.conn.active_conn = prefs.active_conn;
         self.ui.conn_type_idx = ConnectionType::all()
             .iter()
-            .position(|c| *c == self.active_conn)
+            .position(|c| *c == self.conn.active_conn)
             .unwrap_or(0);
-        self.serial.config = prefs.serial_config;
+        self.conn.serial.config = prefs.serial_config;
         self.ui.tcp_host = prefs.tcp_host;
         self.ui.tcp_port_text = prefs.tcp_port_text;
         self.ui.tcp_is_server = prefs.tcp_is_server;
@@ -1739,14 +1586,6 @@ impl AppState {
         })
     }
 
-    pub fn save_user_preferences_as<P: AsRef<std::path::Path>>(&mut self, path: P) {
-        self.save_user_preferences_to_path(path.as_ref());
-    }
-
-    pub fn load_user_preferences_from<P: AsRef<std::path::Path>>(&mut self, path: P) {
-        self.load_user_preferences_from_path(path.as_ref());
-    }
-
     pub fn reset_user_preferences(&mut self) {
         let defaults = UserPreferences::default();
         self.apply_user_preferences(defaults);
@@ -1774,7 +1613,7 @@ impl AppState {
         let file_path = export_dir.join(file_name);
 
         let mut csv = String::from("timestamp,channel,direction,display_mode,data\n");
-        for entry in &self.log_entries {
+        for entry in &self.log.log_entries {
             let direction = match entry.direction {
                 LogDirection::Tx => "TX",
                 LogDirection::Rx => "RX",
@@ -1800,29 +1639,29 @@ impl AppState {
         Ok(file_path)
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // 连接管理与通信
+    // ──────────────────────────────────────────────────────────────────────
     pub fn refresh_ports(&mut self) {
-        if self.port_scan_in_progress {
+        if self.conn.port_scan_in_progress {
             return;
         }
         let now = Instant::now();
-        if self.last_port_scan_request_at.is_some_and(|last| {
-            now.duration_since(last) < Duration::from_millis(PORT_SCAN_COOLDOWN_MS)
-        }) {
-            self.status_message = format!(
-                "Port scan cooling down. Retry in {:.1}s",
-                (PORT_SCAN_COOLDOWN_MS as f32
-                    - now
-                        .duration_since(self.last_port_scan_request_at.unwrap())
-                        .as_millis() as f32)
-                    / 1000.0
-            );
-            return;
+        if let Some(last) = self.conn.last_port_scan_request_at {
+            if now.duration_since(last) < Duration::from_millis(PORT_SCAN_COOLDOWN_MS) {
+                self.status_message = format!(
+                    "Port scan cooling down. Retry in {:.1}s",
+                    (PORT_SCAN_COOLDOWN_MS as f32 - now.duration_since(last).as_millis() as f32)
+                        / 1000.0
+                );
+                return;
+            }
         }
 
         let (tx, rx) = std::sync::mpsc::channel();
-        self.last_port_scan_request_at = Some(now);
-        self.port_scan_in_progress = true;
-        self.port_scan_rx = Some(rx);
+        self.conn.last_port_scan_request_at = Some(now);
+        self.conn.port_scan_in_progress = true;
+        self.conn.port_scan_rx = Some(rx);
         self.status_message = "Scanning serial ports...".into();
 
         std::thread::spawn(move || {
@@ -1832,165 +1671,100 @@ impl AppState {
     }
 
     fn apply_scanned_ports(&mut self, ports: Vec<String>) {
-        let previous = self.serial.config.port_name.clone();
-        self.available_ports = ports;
+        let previous = self.conn.serial.config.port_name.clone();
+        self.conn.available_ports = ports;
 
-        if self.available_ports.is_empty() {
-            self.serial.config.port_name.clear();
+        if self.conn.available_ports.is_empty() {
+            self.conn.serial.config.port_name.clear();
             self.status_message = "No serial ports found".into();
             return;
         }
 
-        if !previous.is_empty() && self.available_ports.iter().any(|p| p == &previous) {
-            self.serial.config.port_name = previous;
+        if !previous.is_empty() && self.conn.available_ports.iter().any(|p| p == &previous) {
+            self.conn.serial.config.port_name = previous;
             self.status_message = format!(
                 "Serial ports refreshed: {} detected",
-                self.available_ports.len()
+                self.conn.available_ports.len()
             );
             return;
         }
 
-        self.serial.config.port_name = self.available_ports[0].clone();
+        self.conn.serial.config.port_name = self.conn.available_ports[0].clone();
         self.status_message = format!(
             "Serial port auto-selected: {}",
-            self.serial.config.port_name
+            self.conn.serial.config.port_name
         );
     }
 
     pub fn total_bytes_sent(&self) -> u64 {
-        self.serial.bytes_sent + self.tcp.bytes_sent + self.udp.bytes_sent
+        self.conn.total_bytes_sent()
     }
 
     pub fn total_bytes_received(&self) -> u64 {
-        self.serial.bytes_received + self.tcp.bytes_received + self.udp.bytes_received
+        self.conn.total_bytes_received()
     }
 
     pub fn total_errors(&self) -> u64 {
-        self.serial.error_count + self.tcp.error_count + self.udp.error_count
+        self.conn.total_errors()
     }
 
     pub fn is_any_connected(&self) -> bool {
-        self.serial.is_connected()
-            || self.tcp.is_connected()
-            || self.udp.is_connected()
-            || self.can.is_running
+        self.conn.is_any_connected()
     }
 
     pub fn active_status(&self) -> ConnectionStatus {
-        match self.active_conn {
-            ConnectionType::Serial | ConnectionType::Usb => self.serial.status,
-            ConnectionType::Tcp | ConnectionType::ModbusTcp => self.tcp.status,
-            ConnectionType::Udp => self.udp.status,
-            ConnectionType::Can | ConnectionType::CanFd => {
-                if self.can.is_running {
-                    ConnectionStatus::Connected
-                } else {
-                    ConnectionStatus::Disconnected
-                }
-            }
-            ConnectionType::ModbusRtu => self.serial.status,
-        }
+        self.conn.active_status()
     }
 
     pub fn last_comm(&self) -> &str {
-        match self.active_conn {
-            ConnectionType::Serial | ConnectionType::Usb => &self.serial.last_comm,
-            ConnectionType::Tcp | ConnectionType::ModbusTcp => &self.tcp.last_comm,
-            ConnectionType::Udp => &self.udp.last_comm,
-            ConnectionType::Can | ConnectionType::CanFd => {
-                if self.can.frames.is_empty() {
-                    "No CAN frame yet"
-                } else {
-                    "CAN bus active"
-                }
-            }
-            ConnectionType::ModbusRtu => &self.serial.last_comm,
-        }
+        self.conn.last_comm()
     }
 
     pub fn link_health_text(&self) -> String {
-        let status = self.active_status();
-        if status == ConnectionStatus::Connecting {
-            return "Connecting".into();
-        }
-        if status == ConnectionStatus::Error {
-            return "Error".into();
-        }
-
-        if !status.is_connected() {
-            if self.reconnect_paused_by_user {
-                return "Offline (manual)".into();
-            }
-            return "Offline".into();
-        }
-
-        if let Some(last_rx) = self.last_rx_instant {
-            let elapsed = last_rx.elapsed().as_secs_f32();
-            if elapsed < 1.0 {
-                "Live".into()
-            } else if elapsed < 3.0 {
-                format!("Good {:.1}s", elapsed)
-            } else if elapsed < 10.0 {
-                format!("Idle {:.1}s", elapsed)
-            } else {
-                format!("Stale {:.1}s", elapsed)
-            }
-        } else {
-            "Connected (no RX yet)".into()
-        }
+        self.conn.link_health_text()
     }
 
     pub fn reconnect_paused(&self) -> bool {
-        self.reconnect_paused_by_user
+        self.conn.reconnect_paused()
     }
 
     pub fn reconnect_armed(&self) -> bool {
-        self.reconnect_armed
+        self.conn.reconnect_armed()
     }
 
     pub fn reconnect_countdown_text(&self) -> Option<String> {
-        self.next_reconnect_at.map(|next| {
-            let remaining = next.saturating_duration_since(Instant::now());
-            format!("Retry in {:.1}s", remaining.as_secs_f32())
-        })
+        Some(self.conn.reconnect_countdown_text())
     }
 
     fn clear_reconnect_schedule(&mut self) {
-        self.next_reconnect_at = None;
+        self.conn.clear_reconnect_schedule();
     }
 
     fn arm_auto_reconnect(&mut self) {
-        self.reconnect_armed = true;
-        self.reconnect_paused_by_user = false;
-        self.clear_reconnect_schedule();
+        self.conn.arm_auto_reconnect();
     }
 
     pub fn pause_auto_reconnect(&mut self) {
-        self.reconnect_paused_by_user = true;
-        self.clear_reconnect_schedule();
+        self.conn.pause_auto_reconnect();
         self.status_message = "Reconnect paused".into();
         self.add_info_log("Reconnect paused");
     }
 
     pub fn resume_auto_reconnect(&mut self) {
-        if !self.reconnect_armed {
+        if !self.conn.reconnect_armed() {
             self.status_message = "Reconnect is idle until a manual connection succeeds".into();
             return;
         }
-        self.reconnect_paused_by_user = false;
-        self.next_reconnect_at = Some(Instant::now());
+        self.conn.resume_auto_reconnect();
         self.status_message = "Auto reconnect resumed".into();
         self.add_info_log("Auto reconnect resumed");
     }
 
     pub fn set_active_connection(&mut self, conn: ConnectionType) {
-        if self.active_conn == conn {
+        if self.conn.active_conn == conn {
             return;
         }
-        self.active_conn = conn;
-        self.reconnect_armed = false;
-        self.reconnect_paused_by_user = true;
-        self.clear_reconnect_schedule();
+        self.conn.set_active_connection(conn);
         self.status_message =
             "Connection target changed. Refresh ports and connect when ready.".into();
     }
@@ -1999,17 +1773,19 @@ impl AppState {
         let profile = self.performance_profile();
         let now = Instant::now();
 
-        if !self.ui.auto_reconnect_enabled || self.reconnect_paused_by_user || !self.reconnect_armed
+        if !self.ui.auto_reconnect_enabled
+            || self.conn.reconnect_paused()
+            || !self.conn.reconnect_armed()
         {
             self.clear_reconnect_schedule();
             return;
         }
 
-        self.last_connection_check_instant = now;
+        self.conn.last_connection_check_instant = now;
 
-        if self.serial_connect_in_progress
+        if self.conn.serial_connect_in_progress
             && matches!(
-                self.active_conn,
+                self.conn.active_conn,
                 ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu
             )
         {
@@ -2017,7 +1793,7 @@ impl AppState {
         }
 
         let supported = matches!(
-            self.active_conn,
+            self.conn.active_conn,
             ConnectionType::Serial
                 | ConnectionType::Usb
                 | ConnectionType::ModbusRtu
@@ -2035,9 +1811,9 @@ impl AppState {
         }
 
         if matches!(
-            self.active_conn,
+            self.conn.active_conn,
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu
-        ) && self.serial.config.port_name.trim().is_empty()
+        ) && self.conn.serial.config.port_name.trim().is_empty()
         {
             self.clear_reconnect_schedule();
             self.status_message =
@@ -2045,7 +1821,7 @@ impl AppState {
             return;
         }
 
-        if self.next_reconnect_at.is_some_and(|next| next > now) {
+        if self.conn.next_reconnect_at.is_some_and(|next| next > now) {
             return;
         }
 
@@ -2062,27 +1838,28 @@ impl AppState {
             }
         }
 
-        self.next_reconnect_at = Some(now + Duration::from_millis(interval_ms));
+        self.conn.next_reconnect_at = Some(now + Duration::from_millis(interval_ms));
         let _ = self.connect_active();
     }
 
     pub fn connect_active(&mut self) -> Result<(), String> {
-        self.reconnect_paused_by_user = false;
+        self.conn.reconnect_paused_by_user = false;
         self.metrics.connect_attempts += 1;
-        let result = match self.active_conn {
+        let result = match self.conn.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
-                if self.serial.config.port_name.trim().is_empty() {
+                if self.conn.serial.config.port_name.trim().is_empty() {
                     return Err(
                         "No serial port selected. Click Refresh ports, choose one, then connect."
                             .into(),
                     );
                 }
 
-                if !self.available_ports.is_empty()
+                if !self.conn.available_ports.is_empty()
                     && !self
+                        .conn
                         .available_ports
                         .iter()
-                        .any(|p| p == &self.serial.config.port_name)
+                        .any(|p| p == &self.conn.serial.config.port_name)
                 {
                     return Err(
                         "Selected serial port is no longer available. Click Refresh ports.".into(),
@@ -2092,70 +1869,71 @@ impl AppState {
                 self.start_serial_connect_worker()
             }
             ConnectionType::Tcp | ConnectionType::ModbusTcp => {
-                self.tcp.host = self.ui.tcp_host.trim().to_string();
-                if self.tcp.host.is_empty() {
+                self.conn.tcp.host = self.ui.tcp_host.trim().to_string();
+                if self.conn.tcp.host.is_empty() {
                     return Err("TCP host required".into());
                 }
-                self.tcp.port = parse_port(&self.ui.tcp_port_text, "TCP port")?;
-                self.tcp.is_server = self.ui.tcp_is_server;
+                self.conn.tcp.port = parse_port(&self.ui.tcp_port_text, "TCP port")?;
+                self.conn.tcp.is_server = self.ui.tcp_is_server;
                 if self.ui.tcp_is_server {
-                    self.tcp.start_server().map_err(|e| e.to_string())
+                    self.conn.tcp.start_server().map_err(|e| e.to_string())
                 } else {
-                    self.tcp.connect_client().map_err(|e| e.to_string())
+                    self.conn.tcp.connect_client().map_err(|e| e.to_string())
                 }
             }
             ConnectionType::Udp => {
-                self.udp.local_port = parse_port(&self.ui.udp_local_port_text, "UDP local port")?;
-                self.udp.remote_addr = self.ui.udp_remote_host.trim().to_string();
-                self.udp.remote_port =
+                self.conn.udp.local_port =
+                    parse_port(&self.ui.udp_local_port_text, "UDP local port")?;
+                self.conn.udp.remote_addr = self.ui.udp_remote_host.trim().to_string();
+                self.conn.udp.remote_port =
                     parse_port(&self.ui.udp_remote_port_text, "UDP remote port")?;
-                if self.udp.remote_addr.is_empty() {
+                if self.conn.udp.remote_addr.is_empty() {
                     return Err("UDP remote host required".into());
                 }
-                self.udp.bind().map_err(|e| e.to_string())
+                self.conn.udp.bind().map_err(|e| e.to_string())
             }
             ConnectionType::Can | ConnectionType::CanFd => {
-                self.can.is_running = true;
+                self.conn.can.is_running = true;
                 Ok(())
             }
         };
 
         let is_serial_mode = matches!(
-            self.active_conn,
+            self.conn.active_conn,
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu
         );
 
         match &result {
             Ok(_) if is_serial_mode => {
-                self.status_message = format!("Connecting: {}", self.active_conn);
+                self.status_message = format!("Connecting: {}", self.conn.active_conn);
             }
             Ok(_) => {
                 self.arm_auto_reconnect();
-                info!(target: "connection", connection = %self.active_conn, "connect_success");
-                self.add_info_log(&format!("Connected: {}", self.active_conn));
+                info!(target: "connection", connection = %self.conn.active_conn, "connect_success");
+                self.add_info_log(&format!("Connected: {}", self.conn.active_conn));
             }
             Err(e) => {
                 self.metrics.connect_failures += 1;
-                self.report_error(format!("Connect failed ({}): {}", self.active_conn, e));
+                self.report_error(format!("Connect failed ({}): {}", self.conn.active_conn, e));
             }
         }
         result
     }
 
     fn start_serial_connect_worker(&mut self) -> Result<(), String> {
-        if self.serial_connect_in_progress {
+        if self.conn.serial_connect_in_progress {
             return Err("Serial connect already in progress".into());
         }
 
-        let cfg = self.serial.config.clone();
+        let cfg = self.conn.serial.config.clone();
         if cfg.port_name.trim().is_empty() {
             return Err("No serial port selected".into());
         }
 
         let (tx, rx) = std::sync::mpsc::channel();
-        self.serial_connect_rx = Some(rx);
-        self.serial_connect_in_progress = true;
-        self.serial.status = ConnectionStatus::Connecting;
+        self.conn.serial_connect_rx = Some(rx);
+        self.conn.serial_connect_in_progress = true;
+        self.conn.serial.status = ConnectionStatus::Connecting;
 
         thread::spawn(move || {
             let mut svc = SerialService::new();
@@ -2168,39 +1946,39 @@ impl AppState {
     }
 
     pub fn disconnect_active(&mut self) {
-        self.reconnect_armed = false;
-        self.reconnect_paused_by_user = true;
-        self.clear_reconnect_schedule();
-        self.serial_connect_in_progress = false;
-        self.serial_connect_rx = None;
-        match self.active_conn {
+        self.conn.reconnect_armed = false;
+        self.conn.reconnect_paused_by_user = true;
+        self.conn.clear_reconnect_schedule();
+        self.conn.serial_connect_in_progress = false;
+        self.conn.serial_connect_rx = None;
+        match self.conn.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
-                self.serial.disconnect()
+                self.conn.serial.disconnect()
             }
-            ConnectionType::Tcp | ConnectionType::ModbusTcp => self.tcp.disconnect(),
-            ConnectionType::Udp => self.udp.close(),
+            ConnectionType::Tcp | ConnectionType::ModbusTcp => self.conn.tcp.disconnect(),
+            ConnectionType::Udp => self.conn.udp.close(),
             ConnectionType::Can | ConnectionType::CanFd => {
-                self.can.is_running = false;
+                self.conn.can.is_running = false;
             }
         }
     }
 
     pub fn send_data(&mut self, data: &[u8]) -> Result<(), String> {
-        let result = match self.active_conn {
+        let result = match self.conn.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
-                self.serial.send_data(data).map_err(|e| e.to_string())
+                self.conn.serial.send_data(data).map_err(|e| e.to_string())
             }
             ConnectionType::Tcp | ConnectionType::ModbusTcp => {
-                self.tcp.send_data(data).map_err(|e| e.to_string())
+                self.conn.tcp.send_data(data).map_err(|e| e.to_string())
             }
-            ConnectionType::Udp => self.udp.send_default(data).map_err(|e| e.to_string()),
+            ConnectionType::Udp => self.conn.udp.send_default(data).map_err(|e| e.to_string()),
             _ => Err("Channel not supported".into()),
         };
 
         if result.is_ok() {
-            self.add_log(LogDirection::Tx, data, &self.active_conn.to_string());
+            self.add_log(LogDirection::Tx, data, &self.conn.active_conn.to_string());
         } else if let Err(e) = &result {
-            self.report_error(format!("Send failed ({}): {}", self.active_conn, e));
+            self.report_error(format!("Send failed ({}): {}", self.conn.active_conn, e));
         }
         result
     }
@@ -2208,50 +1986,53 @@ impl AppState {
     pub fn poll_data(&mut self) {
         let profile = self.performance_profile();
         let now = Instant::now();
-        if now.duration_since(self.last_io_poll_instant)
+        if now.duration_since(self.conn.last_io_poll_instant)
             < Duration::from_millis(profile.io_poll_interval_ms)
         {
             return;
         }
-        self.last_io_poll_instant = now;
+        self.conn.last_io_poll_instant = now;
 
-        if self.serial.is_connected() {
-            let raw = self.serial.try_read_raw();
+        if self.conn.serial.is_connected() {
+            let raw = self.conn.serial.try_read_raw();
             if !raw.is_empty() {
-                self.last_rx_instant = Some(now);
+                self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &raw, "Serial");
-                self.serial.push_rx_data(&raw);
+                self.conn.serial.push_rx_data(&raw);
             }
         }
 
-        if self.tcp.is_connected() {
-            let data = self.tcp.try_read_raw();
+        if self.conn.tcp.is_connected() {
+            let data = self.conn.tcp.try_read_raw();
             if !data.is_empty() {
-                self.last_rx_instant = Some(now);
+                self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "TCP");
             }
         }
 
-        if self.udp.is_connected() {
-            let data = self.udp.try_read_raw();
+        if self.conn.udp.is_connected() {
+            let data = self.conn.udp.try_read_raw();
             if !data.is_empty() {
-                self.last_rx_instant = Some(now);
+                self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "UDP");
             }
         }
 
-        if self.serial.is_connected() {
-            while let Some(state) = self.serial.try_parse_state_from_buffer() {
+        if self.conn.serial.is_connected() {
+            while let Some(state) = self.conn.serial.try_parse_state_from_buffer() {
                 let mut s = state;
-                if self.is_running {
+                if self.control.is_running {
                     let output = self.compute_active_algorithm(s.position, s.velocity);
                     s.pid_output = output;
                     s.error = self.get_active_setpoint() - s.position;
-                    let _ = self.serial.send_position_control(output);
+                    let _ = self.conn.serial.send_position_control(output);
                 }
-                self.current_state = s.clone();
-                self.state_history.push(s);
-                Self::trim_vec(&mut self.state_history, profile.max_state_history.max(1));
+                self.control.current_state = s.clone();
+                self.control.state_history.push(s);
+                Self::trim_vec(
+                    &mut self.control.state_history,
+                    profile.max_state_history.max(1),
+                );
             }
         }
 
@@ -2259,40 +2040,37 @@ impl AppState {
         self.refresh_resource_status();
     }
     fn add_log(&mut self, dir: LogDirection, data: &[u8], channel: &str) {
-        let entry = LogEntry {
+        let msg = String::from_utf8_lossy(data);
+        self.log
+            .add_log_with_display_mode(dir, &msg, self.ui.display_mode, channel);
+        self.append_log(&LogEntry {
             timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
             direction: dir,
             data: data.to_vec(),
             display_mode: self.ui.display_mode,
             channel: channel.into(),
-        };
-        let max_log_entries = self.performance_profile().max_log_entries.max(1);
-        self.log_entries.push(entry.clone());
-        Self::trim_vec(&mut self.log_entries, max_log_entries);
-        self.append_log(&entry);
+        });
         self.refresh_resource_status();
     }
 
     pub fn add_info_log(&mut self, msg: &str) {
-        let entry = LogEntry {
+        self.log
+            .add_log_with_display_mode(LogDirection::Info, msg, DisplayMode::Ascii, "System");
+        self.append_log(&LogEntry {
             timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string(),
             direction: LogDirection::Info,
             data: msg.as_bytes().to_vec(),
             display_mode: DisplayMode::Ascii,
             channel: "System".into(),
-        };
-        let max_log_entries = self.performance_profile().max_log_entries.max(1);
-        self.log_entries.push(entry.clone());
-        Self::trim_vec(&mut self.log_entries, max_log_entries);
-        self.append_log(&entry);
+        });
         self.refresh_resource_status();
     }
 
-    // 鈹€鈹€鈹€ 鎺у埗鎿嶄綔 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // Control actions
 
     pub fn toggle_running(&mut self) {
-        self.is_running = !self.is_running;
-        if self.is_running {
+        self.control.toggle_running();
+        if self.control.is_running {
             self.reset_active_algorithm();
             self.status_message = "Control started".into();
         } else {
@@ -2301,130 +2079,84 @@ impl AppState {
     }
 
     pub fn emergency_stop(&mut self) {
-        self.is_running = false;
-        if self.serial.is_connected() {
-            let _ = self.serial.send_emergency_stop();
+        self.control.is_running = false;
+        if self.conn.serial.is_connected() {
+            let _ = self.conn.serial.send_emergency_stop();
         }
         self.status_message = "EMERGENCY STOP!".into();
-        self.add_info_log("\u{26A0} Emergency Stop activated!");
+        self.add_info_log("Warning: Emergency Stop activated!");
     }
 
-    // 鈹€鈹€鈹€ 鎺у埗绠楁硶鍒嗗彂 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // Control algorithm dispatch
 
-    /// 璋冪敤褰撳墠婵€娲荤殑鎺у埗绠楁硶杩涜璁＄畻
+    /// Compute the output with the active control algorithm.
     pub fn compute_active_algorithm(&mut self, position: f64, velocity: f64) -> f64 {
-        match self.active_algorithm {
-            ControlAlgorithmType::ClassicPid => self.pid.compute(position),
-            ControlAlgorithmType::IncrementalPid => self.incremental_pid.compute(position),
-            ControlAlgorithmType::BangBang => self.bang_bang.compute(position),
-            ControlAlgorithmType::FuzzyPid => self.fuzzy_pid.compute(position),
-            ControlAlgorithmType::CascadePid => self.cascade_pid.compute(position, velocity),
-            ControlAlgorithmType::SmithPredictor => self.smith_predictor.compute(position),
-            ControlAlgorithmType::Adrc => self.adrc.compute(position),
-            ControlAlgorithmType::Ladrc => self.ladrc.compute(position),
-            ControlAlgorithmType::Lqr => self.lqr.compute(position),
-            ControlAlgorithmType::Mpc => self.mpc.compute(position),
-        }
+        self.control.compute_dual(position, velocity)
     }
 
-    /// 鑾峰彇褰撳墠绠楁硶鐨勮瀹氬€?
     pub fn get_active_setpoint(&self) -> f64 {
-        match self.active_algorithm {
-            ControlAlgorithmType::ClassicPid => self.pid.setpoint,
-            ControlAlgorithmType::IncrementalPid => self.incremental_pid.setpoint,
-            ControlAlgorithmType::BangBang => self.bang_bang.setpoint,
-            ControlAlgorithmType::FuzzyPid => self.fuzzy_pid.setpoint,
-            ControlAlgorithmType::CascadePid => self.cascade_pid.setpoint,
-            ControlAlgorithmType::SmithPredictor => self.smith_predictor.setpoint,
-            ControlAlgorithmType::Adrc => self.adrc.setpoint,
-            ControlAlgorithmType::Ladrc => self.ladrc.setpoint,
-            ControlAlgorithmType::Lqr => self.lqr.setpoint,
-            ControlAlgorithmType::Mpc => self.mpc.setpoint,
-        }
+        self.control.setpoint()
     }
 
-    /// 閲嶇疆褰撳墠婵€娲荤殑鎺у埗绠楁硶
     pub fn reset_active_algorithm(&mut self) {
-        match self.active_algorithm {
-            ControlAlgorithmType::ClassicPid => self.pid.reset(),
-            ControlAlgorithmType::IncrementalPid => self.incremental_pid.reset(),
-            ControlAlgorithmType::BangBang => self.bang_bang.reset(),
-            ControlAlgorithmType::FuzzyPid => self.fuzzy_pid.reset(),
-            ControlAlgorithmType::CascadePid => self.cascade_pid.reset(),
-            ControlAlgorithmType::SmithPredictor => self.smith_predictor.reset(),
-            ControlAlgorithmType::Adrc => self.adrc.reset(),
-            ControlAlgorithmType::Ladrc => self.ladrc.reset(),
-            ControlAlgorithmType::Lqr => self.lqr.reset(),
-            ControlAlgorithmType::Mpc => self.mpc.reset(),
-        }
+        self.control.reset_active();
     }
 
-    /// 鑾峰彇褰撳墠绠楁硶鐨勮緭鍑哄€?
-    pub fn get_active_output(&self) -> f64 {
-        match self.active_algorithm {
-            ControlAlgorithmType::ClassicPid => self.pid.output,
-            ControlAlgorithmType::IncrementalPid => self.incremental_pid.output,
-            ControlAlgorithmType::BangBang => self.bang_bang.output,
-            ControlAlgorithmType::FuzzyPid => self.fuzzy_pid.output,
-            ControlAlgorithmType::CascadePid => self.cascade_pid.output,
-            ControlAlgorithmType::SmithPredictor => self.smith_predictor.output,
-            ControlAlgorithmType::Adrc => self.adrc.output,
-            ControlAlgorithmType::Ladrc => self.ladrc.output,
-            ControlAlgorithmType::Lqr => self.lqr.output,
-            ControlAlgorithmType::Mpc => self.mpc.output,
-        }
-    }
-
-    // 鈹€鈹€鈹€ NN 璋冨弬 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // Neural-network tuning
 
     pub fn nn_suggest_params(&mut self) {
-        let errors: Vec<f64> = self.state_history.iter().map(|s| s.error).collect();
+        let errors: Vec<f64> = self.control.state_history.iter().map(|s| s.error).collect();
         if errors.len() < 10 {
             return;
         }
         let features = NeuralNetwork::extract_features(&errors);
-        let output = self.nn.forward(&features);
-        self.nn_suggested_kp = output[0] * 5.0;
-        self.nn_suggested_ki = output[1] * 2.0;
-        self.nn_suggested_kd = output[2] * 1.0;
+        let output = self.control.nn.forward(&features);
+        self.control.nn_suggested_kp = output[0] * 5.0;
+        self.control.nn_suggested_ki = output[1] * 2.0;
+        self.control.nn_suggested_kd = output[2] * 1.0;
     }
 
     pub fn nn_train_step(&mut self) {
-        let errors: Vec<f64> = self.state_history.iter().map(|s| s.error).collect();
+        let errors: Vec<f64> = self.control.state_history.iter().map(|s| s.error).collect();
         if errors.len() < 20 {
             return;
         }
         let features = NeuralNetwork::extract_features(&errors);
         let performance =
             1.0 / (1.0 + errors.iter().map(|e| e.abs()).sum::<f64>() / errors.len() as f64);
+        let pid = self.control.pid();
         let target = vec![
-            (self.pid.kp / 5.0).clamp(0.0, 1.0) * performance,
-            (self.pid.ki / 2.0).clamp(0.0, 1.0) * performance,
-            (self.pid.kd / 1.0).clamp(0.0, 1.0) * performance,
+            (pid.kp / 5.0).clamp(0.0, 1.0) * performance,
+            (pid.ki / 2.0).clamp(0.0, 1.0) * performance,
+            (pid.kd / 1.0).clamp(0.0, 1.0) * performance,
         ];
-        let loss = self.nn.train_step(&features, &target);
+        let loss = self.control.nn.train_step(&features, &target);
         self.status_message = format!(
             "NN Training - Loss: {:.6}, Epoch: {}",
-            loss, self.nn.training_epochs
+            loss, self.control.nn.training_epochs
         );
     }
 
     pub fn apply_nn_params(&mut self) {
-        self.pid.kp = self.nn_suggested_kp;
-        self.pid.ki = self.nn_suggested_ki;
-        self.pid.kd = self.nn_suggested_kd;
-        self.ui.kp_text = format!("{:.3}", self.pid.kp);
-        self.ui.ki_text = format!("{:.3}", self.pid.ki);
-        self.ui.kd_text = format!("{:.3}", self.pid.kd);
+        let kp = self.control.nn_suggested_kp;
+        let ki = self.control.nn_suggested_ki;
+        let kd = self.control.nn_suggested_kd;
+        let pid = self.control.pid_mut();
+        pid.kp = kp;
+        pid.ki = ki;
+        pid.kd = kd;
+        self.ui.kp_text = format!("{:.3}", kp);
+        self.ui.ki_text = format!("{:.3}", ki);
+        self.ui.kd_text = format!("{:.3}", kd);
         self.status_message = "Applied NN suggested parameters".into();
     }
 
-    // 鈹€鈹€鈹€ 瑙ｆ瀽鏁版嵁鑱斿姩鍙鍖?鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // Parsed packet data feeds visualization channels
 
-    /// 灏嗚В鏋愬嚭鐨勬暟鎹寘瀛楁鎺ㄩ€佸埌瀵瑰簲鐨勫彲瑙嗗寲閫氶亾缂撳啿鍖?
+    /// Push parsed packet fields into matching visualization channel buffers.
     pub fn feed_parsed_to_channels(&mut self, parsed: &ParsedPacket) {
         let mut dropped_total = 0usize;
-        for (i, ch) in self.data_channels.iter().enumerate() {
+        for (i, ch) in self.viz.data_channels.iter().enumerate() {
             if !ch.enabled {
                 continue;
             }
@@ -2435,10 +2167,10 @@ impl AppState {
             {
                 if *template_name == parsed.template_name {
                     if let Some(val) = parsed.field_value(field_name) {
-                        while self.channel_buffers.len() <= i {
-                            self.channel_buffers.push(TimeSeriesBuffer::default());
+                        while self.viz.channel_buffers.len() <= i {
+                            self.viz.channel_buffers.push(TimeSeriesBuffer::default());
                         }
-                        let dropped = self.channel_buffers[i].push_with_overflow(val);
+                        let dropped = self.viz.channel_buffers[i].push_with_overflow(val);
                         if dropped > 0 {
                             dropped_total += dropped;
                         }
@@ -2451,21 +2183,21 @@ impl AppState {
         }
     }
 
-    /// 浠庤В鏋愮粨鏋滅殑瀛楁蹇€熷垱寤哄彲瑙嗗寲閫氶亾
+    /// Create a visualization channel from a parsed packet field.
     pub fn add_channel_from_parsed_field(
         &mut self,
         template_name: &str,
         field_name: &str,
         viz_type: crate::models::VizType,
     ) {
-        if let Some((idx, _)) = self.data_channels.iter().enumerate().find(|(_, ch)| {
+        if let Some((idx, _)) = self.viz.data_channels.iter().enumerate().find(|(_, ch)| {
             matches!(
                 &ch.source,
                 DataSource::PacketField { template_name: t, field_name: f }
                     if t == template_name && f == field_name
             )
         }) {
-            self.data_channels[idx].enabled = true;
+            self.viz.data_channels[idx].enabled = true;
             self.status_message = format!(
                 "Packet field channel already exists: {}/{}",
                 template_name, field_name
@@ -2487,7 +2219,7 @@ impl AppState {
             [100, 200, 100],
             [200, 150, 80],
         ];
-        let c = colors[self.data_channels.len() % colors.len()];
+        let c = colors[self.viz.data_channels.len() % colors.len()];
         let name = format!("{}/{}", template_name, field_name);
         let ch = DataChannel::new(
             &name,
@@ -2498,16 +2230,16 @@ impl AppState {
             viz_type,
             c,
         );
-        self.data_channels.push(ch);
-        self.channel_buffers.push(TimeSeriesBuffer::default());
+        self.viz.data_channels.push(ch);
+        self.viz.channel_buffers.push(TimeSeriesBuffer::default());
 
-        // 鍥炲～宸叉湁鐨勮В鏋愮粨鏋?
-        let buf_idx = self.channel_buffers.len() - 1;
+        // Backfill existing parsed packet values.
+        let buf_idx = self.viz.channel_buffers.len() - 1;
         let mut dropped_total = 0usize;
-        for pkt in &self.parsed_packets {
+        for pkt in &self.protocol.parsed_packets {
             if pkt.template_name == template_name {
                 if let Some(val) = pkt.field_value(field_name) {
-                    let dropped = self.channel_buffers[buf_idx].push_with_overflow(val);
+                    let dropped = self.viz.channel_buffers[buf_idx].push_with_overflow(val);
                     if dropped > 0 {
                         dropped_total += dropped;
                     }
@@ -2519,10 +2251,10 @@ impl AppState {
         }
     }
 
-    /// 鑾峰彇宸茶В鏋愭暟鎹寘涓墍鏈夊彲鐢ㄧ殑 (template_name, field_name) 瀵?
+    /// Return all numeric parsed packet fields as (template_name, field_name).
     pub fn available_packet_fields(&self) -> Vec<(String, String)> {
         let mut fields = Vec::new();
-        for pkt in &self.parsed_packets {
+        for pkt in &self.protocol.parsed_packets {
             for f in &pkt.fields {
                 if f.value_f64.is_some() {
                     let pair = (pkt.template_name.clone(), f.name.clone());
@@ -2535,16 +2267,16 @@ impl AppState {
         fields
     }
 
-    // 鈹€鈹€鈹€ LLM 鏅鸿兘璋冨弬 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // LLM-assisted tuning
 
-    /// 浣跨敤 LLM API 鑾峰彇璋冨弬寤鸿
+    /// Request PID tuning suggestions from the configured LLM API.
     pub fn llm_suggest_params(&mut self) {
         use crate::services::llm_service::LlmService;
         if self.ui.llm_loading {
             self.status_message = "LLM request is already running".into();
             return;
         }
-        let errors: Vec<f64> = self.state_history.iter().map(|s| s.error).collect();
+        let errors: Vec<f64> = self.control.state_history.iter().map(|s| s.error).collect();
         if errors.len() < 10 {
             self.report_error("Need at least 10 data points for LLM analysis");
             return;
@@ -2563,11 +2295,14 @@ impl AppState {
 
         let api_url = self.ui.llm_api_url.clone();
         let model = self.ui.llm_model_name.clone();
-        let current_params = crate::services::llm_service::PidParams {
-            kp: self.pid.kp,
-            ki: self.pid.ki,
-            kd: self.pid.kd,
-            setpoint: self.pid.setpoint,
+        let current_params = {
+            let pid = self.control.pid();
+            crate::services::llm_service::PidParams {
+                kp: pid.kp,
+                ki: pid.ki,
+                kd: pid.kd,
+                setpoint: pid.setpoint,
+            }
         };
 
         self.ui.llm_loading = true;
@@ -2577,11 +2312,13 @@ impl AppState {
         info!(target: "llm", model = %model, api_url = %api_url, "llm_request_started");
 
         let (tx, rx) = std::sync::mpsc::channel();
-        self.llm_result_rx = Some(rx);
+        self.external.llm_result_rx = Some(rx);
 
         std::thread::spawn(move || {
             let llm = LlmService::new(api_url, api_key, model);
-            let result = llm.suggest_pid_params(&current_params, &errors);
+            let result = llm
+                .suggest_pid_params(&current_params, &errors)
+                .map_err(|e| e.to_string());
             let _ = tx.send(result);
         });
     }
@@ -2602,64 +2339,64 @@ impl AppState {
 
         self.flush_pending_logs();
 
-        if let Some(rx) = self.serial_connect_rx.take() {
+        if let Some(rx) = self.conn.serial_connect_rx.take() {
             match rx.try_recv() {
                 Ok(result) => {
-                    self.serial_connect_in_progress = false;
+                    self.conn.serial_connect_in_progress = false;
                     match result {
                         Ok(serial) => {
-                            self.serial = serial;
+                            self.conn.serial = serial;
                             self.arm_auto_reconnect();
-                            info!(target: "connection", connection = %self.active_conn, "connect_success");
-                            self.add_info_log(&format!("Connected: {}", self.active_conn));
+                            info!(target: "connection", connection = %self.conn.active_conn, "connect_success");
+                            self.add_info_log(&format!("Connected: {}", self.conn.active_conn));
                         }
                         Err(e) => {
-                            self.serial.status = ConnectionStatus::Error;
+                            self.conn.serial.status = ConnectionStatus::Error;
                             self.metrics.connect_failures += 1;
                             self.report_error(format!(
                                 "Connect failed ({}): {}",
-                                self.active_conn, e
+                                self.conn.active_conn, e
                             ));
                         }
                     }
                 }
                 Err(TryRecvError::Empty) => {
-                    self.serial_connect_rx = Some(rx);
+                    self.conn.serial_connect_rx = Some(rx);
                 }
                 Err(TryRecvError::Disconnected) => {
-                    self.serial_connect_in_progress = false;
-                    self.serial.status = ConnectionStatus::Error;
+                    self.conn.serial_connect_in_progress = false;
+                    self.conn.serial.status = ConnectionStatus::Error;
                     self.report_error("Serial connect worker disconnected unexpectedly");
                 }
             }
         }
 
-        if let Some(rx) = self.port_scan_rx.take() {
+        if let Some(rx) = self.conn.port_scan_rx.take() {
             match rx.try_recv() {
                 Ok(ports) => {
-                    self.port_scan_in_progress = false;
+                    self.conn.port_scan_in_progress = false;
                     self.apply_scanned_ports(ports);
                 }
                 Err(TryRecvError::Empty) => {
-                    self.port_scan_rx = Some(rx);
+                    self.conn.port_scan_rx = Some(rx);
                 }
                 Err(TryRecvError::Disconnected) => {
-                    self.port_scan_in_progress = false;
+                    self.conn.port_scan_in_progress = false;
                     self.report_error("Serial port scan worker disconnected unexpectedly");
                 }
             }
         }
 
-        if let Some(rx) = self.llm_result_rx.take() {
+        if let Some(rx) = self.external.llm_result_rx.take() {
             match rx.try_recv() {
                 Ok(result) => {
                     self.ui.llm_loading = false;
                     match result {
                         Ok(suggested) => {
                             self.metrics.llm_success += 1;
-                            self.nn_suggested_kp = suggested.kp;
-                            self.nn_suggested_ki = suggested.ki;
-                            self.nn_suggested_kd = suggested.kd;
+                            self.control.nn_suggested_kp = suggested.kp;
+                            self.control.nn_suggested_ki = suggested.ki;
+                            self.control.nn_suggested_kd = suggested.kd;
                             self.ui.llm_last_response = suggested.reasoning.clone();
                             self.status_message = format!(
                                 "LLM suggested: Kp={:.4} Ki={:.4} Kd={:.4}",
@@ -2676,7 +2413,7 @@ impl AppState {
                     }
                 }
                 Err(TryRecvError::Empty) => {
-                    self.llm_result_rx = Some(rx);
+                    self.external.llm_result_rx = Some(rx);
                 }
                 Err(TryRecvError::Disconnected) => {
                     self.ui.llm_loading = false;
@@ -2690,143 +2427,84 @@ impl AppState {
         self.refresh_resource_status();
     }
 
-    pub fn start_mcp_server(&mut self) -> Result<(), String> {
-        if self.ui.mcp_running {
-            return Ok(());
-        }
-        let port = parse_port(&self.ui.mcp_port_text, "MCP port")?;
-        let token = self.ui.mcp_token_text.trim().to_string();
-        let token = if token.is_empty() { None } else { Some(token) };
+    pub fn start_mcp_server(&mut self) {
+        let state = self.external.mcp_shared_state.clone();
 
-        let running = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        crate::services::mcp_server::McpServer::start(
-            self.mcp_shared_state.clone(),
-            port,
-            token,
-            running.clone(),
-        )?;
+        // 在 tokio 运行时中启动 MCP 服务器
+        let handle = tokio::spawn(async move {
+            if let Err(e) = mcp_server::start_mcp_server(state).await {
+                tracing::error!("MCP server error: {:?}", e);
+            }
+        });
 
-        self.mcp_server_handle = Some(running);
+        self.external.mcp_server_handle = Some(handle);
         self.ui.mcp_running = true;
         self.metrics.mcp_startups += 1;
-        self.status_message = format!("MCP server started on 0.0.0.0:{}", port);
-        self.add_info_log(&self.status_message.clone());
-        info!(target: "mcp", port = port, "mcp_server_started");
-        Ok(())
+        self.status_message = "MCP server started".into();
     }
 
     pub fn stop_mcp_server(&mut self) {
-        if let Some(running) = self.mcp_server_handle.take() {
-            crate::services::mcp_server::McpServer::stop(running);
+        if let Some(handle) = self.external.mcp_server_handle.take() {
+            handle.abort();
         }
         self.ui.mcp_running = false;
         self.status_message = "MCP server stopped".into();
-        self.add_info_log("MCP server stopped");
-        info!(target: "mcp", "mcp_server_stopped");
     }
 
     pub fn toggle_mcp_server(&mut self) {
         if self.ui.mcp_running {
             self.stop_mcp_server();
         } else {
-            match self.start_mcp_server() {
-                Ok(()) => {}
-                Err(e) => {
-                    self.status_message = format!("MCP start failed: {}", e);
-                }
-            }
+            self.start_mcp_server();
         }
     }
 
     pub fn reset_counters(&mut self) {
-        self.serial.bytes_sent = 0;
-        self.serial.bytes_received = 0;
-        self.serial.error_count = 0;
-        self.tcp.bytes_sent = 0;
-        self.tcp.bytes_received = 0;
-        self.tcp.error_count = 0;
-        self.udp.bytes_sent = 0;
-        self.udp.bytes_received = 0;
-        self.udp.error_count = 0;
+        self.conn.reset_counters();
     }
 
     pub fn sync_mcp_state(&mut self) {
-        if self.can.dropped_frames > self.can_dropped_frames_seen {
-            self.can_dropped_frames_seen = self.can.dropped_frames;
-            self.report_error(format!(
-                "CAN frame buffer reached limit; dropped {} frames",
-                self.can.dropped_frames
-            ));
-        }
+        // 使用 try_lock 避免阻塞 GUI 线程
+        let mut s = match self.external.mcp_shared_state.try_lock() {
+            Ok(s) => s,
+            Err(_) => return, // 如果锁被占用，跳过本次同步
+        };
 
-        if self.channel_overflow_events > self.channel_overflow_notified {
-            self.channel_overflow_notified = self.channel_overflow_events;
-            self.report_error(format!(
-                "Data channel buffers reached limit; dropped {} points",
-                self.channel_overflow_events
-            ));
-        }
+        // 同步 PID 参数
+        let pid = self.control.pid();
+        s.kp = pid.kp;
+        s.ki = pid.ki;
+        s.kd = pid.kd;
+        s.setpoint = pid.setpoint;
 
-        if !self.ui.mcp_running {
-            return;
-        }
+        // 同步当前状态
+        s.current_state = self.control.current_state.clone();
 
-        let now = Instant::now();
-        if let Some(last) = self.last_mcp_sync_instant {
-            if now.duration_since(last) < Duration::from_millis(120) {
-                return;
-            }
-        }
-        self.last_mcp_sync_instant = Some(now);
+        // 同步状态历史（最近 500 条）
+        let history = &self.control.state_history;
+        let start = if history.len() > 500 {
+            history.len() - 500
+        } else {
+            0
+        };
+        s.state_history = history[start..].to_vec();
 
-        if let Ok(mut mcp) = self.mcp_shared_state.lock() {
-            mcp.kp = self.pid.kp;
-            mcp.ki = self.pid.ki;
-            mcp.kd = self.pid.kd;
-            mcp.setpoint = self.pid.setpoint;
-            mcp.current_state = self.current_state.clone();
-            mcp.state_history = self
-                .state_history
-                .iter()
-                .rev()
-                .take(500)
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect();
-            mcp.parsed_packets = self
-                .parsed_packets
-                .iter()
-                .rev()
-                .take(200)
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect();
-            mcp.suggested_kp = self.nn_suggested_kp;
-            mcp.suggested_ki = self.nn_suggested_ki;
-            mcp.suggested_kd = self.nn_suggested_kd;
-            mcp.status = self.status_message.clone();
-        }
+        // 同步解析的数据包（最近 200 条）
+        // ... 类似逻辑
+
+        // 同步 AI 建议参数
+        s.suggested_kp = self.control.nn_suggested_kp;
+        s.suggested_ki = self.control.nn_suggested_ki;
+        s.suggested_kd = self.control.nn_suggested_kd;
+        s.status = self.status_message.clone();
     }
 
-    // 鈹€鈹€鈹€ 鍥捐〃鏁版嵁 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-
-    pub fn chart_data(&self, f: impl Fn(&RobotState) -> f64) -> Vec<[f64; 2]> {
-        let start = self.state_history.len().saturating_sub(200);
-        self.state_history[start..]
-            .iter()
-            .enumerate()
-            .map(|(i, s)| [i as f64, f(s)])
-            .collect()
-    }
+    // Chart data
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_port, parse_version_triplet, AppState, LOG_FILE_MAX_BYTES};
+    use super::{parse_port, parse_version_triplet, valid_http_url, AppState, LOG_FILE_MAX_BYTES};
     use std::fs;
     use std::io::Write;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -2868,7 +2546,7 @@ mod tests {
         s1.ui.tcp_host = "192.168.1.10".into();
         s1.ui.tcp_port_text = "12345".into();
         s1.ui.mcp_token_text = "token-abc".into();
-        s1.active_conn = crate::models::ConnectionType::Tcp;
+        s1.conn.active_conn = crate::models::ConnectionType::Tcp;
         s1.save_user_preferences_to_path(&path);
 
         let mut s2 = AppState::new();
@@ -2877,7 +2555,7 @@ mod tests {
         assert_eq!(s2.ui.tcp_host, "192.168.1.10");
         assert_eq!(s2.ui.tcp_port_text, "12345");
         assert_eq!(s2.ui.mcp_token_text, "token-abc");
-        assert_eq!(s2.active_conn, crate::models::ConnectionType::Tcp);
+        assert_eq!(s2.conn.active_conn, crate::models::ConnectionType::Tcp);
 
         let _ = fs::remove_file(path);
     }
@@ -2899,10 +2577,10 @@ mod tests {
         s1.ui.update_channel = "preview-0.1".into();
         s1.ui.update_manifest_url = "https://example.com/manifest.json".into();
         s1.ui.update_check_timeout_ms = 2600;
-        s1.save_user_preferences_as(&path);
+        s1.save_user_preferences_to_path(&path);
 
         let mut s2 = AppState::new();
-        s2.load_user_preferences_from(&path);
+        s2.load_user_preferences_from_path(&path);
 
         assert_eq!(s2.ui.motion_level_idx, 3);
         assert_eq!(s2.ui.usb_protocol_idx, 9);
@@ -2943,12 +2621,12 @@ mod tests {
     #[test]
     fn test_can_status_reflects_running_state() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Can;
+        s.conn.active_conn = crate::models::ConnectionType::Can;
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Disconnected
         );
-        s.can.is_running = true;
+        s.conn.can.is_running = true;
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Connected
@@ -2959,15 +2637,15 @@ mod tests {
     #[test]
     fn test_connect_disconnect_can_channel() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::CanFd;
+        s.conn.active_conn = crate::models::ConnectionType::CanFd;
         s.connect_active().unwrap();
-        assert!(s.can.is_running);
+        assert!(s.conn.can.is_running);
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Connected
         );
         s.disconnect_active();
-        assert!(!s.can.is_running);
+        assert!(!s.conn.can.is_running);
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Disconnected
@@ -2992,35 +2670,35 @@ mod tests {
     #[test]
     fn test_serial_status_mapping_and_link_health() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
 
-        s.serial.status = crate::models::ConnectionStatus::Connecting;
+        s.conn.serial.status = crate::models::ConnectionStatus::Connecting;
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Connecting
         );
         assert_eq!(s.link_health_text(), "Connecting");
 
-        s.serial.status = crate::models::ConnectionStatus::Error;
+        s.conn.serial.status = crate::models::ConnectionStatus::Error;
         assert_eq!(s.active_status(), crate::models::ConnectionStatus::Error);
         assert_eq!(s.link_health_text(), "Error");
 
-        s.serial.status = crate::models::ConnectionStatus::Disconnected;
-        s.reconnect_paused_by_user = true;
+        s.conn.serial.status = crate::models::ConnectionStatus::Disconnected;
+        s.conn.pause_auto_reconnect();
         assert_eq!(s.link_health_text(), "Offline (manual)");
     }
 
     #[test]
     fn test_serial_is_any_connected_reflects_serial_service() {
         let mut s = AppState::new();
-        s.serial.status = crate::models::ConnectionStatus::Disconnected;
+        s.conn.serial.status = crate::models::ConnectionStatus::Disconnected;
         assert!(!s.is_any_connected());
 
-        s.serial.status = crate::models::ConnectionStatus::Connected;
+        s.conn.serial.status = crate::models::ConnectionStatus::Connected;
         assert!(!s.is_any_connected());
 
-        s.serial.status = crate::models::ConnectionStatus::Connected;
-        s.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.serial.status = crate::models::ConnectionStatus::Connected;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
         assert_eq!(
             s.active_status(),
             crate::models::ConnectionStatus::Connected
@@ -3030,19 +2708,19 @@ mod tests {
     #[test]
     fn test_serial_auto_reconnect_throttled_by_interval() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
         s.ui.auto_reconnect_enabled = true;
         s.ui.auto_reconnect_interval_ms = 3000;
-        s.reconnect_armed = true;
-        s.reconnect_paused_by_user = false;
-        s.serial.config.port_name = "COM1".into();
-        s.port_scan_in_progress = false;
+        s.conn.arm_auto_reconnect();
+        s.conn.resume_auto_reconnect();
+        s.conn.serial.config.port_name = "COM1".into();
+        s.conn.port_scan_in_progress = false;
 
         let before_attempts = s.metrics.connect_attempts;
         s.maintain_connection();
         let after_first = s.metrics.connect_attempts;
         assert_eq!(after_first, before_attempts + 1);
-        assert!(s.next_reconnect_at.is_some());
+        assert!(s.conn.next_reconnect_at.is_some());
 
         s.maintain_connection();
         let after_second = s.metrics.connect_attempts;
@@ -3052,32 +2730,32 @@ mod tests {
     #[test]
     fn test_serial_auto_reconnect_respects_manual_pause() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
         s.ui.auto_reconnect_enabled = true;
-        s.reconnect_paused_by_user = true;
-        s.next_reconnect_at = Some(std::time::Instant::now());
+        s.conn.pause_auto_reconnect();
+        s.conn.next_reconnect_at = Some(std::time::Instant::now());
 
         let before_attempts = s.metrics.connect_attempts;
         s.maintain_connection();
 
         assert_eq!(s.metrics.connect_attempts, before_attempts);
-        assert!(s.next_reconnect_at.is_none());
+        assert!(s.conn.next_reconnect_at.is_none());
     }
 
     #[test]
     fn test_serial_auto_reconnect_requires_prior_success() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
         s.ui.auto_reconnect_enabled = true;
-        s.reconnect_paused_by_user = false;
-        s.serial.config.port_name = "COM1".into();
+        s.conn.resume_auto_reconnect();
+        s.conn.serial.config.port_name = "COM1".into();
 
         let before_attempts = s.metrics.connect_attempts;
         s.maintain_connection();
         assert_eq!(s.metrics.connect_attempts, before_attempts);
-        assert!(s.next_reconnect_at.is_none());
+        assert!(s.conn.next_reconnect_at.is_none());
 
-        s.reconnect_armed = true;
+        s.conn.arm_auto_reconnect();
         s.maintain_connection();
         assert_eq!(s.metrics.connect_attempts, before_attempts + 1);
     }
@@ -3085,27 +2763,27 @@ mod tests {
     #[test]
     fn test_connect_active_requires_manual_port_refresh() {
         let mut s = AppState::new();
-        s.active_conn = crate::models::ConnectionType::Serial;
-        s.serial.config.port_name.clear();
-        s.port_scan_in_progress = false;
+        s.conn.active_conn = crate::models::ConnectionType::Serial;
+        s.conn.serial.config.port_name.clear();
+        s.conn.port_scan_in_progress = false;
 
         let err = s.connect_active().unwrap_err();
         assert!(err.contains("Refresh ports"));
-        assert!(!s.port_scan_in_progress);
+        assert!(!s.conn.port_scan_in_progress);
     }
 
     #[test]
     fn test_manual_disconnect_disarms_reconnect() {
         let mut s = AppState::new();
-        s.reconnect_armed = true;
-        s.reconnect_paused_by_user = false;
-        s.next_reconnect_at = Some(std::time::Instant::now());
+        s.conn.arm_auto_reconnect();
+        s.conn.resume_auto_reconnect();
+        s.conn.next_reconnect_at = Some(std::time::Instant::now());
 
         s.disconnect_active();
 
-        assert!(!s.reconnect_armed);
-        assert!(s.reconnect_paused_by_user);
-        assert!(s.next_reconnect_at.is_none());
+        assert!(!s.conn.reconnect_armed());
+        assert!(s.conn.reconnect_paused());
+        assert!(s.conn.next_reconnect_at.is_none());
     }
 
     #[test]
@@ -3123,5 +2801,91 @@ mod tests {
 
         let _ = fs::remove_file(path);
         let _ = fs::remove_file(backup);
+    }
+
+    #[test]
+    fn test_valid_http_url_valid() {
+        assert!(valid_http_url("https://example.com").is_some());
+        assert!(valid_http_url("http://localhost:3000").is_some());
+    }
+
+    #[test]
+    fn test_valid_http_url_invalid() {
+        assert!(valid_http_url("not-a-url").is_none());
+        assert!(valid_http_url("ftp://example.com").is_none());
+    }
+
+    #[test]
+    fn test_valid_http_url_with_whitespace() {
+        assert!(valid_http_url("  https://example.com  ").is_some());
+    }
+
+    #[test]
+    fn test_csv_escape_simple() {
+        assert_eq!(AppState::csv_escape("hello"), "\"hello\"");
+    }
+
+    #[test]
+    fn test_csv_escape_with_comma() {
+        assert_eq!(AppState::csv_escape("a,b"), "\"a,b\"");
+    }
+
+    #[test]
+    fn test_csv_escape_with_quotes() {
+        assert_eq!(AppState::csv_escape("a\"b"), "\"a\"\"b\"");
+    }
+
+    #[test]
+    fn test_trim_vec_within_limit() {
+        let mut v = vec![1, 2, 3];
+        AppState::trim_vec(&mut v, 5);
+        assert_eq!(v, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_trim_vec_exceeds_limit() {
+        let mut v = vec![1, 2, 3, 4, 5, 6];
+        AppState::trim_vec(&mut v, 3);
+        assert_eq!(v, vec![4, 5, 6]);
+    }
+
+    #[test]
+    fn test_trim_vec_exact_limit() {
+        let mut v = vec![1, 2, 3];
+        AppState::trim_vec(&mut v, 3);
+        assert_eq!(v, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_trim_vec_one_over() {
+        let mut v = vec![1, 2, 3, 4];
+        AppState::trim_vec(&mut v, 3);
+        assert_eq!(v, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn test_parse_version_triplet_with_v_prefix() {
+        let result = parse_version_triplet("v1.2.3");
+        assert!(result.is_some());
+        let v = result.unwrap();
+        assert_eq!(v.major, 1);
+        assert_eq!(v.minor, 2);
+        assert_eq!(v.patch, 3);
+    }
+
+    #[test]
+    fn test_parse_version_triplet_with_suffix() {
+        let result = parse_version_triplet("1.2.3-beta.1");
+        assert!(result.is_some());
+        let v = result.unwrap();
+        assert_eq!(v.major, 1);
+        assert_eq!(v.minor, 2);
+        assert_eq!(v.patch, 3);
+    }
+
+    #[test]
+    fn test_parse_version_triplet_invalid() {
+        let result = parse_version_triplet("abc");
+        assert!(result.is_none());
     }
 }

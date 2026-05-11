@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::i18n::Language;
 
+/// 应用偏好设置
+///
+/// 存储用户界面配置，包括语言、主题、缩放比例等。
+/// 支持跨平台持久化（Windows/macOS/Linux）。
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AppPreferences {
     pub language: Language,

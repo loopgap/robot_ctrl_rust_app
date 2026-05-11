@@ -5,6 +5,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// JSON 工坊工具
+///
+/// 提供 JSON 格式化、压缩、验证、路径查询等功能。
+/// 支持 JSONPath 语法查询和 JSON Schema 验证。
 #[derive(Default)]
 pub struct JsonTool {
     input: String,
@@ -29,11 +33,11 @@ impl JsonTool {
         self.detail.clear();
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 

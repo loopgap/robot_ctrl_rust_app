@@ -501,9 +501,45 @@ mod tests {
     use super::*;
     use crate::i18n::Language;
     use jsonwebtoken::{encode, EncodingKey, Header};
-    use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
-    use rsa::rand_core::OsRng;
-    use rsa::RsaPrivateKey;
+
+    const RS256_PRIVATE_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCrriTbxiEo9tRs
+uE64qO6Aze40uboRmzfRUFESCkkjMo70OSyAaM5W8kaFkG0Ne/oc9laQi8SpjMom
+8yvJYDdGWMS2lsez8EDFPYOiIuKoMj/bgPj0lcJEv76+fI2AVNxYf2phT7GupURn
+5mN2hDA7s4AhN4mgcJM3mvA2OO7a+JxFnKC4ghD4pzUsZhm9BCNU5Vt+xoGMXWOf
+wR+OyG2vhMGxTC4fQWPG86uxnlQZWxGm1s/CagHRyPs2rBiG6f2xuAEYTAu4XiZk
+AngOoCr4xy7Jhu4AH63qj/kaUgCJqlv/YMLQrbUggdqmjwc+F0MtBx6fxBdqz+KS
+jYKsd/nvAgMBAAECggEACGgeIO7qR8W9GtfJmbbtUDxamkAFUasOnX7NLCYkdQdF
+mHBGSBbEZ93e6y0VJ1BiASdk5MNwrWFvXV88o9SaJaU0zhYYZazG7IGkdPziqXF7
+JAYEQCx8gf5RBPs3Y0iEg7GK5YSlWD56g4tKD+R4Miw02CuOid80A53gKQo6VAQ8
+1SpPquUMo3lqP7uBHVG/K6zBLnD5Yh4azwnrCnRZ2+NK3gKowLiozABl6vcSUMpn
+SLCGYhjk5/Gfr4g8ebzkzYVkIdFHO+0dd2uvz3YgAQ8atW1o8ZKHOfOWGEaDk5cu
+dLlwgLabJsu6seKNNjXvsDjikMEulnze4cdDYI7QVQKBgQDsuZQ81m9lT+tqy1ZU
+5TBfGuExRmNvw4GY9RrycGiiw84DMwYd1GWANyHlVvPEAYLZ0ELUeROFp1oAkKr5
+TEufsUSKxPcTyYroo574+9jCzIBPQv2ryRNH9zJ38/Dn6mzFq0Fg+BKAOfURxhc6
+zzoqkFW5IcYpcohlHz0z33hXZQKBgQC5qL0xOZ49zHC4l3V2kyDhN23+RvI4WMfT
+/Qj0HmjO9O29T/o/FoJe3MUjMUdspU1G3iG3Z4yR4GPQZaKQySdzhTBIS0TS7eFD
+UcKNYWmExQfVEqwCaZzM+iXA+mc5Sx0/3SNyG3kCPX9AOBqXVmbiAleycnwuNlTc
+tlmdiUVIwwKBgQDcJxbioXaF3RaOgj5uw5sBx8jIf7K4XTUooEKIV9woCzuLpCc7
+FK202REv7XbUwacElHeijFuIgAPm5KPtJ3RpNn4NJHK4N0Z1Zr3Qxr9nIrLtg9rQ
+qTbCRfXssrRHqq+wAb3SxcLG95+gAP7XlaN9tC/U9cEKCNcqXCwaEukjNQKBgQCF
+3v5MuFc6CGhfMhco4P4cZ3OQnmeZ6aptWU9Td3nrgQDMORcg1oI7FMWxkp8F4EvQ
+heuZ67iYl0xhwGdwLxubWLZv6pY94flEKXg3qb4EVm5HXadaNf0ycE040VYNIfR9
+UF92sAiZbO6Mx+ekqFCXN0k1Cwgv6k1WuMX1qj2jMQKBgQCMUBWJU2EhX4ysYZXe
+qcV/Mhwsi9OIYpUpmA6mhb6ELpUkiwl3xfKvC4niFd+R5bklNH24GcS1E298XAZH
+ns7cEcvksG1weCupdYEK4tE5ncphmExL8lubVE0LU5kPYH2ye5o9UDPi+nMx4XpX
+h+IYbsnoQxXKqk5y9FLNdZYdvg==
+-----END PRIVATE KEY-----"#;
+
+    const RS256_PUBLIC_KEY_PEM: &str = r#"-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq64k28YhKPbUbLhOuKju
+gM3uNLm6EZs30VBREgpJIzKO9DksgGjOVvJGhZBtDXv6HPZWkIvEqYzKJvMryWA3
+RljEtpbHs/BAxT2DoiLiqDI/24D49JXCRL++vnyNgFTcWH9qYU+xrqVEZ+ZjdoQw
+O7OAITeJoHCTN5rwNjju2vicRZyguIIQ+Kc1LGYZvQQjVOVbfsaBjF1jn8Efjsht
+r4TBsUwuH0FjxvOrsZ5UGVsRptbPwmoB0cj7NqwYhun9sbgBGEwLuF4mZAJ4DqAq
++McuyYbuAB+t6o/5GlIAiapb/2DC0K21IIHapo8HPhdDLQcen8QXas/iko2CrHf5
+7wIDAQAB
+-----END PUBLIC KEY-----"#;
 
     #[test]
     fn test_decode_json_part_handles_json() {
@@ -535,26 +571,16 @@ mod tests {
 
     #[test]
     fn test_verify_rs256_success() {
-        let private = RsaPrivateKey::new(&mut OsRng, 2048).expect("private key");
-        let public_pem = private
-            .to_public_key()
-            .to_public_key_pem(LineEnding::LF)
-            .expect("public pem");
-        let private_pem = private
-            .to_pkcs8_pem(LineEnding::LF)
-            .expect("private pem")
-            .to_string();
-
         let token = encode(
             &Header::new(Algorithm::RS256),
             &serde_json::json!({"sub":"robot","scope":"read"}),
-            &EncodingKey::from_rsa_pem(private_pem.as_bytes()).expect("encoding key"),
+            &EncodingKey::from_rsa_pem(RS256_PRIVATE_KEY_PEM.as_bytes()).expect("encoding key"),
         )
         .expect("token");
 
         let mut tool = JwtInspectorTool {
             token,
-            verification_key: public_pem,
+            verification_key: RS256_PUBLIC_KEY_PEM.to_string(),
             verify_mode: VerifyMode::Rs256,
             ..Default::default()
         };

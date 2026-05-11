@@ -3,9 +3,13 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Existing release tag to publish, for example v0.1.9
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -17,7 +21,7 @@ jobs:
   call-validate:
     uses: ./.github/workflows/release-validate.yml
     with:
-      tag_name: ${{ github.ref_name }}
+      tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
 
   build-windows:
     name: Build Windows
@@ -25,6 +29,8 @@ jobs:
     needs: call-validate
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: scripts/go/rusktask/go.mod
@@ -39,48 +45,53 @@ jobs:
       - name: Install NSIS
         shell: pwsh
         run: choco install nsis -y --no-progress
+      - name: Install mdBook
+        shell: pwsh
+        run: |
+          if (-not (Get-Command mdbook -ErrorAction SilentlyContinue)) {
+            cargo install mdbook --version 0.5.2 --locked
+          }
       - name: Build binaries
         shell: pwsh
         run: cargo build --release --workspace
-      - name: Create Windows installer
+      - name: Package Windows installer
         shell: pwsh
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           $version = "$env:VERSION" -replace '^v', ''
           if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$') {
             Write-Error "Invalid version format: $version"
             exit 1
           }
-          $content = Get-Content ".github/workflows/installer.nsi" -Raw
-          $content = $content -replace '\$\{VERSION\}', $version
-          $content = $content -replace '\$VERSION', $version
-          $content | Out-File -FilePath "installer.nsi" -Encoding UTF8
-          & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
+          Push-Location scripts/go/rusktask
+          go run . package-windows-installer --version $version --skip-build
+          Pop-Location
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: robot_control_suite_*_windows_x64-setup.exe
-      - name: Create Windows portable ZIP
+          path: release_artifacts/windows-x64/installer/robot_control_suite_*_windows_x64-setup.exe
+          if-no-files-found: error
+      - name: Package Windows portable ZIP
         shell: pwsh
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           $version = "$env:VERSION" -replace '^v', ''
-          $zipName = "robot_control_suite_${version}_windows_x64_portable.zip"
-          $files = @(
-            "target/release/robot_control_rust.exe",
-            "target/release/rust_tools_suite.exe",
-            "docs/help/index.html",
-            "robot_control_rust/ARCHITECTURE_AND_USAGE.md"
-          )
-          Compress-Archive -Path $files -DestinationPath $zipName -Force
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$') {
+            Write-Error "Invalid version format: $version"
+            exit 1
+          }
+          Push-Location scripts/go/rusktask
+          go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build
+          Pop-Location
       - name: Upload Windows portable
         uses: actions/upload-artifact@v4
         with:
           name: windows-portable
-          path: robot_control_suite_*_windows_x64_portable.zip
+          path: release_artifacts/robot_control_suite_*_windows_x64_portable.zip
+          if-no-files-found: error
 
   build-linux:
     name: Build Linux
@@ -88,6 +99,8 @@ jobs:
     needs: call-validate
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Linux dependencies
         run: |
@@ -105,7 +118,7 @@ jobs:
       - name: Create Debian package
         shell: bash
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
           version="${VERSION#v}"
@@ -129,6 +142,7 @@ jobs:
             "Section: utils" \
             "Priority: optional" \
             "Architecture: amd64" \
+            "Maintainer: loopgap <noreply@github.com>" \
             "Description: Robot Control and Tools Suite" \
             > "$pkg_dir/DEBIAN/control"
 
@@ -138,6 +152,7 @@ jobs:
         with:
           name: linux-package
           path: dist/*_amd64.deb
+          if-no-files-found: error
 
   publish-release:
     name: Publish Release
@@ -147,11 +162,18 @@ jobs:
       - build-linux
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: scripts/go/rusktask/go.mod
       - name: Validate release notes policy
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
-          notes_file="release_notes/RELEASE_NOTES_${GITHUB_REF_NAME}.md"
+          notes_file="release_notes/RELEASE_NOTES_${RELEASE_TAG}.md"
           test -f "$notes_file"
           test -s "$notes_file"
           ./scripts/ubuntu/task.sh release-notes-validate RELEASE_NOTES_FILE="$notes_file" RELEASE_NOTES_MODE="release"
@@ -167,18 +189,37 @@ jobs:
         with:
           name: windows-portable
           path: artifacts
-      - name: Create checksums
+      - name: Validate artifacts and create checksums
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          installer="artifacts/robot_control_suite_${version}_windows_x64-setup.exe"
+          portable="artifacts/robot_control_suite_${version}_windows_x64_portable.zip"
+          deb="artifacts/robot_control_suite_${version}_amd64.deb"
+          for artifact in "$installer" "$portable" "$deb"; do
+            if [ ! -s "$artifact" ]; then
+              echo "::error::Missing or empty release artifact: $artifact"
+              find artifacts -maxdepth 1 -type f -print
+              exit 1
+            fi
+          done
           cd artifacts
-          sha256sum *.exe *.deb *.zip > checksums-sha256.txt
+          sha256sum \
+            "robot_control_suite_${version}_windows_x64-setup.exe" \
+            "robot_control_suite_${version}_windows_x64_portable.zip" \
+            "robot_control_suite_${version}_amd64.deb" \
+            > checksums-sha256.txt
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          body_path: release_notes/RELEASE_NOTES_${{ github.ref_name }}.md
+          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, '-') }}
+          body_path: release_notes/RELEASE_NOTES_${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}.md
+          fail_on_unmatched_files: true
           files: |
             artifacts/*.exe
             artifacts/*.deb
@@ -190,8 +231,7 @@ jobs:
     if: ${{ always() && failure() }}
     runs-on: ubuntu-latest
     needs:
-      - verify-tag
-      - quality-gate
+      - call-validate
       - build-windows
       - build-linux
       - publish-release
@@ -202,8 +242,7 @@ jobs:
           Automatic draft release generated because release workflow did not fully succeed.
 
           Job results:
-          - verify-tag: ${{ needs.verify-tag.result }}
-          - quality-gate: ${{ needs.quality-gate.result }}
+          - call-validate: ${{ needs.call-validate.result }}
           - build-windows: ${{ needs.build-windows.result }}
           - build-linux: ${{ needs.build-linux.result }}
           - publish-release: ${{ needs.publish-release.result }}
@@ -216,6 +255,7 @@ jobs:
       - name: Create Draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
           draft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, '-') }}
           body_path: failure-summary.md

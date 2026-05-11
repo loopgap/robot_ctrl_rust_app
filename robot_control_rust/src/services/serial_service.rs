@@ -7,12 +7,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
+use tracing::{error, info, warn};
 
 use super::connection_provider::ConnectionProvider;
 
 const PACKET_HEADER: u8 = 0xAA;
 const PACKET_TAIL: u8 = 0x55;
 
+/// 串口通信服务，管理串口连接的生命周期
+///
+/// 使用后台线程进行串口读写，通过 mpsc channel 与主线程通信。
+/// 支持自动重连、字节统计、错误计数。
 pub struct SerialService {
     pub status: ConnectionStatus,
     pub config: SerialConfig,
@@ -26,6 +31,7 @@ pub struct SerialService {
     tx: Option<mpsc::Sender<Vec<u8>>>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
     stop_flag: Arc<AtomicBool>,
+    worker_handle: Option<thread::JoinHandle<()>>,
 }
 
 impl Default for SerialService {
@@ -47,6 +53,7 @@ impl SerialService {
             tx: None,
             rx: None,
             stop_flag: Arc::new(AtomicBool::new(false)),
+            worker_handle: None,
         }
     }
 
@@ -124,7 +131,7 @@ impl SerialService {
                 break;
             }
             if attempt < retries {
-                log::warn!("Retry {} to open port {}", attempt, self.config.port_name);
+                warn!("Retry {} to open port {}", attempt, self.config.port_name);
                 thread::sleep(Duration::from_millis(500));
             }
         }
@@ -148,13 +155,13 @@ impl SerialService {
 
         let port_name = self.config.port_name.clone();
 
-        thread::spawn(move || {
+        let handle = thread::spawn(move || {
             let mut buf = [0u8; 1024];
-            while !stop_flag.load(Ordering::Relaxed) {
+            while !stop_flag.load(Ordering::Acquire) {
                 // Read from main thread to send to serial port
                 if let Ok(data) = rx_from_main.try_recv() {
                     if let Err(e) = port.write_all(&data) {
-                        log::error!("Serial write error on {}: {}", port_name, e);
+                        error!("Serial write error on {}: {}", port_name, e);
                         break;
                     }
                     let _ = port.flush();
@@ -169,23 +176,27 @@ impl SerialService {
                     Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                     Err(e) => {
-                        log::error!("Serial read error on {}: {}", port_name, e);
+                        error!("Serial read error on {}: {}", port_name, e);
                         break;
                     }
                 }
 
                 thread::sleep(Duration::from_millis(1));
             }
-            log::info!("Serial thread for {} exited", port_name);
+            info!("Serial thread for {} exited", port_name);
         });
 
+        self.worker_handle = Some(handle);
         self.status = ConnectionStatus::Connected;
-        log::info!("Connected to {}", self.config.port_name);
+        info!("Connected to {}", self.config.port_name);
         Ok(())
     }
 
     pub fn disconnect(&mut self) {
-        self.stop_flag.store(true, Ordering::Relaxed);
+        self.stop_flag.store(true, Ordering::Release);
+        if let Some(handle) = self.worker_handle.take() {
+            let _ = handle.join();
+        }
         self.tx = None;
         self.rx = None;
         self.status = ConnectionStatus::Disconnected;
@@ -344,5 +355,68 @@ impl ConnectionProvider for SerialService {
 
     fn reset_stats(&mut self) {
         self.reset_stats()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serial_service_default() {
+        let service = SerialService::default();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.bytes_received, 0);
+        assert_eq!(service.error_count, 0);
+        assert!(!service.is_connected());
+    }
+
+    #[test]
+    fn test_disconnect_when_not_connected() {
+        let mut service = SerialService::default();
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn test_reset_stats() {
+        let mut service = SerialService {
+            bytes_sent: 100,
+            bytes_received: 200,
+            error_count: 5,
+            ..Default::default()
+        };
+        service.reset_stats();
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.bytes_received, 0);
+        assert_eq!(service.error_count, 0);
+    }
+
+    #[test]
+    fn test_send_data_when_disconnected_returns_error() {
+        let mut service = SerialService::default();
+        assert!(service.send_data(b"ping").is_err());
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn test_connect_with_empty_port_returns_error() {
+        let mut service = SerialService::default();
+        service.config.port_name.clear();
+        assert!(service.connect().is_err());
+        assert_eq!(service.status, ConnectionStatus::Error);
+        service.disconnect();
+    }
+
+    #[test]
+    fn test_encode_packet() {
+        let pkt = SerialService::encode_packet(0x01, &[0x02, 0x03]);
+        assert_eq!(pkt[0], 0xAA);
+        assert_eq!(pkt[1], 0x01);
+        assert_eq!(pkt[2], 2);
+        assert_eq!(pkt[3], 0x02);
+        assert_eq!(pkt[4], 0x03);
+        assert_eq!(pkt[6], 0x55);
     }
 }

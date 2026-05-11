@@ -6,6 +6,10 @@ use crate::i18n::Language;
 use crate::theme::ACCENT_COLOR;
 use crate::workflow::{LoopState, LoopStep};
 
+/// UUID 批量生成工具
+///
+/// 提供 UUID v4 批量生成功能。
+/// 支持自定义数量、格式和分隔符。
 pub struct UuidBatchTool {
     count: String,
     uppercase: bool,
@@ -37,11 +41,11 @@ impl UuidBatchTool {
         *self = Self::default();
     }
 
-    pub fn output_text(&self) -> Option<String> {
+    pub fn output_text(&self) -> Option<&str> {
         if self.output.trim().is_empty() {
             None
         } else {
-            Some(self.output.clone())
+            Some(&self.output)
         }
     }
 
@@ -223,5 +227,105 @@ impl UuidBatchTool {
             Language::Zh => format!("生成完成：{} 条 UUID", count),
             Language::En => format!("Generated: {} UUIDs", count),
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::i18n::Language;
+
+    fn tool() -> UuidBatchTool {
+        UuidBatchTool::default()
+    }
+
+    #[test]
+    fn test_generate_single() {
+        let mut t = tool();
+        t.count = "1".into();
+        t.generate(Language::En);
+        assert!(t.verified);
+        assert_eq!(t.output.lines().count(), 1);
+    }
+
+    #[test]
+    fn test_generate_batch() {
+        let mut t = tool();
+        t.count = "10".into();
+        t.generate(Language::En);
+        assert!(t.verified);
+        assert_eq!(t.output.lines().count(), 10);
+    }
+
+    #[test]
+    fn test_uuid_format() {
+        let mut t = tool();
+        t.count = "1".into();
+        t.generate(Language::En);
+        let uuid = t.output.trim();
+        assert_eq!(uuid.len(), 36);
+        assert_eq!(uuid.chars().filter(|c| *c == '-').count(), 4);
+    }
+
+    #[test]
+    fn test_uuid_uniqueness() {
+        let mut t = tool();
+        t.count = "100".into();
+        t.generate(Language::En);
+        let uuids: Vec<&str> = t.output.lines().collect();
+        let unique: std::collections::HashSet<&str> = uuids.iter().cloned().collect();
+        assert_eq!(unique.len(), 100);
+    }
+
+    #[test]
+    fn test_uppercase() {
+        let mut t = tool();
+        t.count = "1".into();
+        t.uppercase = true;
+        t.generate(Language::En);
+        assert!(t
+            .output
+            .chars()
+            .all(|c| c.is_ascii_digit() || c.is_uppercase() || c == '-'));
+    }
+
+    #[test]
+    fn test_no_hyphen() {
+        let mut t = tool();
+        t.count = "1".into();
+        t.no_hyphen = true;
+        t.generate(Language::En);
+        assert!(!t.output.contains('-'));
+        assert_eq!(t.output.trim().len(), 32);
+    }
+
+    #[test]
+    fn test_invalid_count_zero() {
+        let mut t = tool();
+        t.count = "0".into();
+        t.generate(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_invalid_count_over_1000() {
+        let mut t = tool();
+        t.count = "1001".into();
+        t.generate(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_invalid_count_nan() {
+        let mut t = tool();
+        t.count = "abc".into();
+        t.generate(Language::En);
+        assert!(!t.verified);
+    }
+
+    #[test]
+    fn test_output_text_empty() {
+        let t = tool();
+        assert!(t.output_text().is_none());
     }
 }

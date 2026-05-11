@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.tag_name }}
           fetch-depth: 0
       - name: Validate tag format and branch ancestry
         shell: bash
@@ -32,7 +33,7 @@ jobs:
             exit 1
           fi
 
-          git fetch origin main --quiet || true
+          git fetch origin main:refs/remotes/origin/main --quiet || true
 
           if ! git show-ref --verify --quiet refs/remotes/origin/main; then
             echo "::error::origin/main does not exist; cannot verify tag ancestry"
@@ -52,6 +53,8 @@ jobs:
     needs: verify-tag
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag_name }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -63,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo fmt --check
+          cargo fmt --all -- --check
           cargo clippy --workspace --all-targets -- -D warnings
           cargo test --workspace
           RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
