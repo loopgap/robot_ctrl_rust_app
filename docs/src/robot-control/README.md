@@ -8,6 +8,7 @@
 
 - **多协议通信支持**: 覆盖工业现场常见的 Serial / TCP / UDP / CAN / USB / Modbus 等协议
 - **控制算法库**: 10+ 种控制算法，从经典 PID 到高级 MPC
+- **仿真实验室**: Rust-native 电机、控制器、传感器、热模型与参数扫描
 - **协议分析工具**: 深度帧解析、事务分析、KPI 仪表盘
 - **智能调参**: 神经网络 + LLM API 双重辅助
 - **跨平台 GUI**: 基于 egui 的高性能原生界面
@@ -20,6 +21,7 @@ robot_control_rust/
 │   ├── main.rs              # 应用入口、主题配置、路由
 │   ├── app.rs               # 状态中心 (AppState / UiState)
 │   ├── i18n.rs              # 国际化 (zh-CN / en-US)
+│   ├── simulation.rs        # Rust-native 仿真核心
 │   ├── models/              # 协议模型与算法实现
 │   │   ├── control_algorithm.rs   # 算法枚举与统一接口
 │   │   ├── connection.rs          # 连接类型与配置

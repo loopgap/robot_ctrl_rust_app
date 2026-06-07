@@ -23,6 +23,7 @@
   - [数据可视化](robot-control/data_viz.md)
   - [NN 调参](robot-control/nn_tuning.md)
   - [拓扑视图](robot-control/topology.md)
+  - [仿真实验室](robot-control/simulation.md)
   - [MCP Server](robot-control/mcp.md)
 
 - [工具套件 (Rust Tools Suite)](micro-tools/README.md)
