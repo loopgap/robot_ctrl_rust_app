@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#0d1117"/>
-  <rect x="18" y="18" width="92" height="92" rx="18" fill="#1f6feb"/>
-  <path d="M34 42h60v10H70v34H58V52H34z" fill="#ffffff"/>
-  <circle cx="92" cy="90" r="10" fill="#9ae6b4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Rust Tools Suite">
+  <rect width="128" height="128" rx="22" fill="#0b1220"/>
+  <rect x="22" y="22" width="84" height="84" rx="16" fill="#12344d" stroke="#38bdf8" stroke-width="4"/>
+  <path d="M40 44h48M40 62h48M40 80h30" fill="none" stroke="#f8fafc" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="86" cy="82" r="12" fill="#0b1220" stroke="#22c55e" stroke-width="5"/>
+  <path d="M82 82h8M86 78v8" fill="none" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
 </svg>

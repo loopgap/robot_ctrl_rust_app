@@ -63,16 +63,16 @@ impl ChassisType {
 
     pub fn icon(&self) -> &str {
         match self {
-            Self::Differential => "🚗",
-            Self::Mecanum => "🏎",
-            Self::Omni3 => "🔺",
-            Self::Omni4 => "🔷",
-            Self::Ackermann => "🚙",
-            Self::Tracked => "🪖",
-            Self::Scara => "🦾",
-            Self::SixDofArm => "🤖",
-            Self::DeltaRobot => "🕸",
-            Self::Custom => "🔧",
+            Self::Differential => "differential",
+            Self::Mecanum => "mecanum",
+            Self::Omni3 => "omni3",
+            Self::Omni4 => "omni4",
+            Self::Ackermann => "ackermann",
+            Self::Tracked => "tracked",
+            Self::Scara => "scara",
+            Self::SixDofArm => "six_dof_arm",
+            Self::DeltaRobot => "delta_robot",
+            Self::Custom => "custom",
         }
     }
 }
@@ -303,6 +303,7 @@ mod tests {
     fn test_chassis_icons_non_empty() {
         for ct in ChassisType::all() {
             assert!(!ct.icon().is_empty(), "{:?} should have icon", ct);
+            assert!(ct.icon().is_ascii(), "{:?} should use an icon key", ct);
         }
     }
 

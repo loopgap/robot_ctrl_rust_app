@@ -28,12 +28,12 @@ impl VizType {
 
     pub fn icon(&self) -> &str {
         match self {
-            Self::Line => "\u{1F4C8}",      // 📈
-            Self::Scatter => "\u{2B50}",    // ⭐
-            Self::Bar => "\u{1F4CA}",       // 📊
-            Self::Gauge => "\u{1F3AF}",     // 🎯
-            Self::Histogram => "\u{1F4CB}", // 📋
-            Self::Table => "\u{1F4DD}",     // 📝
+            Self::Line => "line",
+            Self::Scatter => "scatter",
+            Self::Bar => "bar",
+            Self::Gauge => "gauge",
+            Self::Histogram => "histogram",
+            Self::Table => "table",
         }
     }
 }
@@ -330,6 +330,7 @@ mod tests {
     fn test_viz_type_icons() {
         for vt in VizType::all() {
             assert!(!vt.icon().is_empty());
+            assert!(vt.icon().is_ascii());
         }
     }
 
