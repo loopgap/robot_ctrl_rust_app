@@ -8,5 +8,6 @@ pub mod packet_builder;
 pub mod pid_control;
 pub mod protocol_analysis;
 pub mod serial_debug;
+pub mod simulation_lab;
 pub mod topology;
 pub mod ui_kit;
