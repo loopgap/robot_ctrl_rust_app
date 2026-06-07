@@ -5,5 +5,6 @@
 
 pub mod models;
 pub mod services;
+pub mod simulation;
 
 pub const ROBOT_CONTROL_CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
