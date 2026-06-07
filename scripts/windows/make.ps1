@@ -110,13 +110,17 @@ param(
 
     [string]$PrHead = "",
 
-    [switch]$PrAutoFill
+    [switch]$PrAutoFill,
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ExtraArgs = @()
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
 $AuditDbPath = Join-Path $RepoRoot ".cargo-advisory-db"
 $AuditIgnoreIds = @()
+$ExtraArgs = @($ExtraArgs)
 
 function Resolve-ProjectPath {
     param(
@@ -244,6 +248,91 @@ function Invoke-GoRusktask {
     }
 }
 
+function Get-WorkflowSealArguments {
+    param(
+        [ValidateSet("audit", "apply")]
+        [string]$DefaultMode,
+        [switch]$DefaultPruneLocalTags,
+        [switch]$DefaultCleanOrphanNotes,
+        [switch]$AllowModeOverride
+    )
+
+    $mode = $DefaultMode
+    $pruneLocalTags = [bool]$DefaultPruneLocalTags
+    $cleanOrphanNotes = [bool]$DefaultCleanOrphanNotes
+    $skipRemote = $false
+
+    for ($i = 0; $i -lt $ExtraArgs.Count; $i++) {
+        $arg = $ExtraArgs[$i]
+        $normalized = $arg.ToLowerInvariant()
+
+        if ($normalized -eq "--mode" -or $normalized -eq "-mode") {
+            if (-not $AllowModeOverride) {
+                throw "Target '$Target' has a fixed workflow-seal mode. Use 'workflow-seal --mode <audit|apply>' when selecting the mode explicitly."
+            }
+            $i++
+            if ($i -ge $ExtraArgs.Count) {
+                throw "Missing value after $arg. Expected 'audit' or 'apply'."
+            }
+            $modeValue = $ExtraArgs[$i].ToLowerInvariant()
+            if ($modeValue -notin @("audit", "apply")) {
+                throw "Invalid workflow-seal mode '$($ExtraArgs[$i])'. Expected 'audit' or 'apply'."
+            }
+            $mode = $modeValue
+            continue
+        }
+
+        if ($normalized.StartsWith("--mode=") -or $normalized.StartsWith("-mode=")) {
+            if (-not $AllowModeOverride) {
+                throw "Target '$Target' has a fixed workflow-seal mode. Use 'workflow-seal --mode <audit|apply>' when selecting the mode explicitly."
+            }
+            $modeValue = $arg.Substring($arg.IndexOf("=") + 1).ToLowerInvariant()
+            if ($modeValue -notin @("audit", "apply")) {
+                throw "Invalid workflow-seal mode '$modeValue'. Expected 'audit' or 'apply'."
+            }
+            $mode = $modeValue
+            continue
+        }
+
+        switch ($normalized) {
+            "--skip-remote" {
+                $skipRemote = $true
+                continue
+            }
+            "--prune-local-tags-not-on-remote" {
+                $pruneLocalTags = $true
+                continue
+            }
+            "--clean-orphan-notes" {
+                $cleanOrphanNotes = $true
+                continue
+            }
+            default {
+                throw "Unsupported workflow-seal argument '$arg'. Supported arguments: --mode audit|apply, --skip-remote, --prune-local-tags-not-on-remote, --clean-orphan-notes."
+            }
+        }
+    }
+
+    $arguments = @("workflow-seal", "--mode", $mode)
+    if ($pruneLocalTags) {
+        $arguments += "--prune-local-tags-not-on-remote"
+    }
+    if ($cleanOrphanNotes) {
+        $arguments += "--clean-orphan-notes"
+    }
+    if ($skipRemote) {
+        $arguments += "--skip-remote"
+    }
+
+    return $arguments
+}
+
+function Assert-NoExtraArgs {
+    if ($ExtraArgs.Count -gt 0) {
+        throw "Target '$Target' does not accept extra arguments: $($ExtraArgs -join ' ')"
+    }
+}
+
 function Invoke-LinuxDebPackage {
     $bash = Get-Command bash -ErrorAction SilentlyContinue
     if (-not $bash) {
@@ -263,6 +352,11 @@ function Invoke-MakeSubTarget {
     if (-not $?) {
         exit 1
     }
+}
+
+$TargetsWithExtraArgs = @("workflow-seal", "workflow-seal-apply", "go-workflow-seal")
+if ($ExtraArgs.Count -gt 0 -and $TargetsWithExtraArgs -notcontains $Target) {
+    Assert-NoExtraArgs
 }
 
 switch ($Target) {
@@ -502,11 +596,11 @@ switch ($Target) {
     }
     "workflow-seal" {
         Write-Header "Workflow seal (audit)"
-        Invoke-GoRusktask -Arguments @("workflow-seal", "--mode", "audit")
+        Invoke-GoRusktask -Arguments (Get-WorkflowSealArguments -DefaultMode "audit" -AllowModeOverride)
     }
     "workflow-seal-apply" {
         Write-Header "Workflow seal (apply)"
-        Invoke-GoRusktask -Arguments @("workflow-seal", "--mode", "apply", "--prune-local-tags-not-on-remote", "--clean-orphan-notes")
+        Invoke-GoRusktask -Arguments (Get-WorkflowSealArguments -DefaultMode "apply" -DefaultPruneLocalTags -DefaultCleanOrphanNotes)
     }
     "workspace-guard" {
         Write-Header "Workspace structure guard"
@@ -865,7 +959,7 @@ switch ($Target) {
     }
     "go-workflow-seal" {
         Write-Header "Go orchestrator workflow-seal"
-        Invoke-GoRusktask -Arguments @("workflow-seal", "--mode", "audit")
+        Invoke-GoRusktask -Arguments (Get-WorkflowSealArguments -DefaultMode "audit" -AllowModeOverride)
     }
     "go-git-check" {
         Write-Header "Go orchestrator git-check"
@@ -890,6 +984,7 @@ switch ($Target) {
   =======================================
 
     Usage: .\scripts\windows\task.ps1 <target> [-ReleaseNotesFile <path>] [-ReleaseNotesMode <draft|release>] [-PackageVersion <X.Y.Z>] [-PackageBuildTag <yyyymmdd>] [-PackageOutputDir <path>] [-PackageSkipBuild]
+           .\scripts\windows\task.ps1 workflow-seal --mode audit|apply [--skip-remote]
 
   Targets:
     all          fmt-check + clippy + test + build
@@ -909,7 +1004,7 @@ switch ($Target) {
     release-sync audit release tags/notes/archive consistency
     release-sync-apply normalize local release tags/notes state
     release-index rebuild release_notes/RELEASE_INDEX.md
-    workflow-seal run cleanup + structure + release-state seal (audit)
+    workflow-seal run cleanup + structure + release-state seal (--mode audit|apply)
     workflow-seal-apply normalize release-state and reseal workspace
     workspace-guard enforce workspace layout and path policy
     workspace-cleanup remove transient process files
@@ -940,7 +1035,7 @@ switch ($Target) {
     go-doc      run doc via Go orchestrator
     go-audit    run audit via Go orchestrator
     go-release-sync run release sync via Go orchestrator
-    go-workflow-seal run workflow seal via Go orchestrator
+    go-workflow-seal run workflow seal via Go orchestrator (--mode audit|apply)
     go-git-check run git workflow check via Go orchestrator
     go-rust-review run Rust review pipeline via Go orchestrator
     go-review run combined review pipeline via Go orchestrator

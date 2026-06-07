@@ -20,7 +20,7 @@
 ```powershell
 .\scripts\windows\task.ps1 go-install-hooks
 .\scripts\windows\task.ps1 go-review
-.\scripts\windows\task.ps1 workflow-seal
+.\scripts\windows\task.ps1 workflow-seal --mode audit
 .\scripts\windows\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_vX.Y.Z.md -ReleaseNotesMode release
 .\scripts\windows\task.ps1 docs-bundle -DocsCreateZip
 .\scripts\windows\task.ps1 smart-bump -BumpPart patch
@@ -32,6 +32,8 @@
 .\scripts\windows\task.ps1 package-windows-portable-installer -PackageVersion X.Y.Z
 .\scripts\windows\task.ps1 release-publish -ReleaseTag vX.Y.Z
 ```
+
+根目录兼容入口 `.\scripts\task.ps1 workflow-seal --mode audit` 与 Windows 入口保持一致，均会透传到 Go 编排器的 `workflow-seal --mode audit`。
 
 ### 2) 直接调用 Go 编排器
 
@@ -60,7 +62,7 @@ PowerShell 推荐入口为 `./scripts/windows/task.ps1`，用于 Windows 下的�
 # 1) 在 develop 上执行发布前校验
 git checkout develop
 git pull --ff-only origin develop
-.\scripts\windows\task.ps1 workflow-seal
+.\scripts\windows\task.ps1 workflow-seal --mode audit
 .\scripts\windows\task.ps1 check
 
 # 2) 校验发布说明并发布
