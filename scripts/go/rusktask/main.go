@@ -2277,25 +2277,7 @@ func runPackageWindowsInstaller(args []string) int {
 		}
 
 		expectedInstaller := filepath.Join(outputDir, fmt.Sprintf("robot_control_suite_%s_windows_x64-setup.exe", resolvedVersion))
-		templateContent := strings.ReplaceAll(string(templateContentBytes), "${VERSION}", resolvedVersion)
-		templateContent = strings.ReplaceAll(templateContent, "$VERSION", resolvedVersion)
-		templateContent = strings.ReplaceAll(
-			templateContent,
-			`File "target\release\robot_control_rust.exe"`,
-			fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "robot_control_rust.exe"))),
-		)
-		templateContent = strings.ReplaceAll(
-			templateContent,
-			`File "target\release\rust_tools_suite.exe"`,
-			fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "rust_tools_suite.exe"))),
-		)
-		outFileLine := fmt.Sprintf("OutFile %q", filepath.Clean(expectedInstaller))
-		outFilePattern := regexp.MustCompile(`(?m)^OutFile\s+".*"$`)
-		if outFilePattern.MatchString(templateContent) {
-			templateContent = outFilePattern.ReplaceAllString(templateContent, outFileLine)
-		} else {
-			templateContent += "\n" + outFileLine + "\n"
-		}
+		templateContent := renderWindowsInstallerNSIS(string(templateContentBytes), resolvedVersion, stageDir, outputDir)
 
 		if err := writeTextFile(generatedNsiPath, templateContent, 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -2359,6 +2341,30 @@ func runPackageWindowsInstaller(args []string) int {
 	fmt.Printf("[IExpressPackage] Checksums: %s\n", checksumPath)
 
 	return exitSuccess
+}
+
+func renderWindowsInstallerNSIS(templateContent string, version string, stageDir string, outputDir string) string {
+	expectedInstaller := filepath.Join(outputDir, fmt.Sprintf("robot_control_suite_%s_windows_x64-setup.exe", version))
+	rendered := strings.ReplaceAll(templateContent, "${VERSION}", version)
+	rendered = strings.ReplaceAll(rendered, "$VERSION", version)
+	rendered = strings.ReplaceAll(
+		rendered,
+		`File "target\release\robot_control_rust.exe"`,
+		fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "robot_control_rust.exe"))),
+	)
+	rendered = strings.ReplaceAll(
+		rendered,
+		`File "target\release\rust_tools_suite.exe"`,
+		fmt.Sprintf(`File %q`, filepath.Clean(filepath.Join(stageDir, "rust_tools_suite.exe"))),
+	)
+
+	outFileLine := fmt.Sprintf("OutFile %q", filepath.Clean(expectedInstaller))
+	outFilePattern := regexp.MustCompile(`(?m)^OutFile\s+".*"$`)
+	if outFilePattern.MatchString(rendered) {
+		return outFilePattern.ReplaceAllString(rendered, outFileLine)
+	}
+
+	return rendered + "\n" + outFileLine + "\n"
 }
 
 func runPackageWindowsAssets(args []string) int {
