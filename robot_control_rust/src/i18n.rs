@@ -186,6 +186,13 @@ impl Tr {
         }
     }
 
+    pub fn tab_simulation_lab(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Simulation Lab",
+            Language::Chinese => "仿真实验室",
+        }
+    }
+
     pub fn tab_modbus(lang: Language) -> &'static str {
         match lang {
             Language::English => "Modbus Tools",
@@ -197,6 +204,104 @@ impl Tr {
         match lang {
             Language::English => "CANopen Tools",
             Language::Chinese => "CANopen 工具",
+        }
+    }
+
+    pub fn simulation_scenario(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Scenario",
+            Language::Chinese => "仿真场景",
+        }
+    }
+
+    pub fn simulation_duration(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Duration (s)",
+            Language::Chinese => "仿真时长 (秒)",
+        }
+    }
+
+    pub fn simulation_step_us(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Step (us)",
+            Language::Chinese => "步长 (微秒)",
+        }
+    }
+
+    pub fn simulation_speed_ref(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Speed reference (rad/s)",
+            Language::Chinese => "速度给定 (rad/s)",
+        }
+    }
+
+    pub fn simulation_load_torque(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Load torque (N m)",
+            Language::Chinese => "负载转矩 (N m)",
+        }
+    }
+
+    pub fn simulation_run(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Run",
+            Language::Chinese => "运行",
+        }
+    }
+
+    pub fn simulation_cancel(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Cancel",
+            Language::Chinese => "取消",
+        }
+    }
+
+    pub fn simulation_progress(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Progress",
+            Language::Chinese => "运行进度",
+        }
+    }
+
+    pub fn simulation_status(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Status",
+            Language::Chinese => "状态",
+        }
+    }
+
+    pub fn simulation_results(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Results",
+            Language::Chinese => "结果指标",
+        }
+    }
+
+    pub fn simulation_scan(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Parameter Scan",
+            Language::Chinese => "参数扫描",
+        }
+    }
+
+    pub fn simulation_export_preview(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Export Preview",
+            Language::Chinese => "导出预览",
+        }
+    }
+
+    pub fn simulation_no_result(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "No simulation result yet",
+            Language::Chinese => "尚无仿真结果",
+        }
+    }
+
+    pub fn simulation_export_empty(lang: Language) -> &'static str {
+        match lang {
+            Language::English => "Run a simulation to preview JSON and CSV exports",
+            Language::Chinese => "运行仿真后可预览 JSON 和 CSV 导出",
         }
     }
 
@@ -2046,7 +2151,9 @@ mod tests {
             assert!(!Tr::tab_pid_control(*lang).is_empty());
             assert!(!Tr::tab_nn_tuning(*lang).is_empty());
             assert!(!Tr::tab_data_viz(*lang).is_empty());
+            assert!(!Tr::tab_simulation_lab(*lang).is_empty());
             assert!(!Tr::tab_modbus(*lang).is_empty());
+            assert!(!Tr::tab_canopen(*lang).is_empty());
         }
     }
 

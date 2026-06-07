@@ -1,6 +1,6 @@
 [package]
 name = "robot_control_rust"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2021"
 description = "Robot Control System - Pure Rust Implementation"
 license = "GPL-3.0-only"

@@ -247,6 +247,7 @@ impl RobotControlApp {
             ActiveTab::PidControl => views::pid_control::show(ui, &mut self.state),
             ActiveTab::NnTuning => views::nn_tuning::show(ui, &mut self.state),
             ActiveTab::DataViz => views::data_viz::show(ui, &mut self.state),
+            ActiveTab::SimulationLab => views::simulation_lab::show(ui, &mut self.state),
             ActiveTab::ModbusTools => views::modbus_view::show(ui, &mut self.state),
             ActiveTab::CanopenTools => views::canopen_view::show(ui, &mut self.state),
         }

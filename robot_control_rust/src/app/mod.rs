@@ -3,6 +3,7 @@ pub mod control_engine;
 pub mod external_services;
 pub mod log_manager;
 pub mod protocol_hub;
+pub mod simulation_lab;
 pub mod visualization_store;
 
 use connection_manager::ConnectionManager;
@@ -10,6 +11,7 @@ use control_engine::ControlEngine;
 use external_services::ExternalServices;
 use log_manager::LogManager;
 use protocol_hub::ProtocolHub;
+use simulation_lab::SimulationLabState;
 use visualization_store::VisualizationStore;
 
 use crate::i18n::Language;
@@ -41,6 +43,7 @@ pub enum ActiveTab {
     PidControl,
     NnTuning,
     DataViz,
+    SimulationLab,
     ModbusTools,
     CanopenTools,
 }
@@ -58,6 +61,7 @@ impl ActiveTab {
             Self::PidControl => Tr::tab_pid_control(lang),
             Self::NnTuning => Tr::tab_nn_tuning(lang),
             Self::DataViz => Tr::tab_data_viz(lang),
+            Self::SimulationLab => Tr::tab_simulation_lab(lang),
             Self::ModbusTools => Tr::tab_modbus(lang),
             Self::CanopenTools => Tr::tab_canopen(lang),
         }
@@ -74,6 +78,7 @@ impl ActiveTab {
             Self::PidControl,
             Self::NnTuning,
             Self::DataViz,
+            Self::SimulationLab,
             Self::ModbusTools,
             Self::CanopenTools,
         ]
@@ -421,6 +426,7 @@ pub struct AppState {
     pub viz: VisualizationStore,
     pub log: LogManager,
     pub external: ExternalServices,
+    pub simulation: SimulationLabState,
 
     // === 保留：纯 UI 状态 ===
     pub active_tab: ActiveTab,
@@ -839,6 +845,7 @@ impl AppState {
             viz: VisualizationStore::new(),
             log: LogManager::new(),
             external: ExternalServices::new(),
+            simulation: SimulationLabState::new(),
             active_tab: ActiveTab::Dashboard,
             language: Language::Chinese,
             ui,

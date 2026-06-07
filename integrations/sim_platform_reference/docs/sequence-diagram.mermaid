@@ -1,0 +1,74 @@
+sequenceDiagram
+    participant User
+    participant MainScreen
+    participant ConfigScreen
+    participant RunScreen
+    participant ResultsScreen
+    participant HelpPanel
+
+    %% === 1. 预设场景选择流程 ===
+    User->>MainScreen: ↑/↓ 选择预设
+    MainScreen->>MainScreen: 高亮选中项
+    User->>MainScreen: Enter 确认
+    MainScreen->>MainScreen: _on_scenario_selected()
+    MainScreen->>ConfigScreen: set_preset(config)
+    MainScreen->>MainScreen: app.goto(ConfigScreen)
+    ConfigScreen->>ConfigScreen: 自动填充参数
+    ConfigScreen->>ConfigScreen: on_input_changed() 实时验证
+    ConfigScreen-->>User: 显示验证状态 ✓/✗
+
+    %% === 2. 配置验证流程 ===
+    User->>ConfigScreen: 修改输入值
+    ConfigScreen->>ConfigScreen: Input.Changed 事件
+    ConfigScreen->>ConfigScreen: ValidatedInput.on_input_changed()
+    alt 验证通过
+        ConfigScreen->>ConfigScreen: 添加 .-valid 类
+        ConfigScreen-->>User: 绿色边框 + ✓
+    else 验证失败
+        ConfigScreen->>ConfigScreen: 添加 .-invalid 类
+        ConfigScreen-->>User: 红色边框 + 错误提示
+    end
+
+    %% === 3. 仿真运行流程 ===
+    User->>ConfigScreen: 点击 "运行"
+    ConfigScreen->>ConfigScreen: _validate_and_run()
+    ConfigScreen->>RunScreen: set_config(cfg, do_plot)
+    ConfigScreen->>RunScreen: app.goto(RunScreen)
+    RunScreen->>RunScreen: on_mount() → run_simulation()
+    
+    RunScreen->>RunScreen: Phase: INIT
+    RunScreen->>RunScreen: 初始化模型组件
+    RunScreen-->>User: 显示 "初始化中..."
+    
+    RunScreen->>RunScreen: Phase: RUNNING
+    loop 仿真循环
+        RunScreen->>RunScreen: step 计算
+        RunScreen->>RunScreen: 更新进度条
+        RunScreen->>RunScreen: 更新统计卡片 (Speed/Torque/FPS)
+        RunScreen-->>User: 实时进度反馈
+    end
+    
+    RunScreen->>RunScreen: Phase: SAVING
+    RunScreen->>RunScreen: 保存 HDF5 文件
+    RunScreen-->>User: 显示 "保存中..."
+    
+    RunScreen->>RunScreen: Phase: COMPLETE
+    RunScreen-->>User: 显示 "仿真完成!"
+
+    %% === 4. 结果查看流程 ===
+    User->>RunScreen: 点击 "查看结果"
+    RunScreen->>ResultsScreen: set_results(data)
+    RunScreen->>ResultsScreen: app.goto(ResultsScreen)
+    ResultsScreen->>ResultsScreen: _show_results()
+    ResultsScreen->>ResultsScreen: 更新 KPI 卡片
+    ResultsScreen->>ResultsScreen: 渲染 SparkLine 趋势图
+    ResultsScreen->>ResultsScreen: 填充 DataTable
+    ResultsScreen-->>User: 展示完整结果
+
+    %% === 5. 上下文帮助流程 ===
+    User->>ConfigScreen: F1 帮助
+    ConfigScreen->>HelpPanel: push_screen(HelpPanel("ConfigScreen"))
+    HelpPanel->>HelpPanel: 加载帮助内容
+    HelpPanel-->>User: 显示帮助面板
+    User->>HelpPanel: Esc 关闭
+    HelpPanel->>ConfigScreen: dismiss()

@@ -9,7 +9,8 @@
 ## 分支策略
 
 - 仅允许 `main` 与 `develop` 分支。
-- `main` 为受保护发布分支，不允许直接 push。
+- `develop` 为当前发布分支，`smart-bump` 只能在该分支运行。
+- `main` 保留为稳定分支，不作为当前 tag 祖先校验目标。
 - 其他分支（如 `feature/*`、`release/*`、`master`）已废弃。
 
 ## 推荐使用方式
@@ -19,7 +20,7 @@
 ```powershell
 .\scripts\windows\task.ps1 go-install-hooks
 .\scripts\windows\task.ps1 go-review
-.\scripts\windows\task.ps1 workflow-seal
+.\scripts\windows\task.ps1 workflow-seal --mode audit
 .\scripts\windows\task.ps1 release-notes-validate -ReleaseNotesFile .\release_notes\RELEASE_NOTES_vX.Y.Z.md -ReleaseNotesMode release
 .\scripts\windows\task.ps1 docs-bundle -DocsCreateZip
 .\scripts\windows\task.ps1 smart-bump -BumpPart patch
@@ -31,6 +32,8 @@
 .\scripts\windows\task.ps1 package-windows-portable-installer -PackageVersion X.Y.Z
 .\scripts\windows\task.ps1 release-publish -ReleaseTag vX.Y.Z
 ```
+
+根目录兼容入口 `.\scripts\task.ps1 workflow-seal --mode audit` 与 Windows 入口保持一致，均会透传到 Go 编排器的 `workflow-seal --mode audit`。
 
 ### 2) 直接调用 Go 编排器
 
@@ -56,9 +59,10 @@ PowerShell 推荐入口为 `./scripts/windows/task.ps1`，用于 Windows 下的�
 ## Release v0.1.9 验证建议
 
 ```powershell
-# 1) 在 main 上执行发布前校验
-git checkout main
-.\scripts\windows\task.ps1 workflow-seal
+# 1) 在 develop 上执行发布前校验
+git checkout develop
+git pull --ff-only origin develop
+.\scripts\windows\task.ps1 workflow-seal --mode audit
 .\scripts\windows\task.ps1 check
 
 # 2) 校验发布说明并发布

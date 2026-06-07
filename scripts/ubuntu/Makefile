@@ -236,11 +236,11 @@ clean:
 
 check: workspace-cleanup workspace-guard fmt-check clippy test
 	@echo ""
-	@echo "✓ 全部检查通过"
+	@echo "[PASS] 全部检查通过"
 
 preflight: workspace-cleanup workspace-guard fmt-check clippy test test-release release doc
 	@echo ""
-	@echo "🚀 Preflight 全部通过，可以发布！"
+	@echo "[PASS] Preflight 全部通过，可以发布！"
 
 ci-local:
 	@echo "══ 本地 CI（核心）══"

@@ -50,6 +50,7 @@ logs/
 #.idea/
 
 # IDE / editor
+.codegraph/
 .idea/
 .vscode/
 *.code-workspace

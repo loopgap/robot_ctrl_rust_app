@@ -1,0 +1,51 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+      # Formatter
+      - id: ruff-format
+        types_or: [python, pyi]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # 文件基础检查
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-ast
+
+  - repo: local
+    hooks:
+      # 项目特定: 运行快速测试
+      - id: quick-tests
+        name: Quick Tests (core + models)
+        entry: python -m pytest verification/test_cases/test_core.py verification/test_cases/test_motor_models.py verification/test_cases/test_controllers.py -x -q --tb=no
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      # 项目特定: NaN/Inf 守卫检查
+      - id: check-guard-numeric
+        name: Check guard_numeric usage
+        entry: python -c "
+          import subprocess, sys;
+          r = subprocess.run(['python', '-m', 'ruff', 'check', '.', '--select', 'F821', '--output-format', 'text'], capture_output=True, text=True);
+          print(r.stdout) if r.stdout else None;
+          sys.exit(r.returncode)
+          "
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

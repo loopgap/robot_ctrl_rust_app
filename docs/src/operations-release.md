@@ -6,7 +6,7 @@
 
 ## 前置条件
 
-1. 当前分支为 main。
+1. 当前分支为 develop。
 2. 本地工作区干净。
 3. 本地质量门禁通过：
 
@@ -117,6 +117,6 @@ Release 工作流会在发布前执行：
 
 ## v0.1.9 专项验证
 
-1. `v0.1.9` Tag 需通过分支祖先校验（可追溯到 `origin/main`）。
+1. 发布 Tag 需通过分支祖先校验（可追溯到 `origin/develop`）。
 2. `release_notes/RELEASE_NOTES_v0.1.9.md` 必须存在且通过结构校验。
 3. 校验 `checksums-sha256.txt` 包含 .exe、.zip 与 .deb 三类资产散列值。

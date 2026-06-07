@@ -103,7 +103,7 @@ git push origin develop
 ## 分支使用规范
 
 - 仅允许 `develop` 与 `main` 两个分支。
-- 日常开发与集成在 `develop`，发布相关操作在 `main`。
+- 日常开发、集成与当前发布操作均在 `develop`，`main` 仅保留为稳定同步分支。
 - 不允许创建 `feature/*`、`fix/*`、`release/*`、`master` 等其他分支。
 
 ## 提交信息规范

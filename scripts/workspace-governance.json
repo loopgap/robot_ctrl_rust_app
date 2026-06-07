@@ -3,6 +3,7 @@
   "workspace": {
     "allowedRootEntries": [
       ".git",
+      ".codegraph",
       ".github",
       ".githooks",
       ".gitignore",
@@ -77,6 +78,7 @@
     ],
     "protectedRelativePaths": [
       ".git",
+      ".codegraph",
       ".github",
       "docs",
       "integrations",

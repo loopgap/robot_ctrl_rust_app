@@ -97,10 +97,10 @@ v{MAJOR}.{MINOR}.{PATCH}
 ```
 示例: `v0.1.9`
 
-### 5.2 Tag 必须来自 main 分支
+### 5.2 Tag 必须来自 develop 分支
 Release workflow 的 `verify-tag` job 会验证：
 ```bash
-git merge-base --is-ancestor HEAD origin/main
+git merge-base --is-ancestor HEAD origin/develop
 ```
 
 ### 5.3 Release Notes
@@ -113,25 +113,22 @@ git merge-base --is-ancestor HEAD origin/main
 ## 6. 发布流程 / Release Flow
 
 ```powershell
-# 1. 确保 main 分支最新
-git checkout main && git pull origin main
+# 1. 确保 develop 分支最新
+git checkout develop && git pull --ff-only origin develop
 
-# 2. 合并 develop 到 main (如有变更)
-git merge develop
-
-# 3. 运行本地预检
+# 2. 运行本地预检
 ./scripts/ubuntu/task.sh preflight  # Linux
 .\scripts\windows\task.ps1 preflight  # Windows
 
-# 4. 更新版本和 Release Notes
+# 3. 更新版本和 Release Notes
 #    编辑 Cargo.toml 中的版本号
 #    创建/更新 release_notes/RELEASE_NOTES_vX.Y.Z.md
 
-# 5. 提交并打 tag
+# 4. 提交并打 tag
 git add -A && git commit -m "chore(release): bump version to vX.Y.Z"
-git tag vX.Y.Z && git push origin main --tags
+git tag vX.Y.Z && git push origin develop --tags
 
-# 6. GitHub Actions 自动构建和发布
+# 5. GitHub Actions 自动构建和发布
 #    - verify-tag: 验证 tag 格式和分支祖先
 #    - quality-gate: 运行所有质量检查
 #    - build-windows: 构建 Windows 工件
