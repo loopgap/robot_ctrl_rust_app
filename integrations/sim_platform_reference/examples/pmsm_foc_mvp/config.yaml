@@ -1,0 +1,42 @@
+# PMSM FOC MVP Configuration
+# All units: SI (V, A, rad, N·m, H, Wb, kg·m², s)
+
+simulation:
+  duration_s: 1.0
+  current_step_us: 50      # 50us = 20kHz (FOC current loop)
+  speed_step_us: 1000      # 1ms (speed loop)
+  output_file: "foc_mvp_output.h5"
+
+battery:
+  v_oc: 48.0               # Open-circuit voltage [V]
+  r_int: 0.05              # Internal resistance [ohm]
+
+motor:
+  Rs: 0.1                  # Stator resistance [ohm]
+  Ld: 0.0005               # d-axis inductance [H] (0.5 mH)
+  Lq: 0.001                # q-axis inductance [H] (1.0 mH)
+  flux_pm: 0.03            # PM flux linkage [Wb]
+  J: 0.001                 # Rotor inertia [kg·m²]
+  B: 0.0001                # Viscous friction [N·m·s/rad]
+  Pp: 4                    # Pole pairs
+
+foc:
+  kp_id: 5.0               # d-axis proportional gain
+  ki_id: 500.0             # d-axis integral gain
+  kp_iq: 5.0               # q-axis proportional gain
+  ki_iq: 500.0             # q-axis integral gain
+
+speed_pi:
+  kp: 0.05                 # Speed proportional gain
+  ki: 0.5                  # Speed integral gain
+
+sensor:
+  current_noise_std: 0.1   # Current sensor noise std [A]
+  current_bias: 0.01       # Current sensor bias [A]
+  encoder_noise_std: 0.001 # Encoder noise std [rad]
+  encoder_quant_bits: 12   # Encoder resolution [bits]
+
+scenario:
+  speed_ref_profile: step  # step | ramp | sine
+  speed_ref_value: 100.0   # Target speed [rad/s] (~955 rpm)
+  speed_ref_ramp_rate: 200.0  # Ramp rate [rad/s²]

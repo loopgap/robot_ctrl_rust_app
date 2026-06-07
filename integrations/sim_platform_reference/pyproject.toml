@@ -1,0 +1,113 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sim_platform"
+version = "1.3.0"
+description = "Multi-Domain Co-Simulation Platform — PMSM/BLDC/IM with FOC/MPC/EKF"
+readme = "README.md"
+authors = [
+    { name = "sim_platform Team" },
+]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Simulation",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.22",
+    "matplotlib>=3.6",
+    "h5py>=3.7",
+    "textual>=1.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PySide6>=6.5",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.8",
+    "pre-commit>=3.0",
+    "build>=1.0",
+]
+
+[project.scripts]
+sim-run = "sim_platform.__main__:main"
+sim-tui = "sim_platform.tools.tui.app:main"
+sim-gui = "sim_platform.tools.gui.app:run_app"
+sim-scan = "sim_platform.tools.visualization.parameter_scan:main"
+
+[project.urls]
+Homepage = "https://github.com/example/sim_platform"
+
+[tool.setuptools]
+packages = [
+    "sim_platform",
+    "sim_platform.core",
+    "sim_platform.examples",
+    "sim_platform.examples.pmsm_foc_mvp",
+    "sim_platform.models",
+    "sim_platform.models.controller",
+    "sim_platform.models.fusion",
+    "sim_platform.models.motor",
+    "sim_platform.models.power",
+    "sim_platform.models.sensor",
+    "sim_platform.models.thermal",
+    "sim_platform.tools",
+    "sim_platform.tools.config",
+    "sim_platform.tools.profiling",
+    "sim_platform.tools.replay",
+    "sim_platform.tools.gui",
+    "sim_platform.tools.gui.widgets",
+    "sim_platform.tools.gui.dialogs",
+    "sim_platform.tools.tui",
+    "sim_platform.tools.tui.screens",
+    "sim_platform.tools.tui.widgets",
+    "sim_platform.tools.visualization",
+    "sim_platform.verification",
+    "sim_platform.verification.fault_injection",
+    "sim_platform.verification.test_cases",
+]
+package-dir = {"sim_platform" = "."}
+
+# ── pytest ─────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["verification"]
+addopts = "-v --tb=short"
+# Suppress expected RuntimeWarning for tests with B=0 (intentional test condition)
+filterwarnings = [
+    "ignore::RuntimeWarning",
+]
+
+# ── ruff (lint + format) ───────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"verification/**" = ["E501", "B"]
+
+[tool.ruff.format]
+quote-style = "double"

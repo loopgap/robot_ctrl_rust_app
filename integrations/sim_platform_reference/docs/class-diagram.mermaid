@@ -1,0 +1,224 @@
+classDiagram
+    %% ═══════════════════════════════════════════════════════
+    %%  App 核心
+    %% ═══════════════════════════════════════════════════════
+    
+    class SimPlatformTUI {
+        +TITLE: str
+        +SUB_TITLE: str
+        +CSS: str
+        +SCREENS: dict
+        +main_screen: MainScreen
+        +config_screen: ConfigScreen
+        +run_screen: RunScreen
+        +results_screen: ResultsScreen
+        +scan_screen: ScanScreen
+        +BINDINGS: list
+        +on_mount() void
+        +goto(screen_class) void
+        +action_back() void
+        +action_home() void
+        +action_quit() void
+    }
+
+    %% ═══════════════════════════════════════════════════════
+    %%  Screens
+    %% ═══════════════════════════════════════════════════════
+    
+    class MainScreen {
+        +BINDINGS: list
+        +compose() ComposeResult
+        +on_button_pressed(event) void
+        +action_go_run() void
+        +action_go_config() void
+        +action_go_scan() void
+        +action_quit_app() void
+    }
+    
+    class ConfigScreen {
+        +BINDINGS: list
+        +compose() ComposeResult
+        +set_preset(config: dict) void
+        +on_button_pressed(event) void
+        +action_back() void
+        +action_run() void
+        +action_show_help() void
+        +_validate_and_run(do_plot: bool) void
+        +_build_config() dict
+    }
+    
+    class RunScreen {
+        +config: dict
+        +do_plot: bool
+        +results: Optional~dict~
+        +BINDINGS: list
+        +set_config(cfg: dict, plot: bool) void
+        +compose() ComposeResult
+        +on_mount() void
+        +run_simulation() void
+        +_set_phase(phase: SimPhase) void
+        +_update_stat(widget_id: str, value: str) void
+        +on_button_pressed(event) void
+        +action_back() void
+    }
+    
+    class ResultsScreen {
+        +results: Optional~dict~
+        +BINDINGS: list
+        +set_results(data: dict) void
+        +compose() ComposeResult
+        +on_mount() void
+        +_show_results() void
+        +on_button_pressed(event) void
+        +action_back() void
+        +action_re_run() void
+        +action_plot() void
+        +_generate_plot() void
+    }
+    
+    class ScanScreen {
+        +BINDINGS: list
+        +compose() ComposeResult
+        +on_button_pressed(event) void
+        +action_back() void
+        +action_start_scan() void
+    }
+
+    %% ═══════════════════════════════════════════════════════
+    %%  新增 Widgets (T01-T05)
+    %% ═══════════════════════════════════════════════════════
+    
+    class InfoCard {
+        +title: str
+        +description: str
+        +icon: str
+        +selectable: bool
+        +selected: bool
+        +compose() ComposeResult
+        +on_click() void
+        +set_value(value: str) void
+    }
+    
+    class StatCard {
+        +label: str
+        +value: str
+        +unit: str
+        +compose() ComposeResult
+        +update_value(value: str) void
+    }
+    
+    class ValidatedInput {
+        +label_text: str
+        +min_val: float
+        +max_val: float
+        +unit: str
+        +is_valid: bool
+        +VALID_CSS_CLASS: str
+        +INVALID_CSS_CLASS: str
+        +compose() ComposeResult
+        +on_input_changed(event) void
+        +_set_state(valid: bool, hint: str) void
+        +get_value() float
+    }
+    
+    class HelpPanel {
+        +screen_name: str
+        +compose() ComposeResult
+        +_render_shortcuts(shortcuts: list) list
+    }
+    
+    class SparkLine {
+        +data: list~float~
+        +width: int
+        +height: int
+        +label: str
+        +BLOCKS: str
+        +render() str
+        +_sample(data: list, n: int) list
+        +update_data(new_data: list) void
+    }
+
+    %% ═══════════════════════════════════════════════════════
+    %%  Data / Theme
+    %% ═══════════════════════════════════════════════════════
+    
+    class ThemeTokens {
+        +COLORS: dict
+        +SPACING: dict
+        +BORDERS: dict
+        +get_css() str
+    }
+    
+    class HelpContent {
+        +HELP_CONTENT: dict
+        +get_help(screen_name: str) dict
+    }
+    
+    class SimPhase {
+        <<enumeration>>
+        INIT
+        RUNNING
+        SAVING
+        PLOTTING
+        COMPLETE
+    }
+
+    %% ═══════════════════════════════════════════════════════
+    %%  Dialogs
+    %% ═══════════════════════════════════════════════════════
+    
+    class ErrorDialog {
+        +_err_title: str
+        +_err_msg: str
+        +_err_detail: str
+        +compose() ComposeResult
+        +on_button_pressed(event) void
+    }
+    
+    class ConfirmDialog {
+        +_title: str
+        +_msg: str
+        +_confirm: str
+        +_cancel: str
+        +_danger: bool
+        +compose() ComposeResult
+        +on_button_pressed(event) void
+    }
+
+    %% ═══════════════════════════════════════════════════════
+    %%  关系
+    %% ═══════════════════════════════════════════════════════
+    
+    SimPlatformTUI --> MainScreen : 包含
+    SimPlatformTUI --> ConfigScreen : 包含
+    SimPlatformTUI --> RunScreen : 包含
+    SimPlatformTUI --> ResultsScreen : 包含
+    SimPlatformTUI --> ScanScreen : 包含
+    SimPlatformTUI --> ThemeTokens : 使用CSS
+    
+    MainScreen --> InfoCard : 使用
+    MainScreen --> ConfigScreen : 导航
+    MainScreen --> ScanScreen : 导航
+    
+    ConfigScreen --> ValidatedInput : 使用
+    ConfigScreen --> RunScreen : 导航
+    ConfigScreen --> HelpPanel : F1触发
+    
+    RunScreen --> InfoCard : 使用 (统计卡片)
+    RunScreen --> SimPhase : 管理阶段
+    RunScreen --> ResultsScreen : 导航
+    
+    ResultsScreen --> InfoCard : 使用 (KPI卡片)
+    ResultsScreen --> SparkLine : 使用
+    ResultsScreen --> ConfigScreen : 导航
+    
+    ScanScreen --> MainScreen : 导航
+    
+    HelpPanel --> HelpContent : 读取内容
+    ErrorDialog --|> ModalScreen : 继承
+    ConfirmDialog --|> ModalScreen : 继承
+    InfoCard --|> Static : 继承
+    StatCard --|> Static : 继承
+    ValidatedInput --|> Container : 继承
+    HelpPanel --|> ModalScreen : 继承
+    SparkLine --|> Static : 继承

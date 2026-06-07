@@ -1,0 +1,178 @@
+# PMSM FOC MVP Configuration Example
+# This file demonstrates the YAML configuration format for sim_platform
+
+version: "1.0"
+name: "PMSM FOC Speed Control"
+description: "Speed step response test with PMSM Field-Oriented Control"
+
+# Time configuration
+time:
+  duration_s: 1.5
+  dt_ns: 50000  # 50 microseconds
+  multi_rate: false
+  realtime: false
+  realtime_factor: 1.0
+
+# Model configurations
+models:
+  # Battery model (ideal voltage source)
+  - model_id: battery
+    model_type: power
+    fidelity: L0
+    parameters:
+      v_nom: 48.0
+    outputs:
+      - v_bus
+
+  # Three-phase inverter (average model)
+  - model_id: inverter
+    model_type: power
+    fidelity: L2
+    parameters:
+      v_bus: 48.0
+    inputs:
+      - duty_a
+      - duty_b
+      - duty_c
+      - v_bus
+    outputs:
+      - va
+      - vb
+      - vc
+    depends_on:
+      - battery
+
+  # PMSM motor model
+  - model_id: pmsm
+    model_type: motor
+    fidelity: L2
+    parameters:
+      Rs: 0.1        # Stator resistance [Ohm]
+      Ld: 0.0005     # d-axis inductance [H]
+      Lq: 0.001      # q-axis inductance [H]
+      flux_pm: 0.03   # PM flux linkage [Wb]
+      J: 0.001        # Rotor inertia [kg*m^2]
+      B: 0.0001       # Viscous friction [N*m*s/rad]
+      Pp: 4           # Pole pairs
+    inputs:
+      - va
+      - vb
+      - vc
+    outputs:
+      - ia
+      - ib
+      - ic
+      - omega_m
+      - theta_e
+      - torque
+    depends_on:
+      - inverter
+
+  # Current sensor with noise
+  - model_id: current_sensor
+    model_type: sensor
+    fidelity: L1
+    parameters:
+      noise_std: 0.05  # Noise standard deviation [A]
+      bias: 0.01       # Sensor bias [A]
+    inputs:
+      - ia
+      - ib
+      - ic
+    outputs:
+      - ia_meas
+      - ib_meas
+      - ic_meas
+    depends_on:
+      - pmsm
+
+  # Encoder with quantization
+  - model_id: encoder
+    model_type: sensor
+    fidelity: L1
+    parameters:
+      noise_std: 0.001  # Angle noise [rad]
+      quantization: 0.0015339807878856412  # 2*pi/4096
+    inputs:
+      - theta_e
+      - omega_m
+    outputs:
+      - theta_e_meas
+      - omega_m_meas
+    depends_on:
+      - pmsm
+
+  # FOC current controller
+  - model_id: foc
+    model_type: controller
+    fidelity: L2
+    parameters:
+      kp: 1.0   # Proportional gain
+      ki: 100.0  # Integral gain
+    inputs:
+      - ia_meas
+      - ib_meas
+      - ic_meas
+      - theta_e_meas
+      - id_ref
+      - iq_ref
+    outputs:
+      - vd_ref
+      - vq_ref
+    depends_on:
+      - current_sensor
+      - encoder
+
+  # Speed PI controller
+  - model_id: speed_pi
+    model_type: controller
+    fidelity: L2
+    parameters:
+      kp: 0.1   # Proportional gain
+      ki: 1.0   # Integral gain
+    inputs:
+      - omega_m_meas
+      - omega_ref
+    outputs:
+      - iq_ref
+    depends_on:
+      - encoder
+
+# Scenario configuration
+scenario:
+  name: "Speed Step Response"
+  description: "Step response from 0 to 100 rad/s"
+  speed_ref_type: step
+  speed_ref_value: 100.0
+  speed_ref_time_s: 0.1
+  load_torque_value: 0.0
+  load_torque_time_s: 0.5
+
+# Fault injection configuration
+fault_injection:
+  enabled: false
+  fault_id: ""
+  fault_type: bias
+  target_path: ""
+  magnitude: 0.0
+  start_time_s: 0.0
+  duration_s: 0.0
+  probability: 0.0
+
+# Output configuration
+output:
+  enabled: true
+  format: hdf5
+  filename: pmsm_foc_output
+  directory: output
+  record_interval_ns: 50000
+  compress: true
+  plot_enabled: true
+  plot_format: png
+
+# Solver configuration
+solver: forward_euler
+
+# Logging
+log_level: INFO
+log_file: null
