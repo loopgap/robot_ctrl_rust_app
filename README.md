@@ -72,7 +72,7 @@ cargo run --release -p rust_tools_suite
 
 ## 发布流程
 
-1. 在 `main` 分支完成并通过 `.\scripts\task.ps1 preflight`。
+1. 在 `develop` 分支完成并通过 `.\scripts\task.ps1 preflight`。
 2. 执行 `.\scripts\task.ps1 smart-bump -BumpPart patch` 生成版本提交与 tag。
 3. 推送分支与 tag，触发 Release 工作流。
 4. 在 Release 页面验证必需资产：`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`。
@@ -81,7 +81,7 @@ cargo run --release -p rust_tools_suite
 
 当发布标签为 `v0.1.9` 时，至少完成以下核验：
 
-1. 校验 Tag 归属：`v0.1.9` 必须可追溯到 `origin/main`。
+1. 校验 Tag 归属：发布 tag 必须可追溯到 `origin/develop`。
 2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_v0.1.9.md` 结构校验。
 3. 校验资产完整性：
   - `robot_control_suite_*_windows_x64-setup.exe`

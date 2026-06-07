@@ -28,6 +28,7 @@ const (
 	exitExecution    = 1
 	exitUsage        = 2
 	exitPrecondition = 3
+	releaseBranch    = "develop"
 )
 
 type projectDef struct {
@@ -1331,8 +1332,8 @@ func ensureReleaseBranch(repoRoot string) error {
 	}
 
 	branch := strings.TrimSpace(branchOutput)
-	if branch != "main" {
-		return fmt.Errorf("release bump must run on main. Current branch: %s", branch)
+	if branch != releaseBranch {
+		return fmt.Errorf("release bump must run on %s. Current branch: %s", releaseBranch, branch)
 	}
 
 	return nil
@@ -1451,8 +1452,8 @@ func createReleaseNotesDraft(releaseNotesPath string, tagName string) error {
 
 ## Verification
 - [ ] ./scripts/windows/task.ps1 preflight
-- [ ] CI passed
-- [ ] Release assets verified (exe/setup/checksums)
+- [ ] Local release artifact smoke checks completed
+- [ ] GitHub release workflow verifies uploaded artifacts and checksums
 `, tagName)
 
 	if err := os.WriteFile(releaseNotesPath, []byte(notes), 0o644); err != nil {
@@ -4717,8 +4718,8 @@ func validateReleaseNotes(content string, mode string) error {
 		{`(?m)^##\s+Fixes\s*$`, "missing '## Fixes' section"},
 		{`(?m)^##\s+Verification\s*$`, "missing '## Verification' section"},
 		{`(?m)^-\s+\[[ xX]\]\s+(?:(?:\./|\.\\)?scripts[/\\]windows[/\\]task\.ps1|(?:\./|\.\\)?scripts[/\\]ubuntu[/\\]task\.sh)\s+preflight\s*$`, "verification list must include './scripts/windows/task.ps1 preflight' or './scripts/ubuntu/task.sh preflight'"},
-		{`(?m)^-\s+\[[ xX]\]\s+CI\s+passed\s*$`, "verification list must include 'CI passed'"},
-		{`(?m)^-\s+\[[ xX]\]\s+Release\s+assets\s+verified\s+\(exe/setup/checksums\)\s*$`, "verification list must include release asset verification item"},
+		{`(?m)^-\s+\[[ xX]\]\s+Local\s+release\s+artifact\s+smoke\s+checks\s+completed\s*$`, "verification list must include local artifact smoke checks item"},
+		{`(?m)^-\s+\[[ xX]\]\s+GitHub\s+release\s+workflow\s+verifies\s+uploaded\s+artifacts\s+and\s+checksums\s*$`, "verification list must include workflow artifact verification item"},
 	}
 
 	for _, item := range required {
@@ -4745,8 +4746,6 @@ func validateReleaseNotes(content string, mode string) error {
 			err     string
 		}{
 			{`(?m)^-\s+\[[xX]\]\s+(?:(?:\./|\.\\)?scripts[/\\]windows[/\\]task\.ps1|(?:\./|\.\\)?scripts[/\\]ubuntu[/\\]task\.sh)\s+preflight\s*$`, "release mode requires checked item: ./scripts/windows/task.ps1 preflight or ./scripts/ubuntu/task.sh preflight"},
-			{`(?m)^-\s+\[[xX]\]\s+CI\s+passed\s*$`, "release mode requires checked item: CI passed"},
-			{`(?m)^-\s+\[[xX]\]\s+Release\s+assets\s+verified\s+\(exe/setup/checksums\)\s*$`, "release mode requires checked item: Release assets verified"},
 		}
 
 		for _, item := range strictChecks {

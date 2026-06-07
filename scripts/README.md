@@ -9,7 +9,8 @@
 ## 分支策略
 
 - 仅允许 `main` 与 `develop` 分支。
-- `main` 为受保护发布分支，不允许直接 push。
+- `develop` 为当前发布分支，`smart-bump` 只能在该分支运行。
+- `main` 保留为稳定分支，不作为当前 tag 祖先校验目标。
 - 其他分支（如 `feature/*`、`release/*`、`master`）已废弃。
 
 ## 推荐使用方式
@@ -56,8 +57,9 @@ PowerShell 推荐入口为 `./scripts/windows/task.ps1`，用于 Windows 下的�
 ## Release v0.1.9 验证建议
 
 ```powershell
-# 1) 在 main 上执行发布前校验
-git checkout main
+# 1) 在 develop 上执行发布前校验
+git checkout develop
+git pull --ff-only origin develop
 .\scripts\windows\task.ps1 workflow-seal
 .\scripts\windows\task.ps1 check
 
