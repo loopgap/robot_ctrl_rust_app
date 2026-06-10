@@ -207,14 +207,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             if state.reconnect_paused() {
-                if ui.button("Resume retry").clicked() {
+                if ui.button(Tr::resume_retry(lang)).clicked() {
                     state.resume_auto_reconnect();
                 }
-            } else if ui.button("Stop retry").clicked() {
+            } else if ui.button(Tr::stop_retry(lang)).clicked() {
                 state.pause_auto_reconnect();
             }
 
-            if ui.button("Retry now").clicked() {
+            if ui.button(Tr::retry_now(lang)).clicked() {
                 state.resume_auto_reconnect();
             }
         });
@@ -250,7 +250,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
         }
         if state.conn.serial.config.port_name.trim().is_empty()
             && !state.conn.available_ports.is_empty()
-            && ui.button("Use first").clicked()
+            && ui.button(Tr::use_first_btn(lang)).clicked()
         {
             state.conn.serial.config.port_name = state.conn.available_ports[0].clone();
         }

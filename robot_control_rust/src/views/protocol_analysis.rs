@@ -34,7 +34,7 @@ fn tr_results(lang: Language) -> &'static str {
 
 fn tr_no_results(lang: Language) -> &'static str {
     match lang {
-        Language::English => "No matching logs.",
+        Language::English => Tr::no_matching_logs(lang),
         Language::Chinese => "未匹配到日志。",
     }
 }

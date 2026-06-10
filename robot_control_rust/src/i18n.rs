@@ -2614,6 +2614,300 @@ impl Tr {
             Language::English => "No matching logs.",
         }
     }
+    #[allow(dead_code)]
+    pub fn output_limit_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "输出限幅:",
+            Language::English => "Output Limit:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn integral_limit_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "积分限幅:",
+            Language::English => "Integral Limit:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn setpoint_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "设定值:",
+            Language::English => "Setpoint:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn integral_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "积分:",
+            Language::English => "Integral:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn derivative_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "微分:",
+            Language::English => "Derivative:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn output_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "输出:",
+            Language::English => "Output:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn bang_bang_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Bang-Bang",
+            Language::English => "Bang-Bang",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn layers_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "层数",
+            Language::English => "Layers",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn llm_api_tuning(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "LLM API 调参",
+            Language::English => "LLM API Tuning",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn api_url_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "API URL:",
+            Language::English => "API URL:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn model_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "模型:",
+            Language::English => "Model:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn api_key_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "API 密钥:",
+            Language::English => "API Key:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn llm_suggest_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "LLM 建议",
+            Language::English => "LLM Suggest",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn apply_llm_suggestion(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "应用 LLM 建议",
+            Language::English => "Apply LLM Suggestion",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn llm_loading_text(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "LLM 请求中...",
+            Language::English => "LLM request in progress...",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn llm_analysis_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "LLM 分析:",
+            Language::English => "LLM Analysis:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn current_loss_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "当前损失",
+            Language::English => "Current Loss",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn q_output_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Q (输出):",
+            Language::English => "Q (output):",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn r_input_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "R (输入):",
+            Language::English => "R (input):",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn s_rate_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "S (变化率):",
+            Language::English => "S (rate):",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn use_first_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "使用第一个",
+            Language::English => "Use first",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn resume_retry(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "恢复重试",
+            Language::English => "Resume retry",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn stop_retry(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "停止重试",
+            Language::English => "Stop retry",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn retry_now(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "立即重试",
+            Language::English => "Retry now",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn background_retry_off(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "后台重试已关闭，直到您启用它。",
+            Language::English => "Background retry is off until you enable it.",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn retry_arms_hint(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "重试在一次成功手动连接后启用。",
+            Language::English => "Retry arms after one successful manual connection.",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn retry_idle_hint(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "重试在当前连接断开前保持空闲。",
+            Language::English => "Retry idle until the current link drops.",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_fd_builder(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CAN FD 帧构建",
+            Language::English => "CAN FD Frame Builder",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_log_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CANopen 日志",
+            Language::English => "CANopen Log",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_frame_analyzer(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CANopen 帧解析",
+            Language::English => "Frame Analyzer",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_cobid_map(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CANopen COB-ID 映射",
+            Language::English => "CANopen COB-ID Map",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_sdo_bitfield(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "SDO 命令字节位域",
+            Language::English => "SDO Command Byte Bitfield",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_ecat_sdo_tool(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "EtherCAT CoE SDO 工具",
+            Language::English => "EtherCAT CoE SDO Tool",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_coe_analyzer(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CoE 帧分析器",
+            Language::English => "CoE Frame Analyzer",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_ecat_state_machine(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "EtherCAT 状态机",
+            Language::English => "EtherCAT State Machine",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_pdo_mapper(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "PDO 映射管理器",
+            Language::English => "PDO Mapping Manager",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_pdo_decoder(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "PDO 实时解码",
+            Language::English => "PDO Data Decoder",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_nmt_control(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "NMT 控制",
+            Language::English => "NMT Control",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_sdo_client(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "SDO 客户端",
+            Language::English => "SDO Client",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn canopen_pdo_hb_emcy(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "PDO / Heartbeat / EMCY 工具",
+            Language::English => "PDO / Heartbeat / EMCY",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn valid_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "有效",
+            Language::English => "VALID",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn invalid_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "无效",
+            Language::English => "INVALID",
+        }
+    }
 }
 
 #[cfg(test)]
