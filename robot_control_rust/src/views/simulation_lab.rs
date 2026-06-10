@@ -5,7 +5,7 @@ use egui::{self, RichText, Ui};
 use egui_plot::{Line, Plot, PlotPoints};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
-    let _theme = state.theme.clone();
+    let theme = state.theme.clone();
     let lang = state.lang();
     state.simulation.poll();
 
@@ -28,7 +28,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(10.0);
             settings_card(ui, |ui| {
                 section_title(ui, Tr::simulation_results(lang));
-                show_metrics(ui, &state.simulation, lang);
+                show_metrics(ui, &state.simulation, lang, &theme);
             });
 
             ui.add_space(10.0);
@@ -40,7 +40,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(10.0);
             settings_card(ui, |ui| {
                 section_title(ui, Tr::simulation_export_preview(lang));
-                show_export_preview(ui, &state.simulation, lang);
+                show_export_preview(ui, &state.simulation, lang, &theme);
             });
         });
 }
@@ -110,7 +110,12 @@ fn show_run_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i18
     );
 }
 
-fn show_metrics(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Language) {
+fn show_metrics(
+    ui: &mut Ui,
+    sim: &SimulationLabState,
+    lang: crate::i18n::Language,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     if let Some(result) = &sim.result {
         let metrics = &result.metrics;
         egui::Grid::new("simulation_metrics_grid")
@@ -163,7 +168,13 @@ fn show_metrics(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Langua
                 plot_ui.line(Line::new(ref_points).name("speed_ref"));
             });
     } else {
-        ui.label(RichText::new(Tr::simulation_no_result(lang)).weak());
+        crate::views::ui_kit::empty_state(
+            ui,
+            "sim",
+            "No Results",
+            Tr::simulation_no_result(lang),
+            theme,
+        );
     }
 }
 
@@ -223,9 +234,20 @@ fn show_scan_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i1
     }
 }
 
-fn show_export_preview(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Language) {
+fn show_export_preview(
+    ui: &mut Ui,
+    sim: &SimulationLabState,
+    lang: crate::i18n::Language,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     if sim.result.is_none() {
-        ui.label(RichText::new(Tr::simulation_export_empty(lang)).weak());
+        crate::views::ui_kit::empty_state(
+            ui,
+            "export",
+            "No Data",
+            Tr::simulation_export_empty(lang),
+            theme,
+        );
         return;
     }
 
