@@ -293,7 +293,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         if !state.ui.llm_last_response.is_empty() {
             ui.add_space(6.0);
             if state.ui.llm_loading {
-                ui.label(RichText::new("LLM request in progress...").color(Color32::YELLOW));
+                crate::views::ui_kit::loading_spinner(
+                    ui,
+                    &mut state.anim,
+                    current_time,
+                    "llm_loading",
+                    "LLM request in progress...",
+                    &theme,
+                );
             }
             ui.label(RichText::new("LLM Analysis:").strong());
             ui.label(
