@@ -264,7 +264,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
         && state.conn.available_ports.is_empty()
     {
         ui.label(
-            RichText::new("Port scan may still be running...")
+            RichText::new("Scanning for ports...")
                 .small()
                 .color(Color32::GRAY),
         );

@@ -50,12 +50,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.set_min_width(ui.available_width());
 
                 if state.log.log_entries.is_empty() {
-                    ui.add_space(20.0);
-                    ui.label(
-                        RichText::new(Tr::no_data_yet(lang))
-                            .color(theme.text_muted)
-                            .italics()
-                            .size(13.0),
+                    crate::views::ui_kit::empty_state(
+                        ui,
+                        "term",
+                        Tr::no_data_yet(lang),
+                        "Connect and send data to see logs.",
+                        &theme,
                     );
                 }
 
