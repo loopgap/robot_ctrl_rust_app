@@ -161,7 +161,13 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             );
         } else {
             ui.add_space(8.0);
-            ui.label(RichText::new(Tr::no_training_data(lang)).color(Color32::GRAY));
+            crate::views::ui_kit::empty_state(
+                ui,
+                "nn",
+                "No Training Data",
+                Tr::no_training_data(lang),
+                &theme,
+            );
         }
     });
 
