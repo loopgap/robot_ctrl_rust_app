@@ -6,6 +6,7 @@ use egui::{self, Color32, RichText, Ui, Vec2};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_dashboard(lang), "dashboard");
 
@@ -198,11 +199,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let run_text = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(14.0)
-                    .color(theme.status_error)
+                    .color(state.anim.animate_color(
+                        "dashboard_1".into(),
+                        theme.status_error,
+                        theme.status_error,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             } else {
                 RichText::new(Tr::start_control(lang))
                     .size(14.0)
-                    .color(theme.status_ok)
+                    .color(state.anim.animate_color(
+                        "dashboard_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             };
             if ui.button(run_text).clicked() {
                 state.toggle_running();

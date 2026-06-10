@@ -9,6 +9,7 @@ const PARAM_INPUT_WIDTH: f32 = 96.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_pid_control(lang), "pid");
 
@@ -19,11 +20,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let run_btn = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(15.0)
-                    .color(theme.status_error)
+                    .color(state.anim.animate_color(
+                        "pid_control_1".into(),
+                        theme.status_error,
+                        theme.status_error,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             } else {
                 RichText::new(Tr::start_control(lang))
                     .size(15.0)
-                    .color(theme.status_ok)
+                    .color(state.anim.animate_color(
+                        "pid_control_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             };
             if ui.button(run_btn).clicked() {
                 state.control.toggle_running();
@@ -46,7 +61,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             if state.control.is_running {
                 ui.label(
                     RichText::new(Tr::running(lang))
-                        .color(theme.status_ok)
+                        .color(state.anim.animate_color(
+                            "pid_control_2".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ))
                         .strong(),
                 );
             } else {
@@ -76,7 +98,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 let btn = if selected {
                     RichText::new(name.to_string())
                         .strong()
-                        .color(theme.accent_blue)
+                        .color(state.anim.animate_color(
+                            "pid_control_1".into(),
+                            theme.accent_blue,
+                            theme.accent_blue,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ))
                 } else {
                     RichText::new(name.to_string())
                 };

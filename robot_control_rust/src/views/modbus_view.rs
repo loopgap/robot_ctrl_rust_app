@@ -7,6 +7,7 @@ use egui::{self, Color32, RichText, ScrollArea, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_modbus(lang), "modbus");
 
@@ -98,13 +99,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             RichText::new("RTU:")
                 .size(12.0)
                 .strong()
-                .color(theme.accent_orange),
+                .color(state.anim.animate_color(
+                    "modbus_view_1".into(),
+                    theme.accent_orange,
+                    theme.accent_orange,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
         );
-        ui.label(
-            RichText::new(bytes_to_hex(&rtu_frame))
-                .monospace()
-                .color(theme.accent_green),
-        );
+        ui.label(RichText::new(bytes_to_hex(&rtu_frame)).monospace().color(
+            state.anim.animate_color(
+                "modbus_view_1".into(),
+                theme.accent_green,
+                theme.accent_green,
+                0.3,
+                crate::app::animation::Easing::EaseOut,
+                current_time,
+            ),
+        ));
         ui.label(
             RichText::new(format!("{} bytes", rtu_frame.len()))
                 .size(11.5)
@@ -115,13 +128,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             RichText::new("TCP (MBAP):")
                 .size(12.0)
                 .strong()
-                .color(theme.status_info),
+                .color(state.anim.animate_color(
+                    "modbus_view_1".into(),
+                    theme.status_info,
+                    theme.status_info,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
         );
-        ui.label(
-            RichText::new(bytes_to_hex(&tcp_frame))
-                .monospace()
-                .color(theme.accent_green),
-        );
+        ui.label(RichText::new(bytes_to_hex(&tcp_frame)).monospace().color(
+            state.anim.animate_color(
+                "modbus_view_2".into(),
+                theme.accent_green,
+                theme.accent_green,
+                0.3,
+                crate::app::animation::Easing::EaseOut,
+                current_time,
+            ),
+        ));
         ui.label(
             RichText::new(format!("{} bytes", tcp_frame.len()))
                 .size(11.5)
@@ -229,7 +254,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 let text = format!("{:5}", state.protocol.modbus_registers[addr]);
                                 let rt = RichText::new(text).monospace().size(11.5);
                                 if in_range {
-                                    ui.label(rt.color(theme.status_ok));
+                                    ui.label(rt.color(state.anim.animate_color(
+                                        "modbus_view_1".into(),
+                                        theme.status_ok,
+                                        theme.status_ok,
+                                        0.3,
+                                        crate::app::animation::Easing::EaseOut,
+                                        current_time,
+                                    )));
                                 } else {
                                     ui.label(rt.color(Color32::GRAY));
                                 }

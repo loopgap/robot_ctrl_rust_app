@@ -7,6 +7,7 @@ use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints, Points};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_data_viz(lang), "viz");
 
@@ -223,7 +224,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         "Dropped points: {}",
                         state.viz.channel_overflow_events
                     ))
-                    .color(theme.status_warn),
+                    .color(state.anim.animate_color(
+                        "data_viz_1".into(),
+                        theme.status_warn,
+                        theme.status_warn,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )),
                 );
             }
             ui.separator();

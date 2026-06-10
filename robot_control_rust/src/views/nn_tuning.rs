@@ -8,6 +8,7 @@ const NN_LABEL_WIDTH: f32 = 120.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_nn_tuning(lang), "nn");
 
@@ -123,7 +124,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             let loss_line = Line::new(loss_points)
                 .name("Loss")
-                .color(theme.accent_orange)
+                .color(state.anim.animate_color(
+                    "nn_tuning_1".into(),
+                    theme.accent_orange,
+                    theme.accent_orange,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                ))
                 .width(1.5);
 
             Plot::new("loss_plot")
@@ -142,7 +150,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)
-                .color(theme.accent_orange),
+                .color(state.anim.animate_color(
+                    "nn_tuning_2".into(),
+                    theme.accent_orange,
+                    theme.accent_orange,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
             );
         } else {
             ui.add_space(8.0);
@@ -172,11 +187,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             if ui
-                .button(
-                    RichText::new(Tr::apply_suggested(lang))
-                        .size(14.0)
-                        .color(theme.status_ok),
-                )
+                .button(RichText::new(Tr::apply_suggested(lang)).size(14.0).color(
+                    state.anim.animate_color(
+                        "nn_tuning_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ),
+                ))
                 .clicked()
             {
                 state.apply_nn_params();
@@ -191,11 +211,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show(ui, |ui| {
                 ui.label(RichText::new(Tr::parameter(lang)).strong());
                 ui.label(RichText::new(Tr::current(lang)).strong());
-                ui.label(
-                    RichText::new(Tr::suggested(lang))
-                        .strong()
-                        .color(theme.status_info),
-                );
+                ui.label(RichText::new(Tr::suggested(lang)).strong().color(
+                    state.anim.animate_color(
+                        "nn_tuning_1".into(),
+                        theme.status_info,
+                        theme.status_info,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ),
+                ));
                 ui.label(RichText::new(Tr::delta(lang)).strong());
                 ui.end_row();
 
@@ -271,7 +296,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(RichText::new("LLM request in progress...").color(Color32::YELLOW));
             }
             ui.label(RichText::new("LLM Analysis:").strong());
-            ui.label(RichText::new(&state.ui.llm_last_response).color(theme.status_info));
+            ui.label(
+                RichText::new(&state.ui.llm_last_response).color(state.anim.animate_color(
+                    "nn_tuning_2".into(),
+                    theme.status_info,
+                    theme.status_info,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
+            );
         }
     });
 

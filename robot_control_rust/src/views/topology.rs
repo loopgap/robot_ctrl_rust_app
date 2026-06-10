@@ -6,6 +6,7 @@ use egui::{self, Color32, RichText, ScrollArea, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_topology(lang), "topology");
 
@@ -247,7 +248,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             RichText::new(art)
                 .size(12.0)
                 .monospace()
-                .color(theme.accent_green),
+                .color(state.anim.animate_color(
+                    "topology_1".into(),
+                    theme.accent_green,
+                    theme.accent_green,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
         );
     });
 }

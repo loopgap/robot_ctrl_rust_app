@@ -10,6 +10,7 @@ const CONN_INPUT_WIDTH: f32 = 240.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_connections(lang), "connections");
 
@@ -61,15 +62,36 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if state.ui.mcp_running {
                 if ui
-                    .button(RichText::new("Stop MCP").color(theme.status_error))
+                    .button(RichText::new("Stop MCP").color(state.anim.animate_color(
+                        "connections_1".into(),
+                        theme.status_error,
+                        theme.status_error,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )))
                     .clicked()
                 {
                     state.stop_mcp_server();
                 }
-                ui.label(RichText::new("Running").color(theme.status_ok));
+                ui.label(RichText::new("Running").color(state.anim.animate_color(
+                    "connections_1".into(),
+                    theme.status_ok,
+                    theme.status_ok,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )));
             } else {
                 if ui
-                    .button(RichText::new("Start MCP").color(theme.status_ok))
+                    .button(RichText::new("Start MCP").color(state.anim.animate_color(
+                        "connections_2".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )))
                     .clicked()
                 {
                     state.start_mcp_server();
@@ -87,11 +109,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.spacing_mut().item_spacing.x = 16.0;
             if connected {
                 if ui
-                    .button(
-                        RichText::new(Tr::disconnect(lang))
-                            .size(15.0)
-                            .color(theme.status_error),
-                    )
+                    .button(RichText::new(Tr::disconnect(lang)).size(15.0).color(
+                        state.anim.animate_color(
+                            "connections_2".into(),
+                            theme.status_error,
+                            theme.status_error,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ),
+                    ))
                     .clicked()
                 {
                     state.disconnect_active();
@@ -105,11 +132,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 );
             } else {
                 if ui
-                    .button(
-                        RichText::new(Tr::connect(lang))
-                            .size(15.0)
-                            .color(theme.status_ok),
-                    )
+                    .button(RichText::new(Tr::connect(lang)).size(15.0).color(
+                        state.anim.animate_color(
+                            "connections_3".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ),
+                    ))
                     .clicked()
                 {
                     match state.connect_active() {
