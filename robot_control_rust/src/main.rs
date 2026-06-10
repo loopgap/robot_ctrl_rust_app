@@ -468,6 +468,11 @@ impl RobotControlApp {
             };
             if ui.button(theme_button).clicked() {
                 self.state.dark_mode = !self.state.dark_mode;
+                self.state.theme = if self.state.dark_mode {
+                    crate::views::ui_kit::AppTheme::dark()
+                } else {
+                    crate::views::ui_kit::AppTheme::light()
+                };
                 ui.close_menu();
             }
         });
@@ -785,6 +790,7 @@ impl eframe::App for RobotControlApp {
                     .clicked()
                 {
                     self.state.dark_mode = !self.state.dark_mode;
+            self.state.theme = if self.state.dark_mode { crate::views::ui_kit::AppTheme::dark() } else { crate::views::ui_kit::AppTheme::light() };
                 }
 
                 if self.state.active_status().is_connected() {

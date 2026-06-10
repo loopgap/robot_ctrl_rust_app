@@ -56,6 +56,33 @@ impl AppTheme {
             disconnected_color: Color32::from_rgb(128, 128, 128),
         }
     }
+    pub fn light() -> Self {
+        Self {
+            bg_dark: Color32::from_rgb(240, 240, 245),
+            bg_medium: Color32::from_rgb(230, 230, 235),
+            bg_card: Color32::from_rgba_premultiplied(255, 255, 255, 230),
+            bg_input: Color32::from_rgb(245, 248, 255),
+            text_primary: Color32::from_rgb(30, 30, 40),
+            text_secondary: Color32::from_rgb(60, 60, 70),
+            text_muted: Color32::from_rgb(120, 120, 130),
+            text_label: Color32::from_rgb(80, 80, 90),
+            status_ok: Color32::from_rgb(40, 160, 60),
+            status_error: Color32::from_rgb(220, 60, 60),
+            status_warn: Color32::from_rgb(200, 140, 40),
+            status_info: Color32::from_rgb(50, 130, 220),
+            accent_blue: Color32::from_rgb(50, 120, 220),
+            accent_green: Color32::from_rgb(0, 180, 120),
+            accent_purple: Color32::from_rgb(150, 100, 220),
+            accent_orange: Color32::from_rgb(220, 130, 0),
+            border: Color32::from_rgb(200, 200, 210),
+            border_active: Color32::from_rgb(50, 120, 220),
+            tx_color: Color32::from_rgb(50, 120, 200),
+            rx_color: Color32::from_rgb(40, 150, 80),
+            info_color: Color32::from_rgb(180, 160, 50),
+            connected_color: Color32::from_rgb(40, 160, 60),
+            disconnected_color: Color32::from_rgb(160, 160, 160),
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
