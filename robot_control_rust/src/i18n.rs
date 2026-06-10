@@ -2229,6 +2229,391 @@ impl Tr {
             Language::English => "PWM",
         }
     }
+    #[allow(dead_code)]
+    pub fn can_id_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CAN ID:",
+            Language::English => "CAN ID:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn data_hex_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Data HEX:",
+            Language::English => "Data HEX:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn cob_id_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "COB-ID:",
+            Language::English => "COB-ID:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn node_id_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Node ID:",
+            Language::English => "Node ID:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn index_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Index:",
+            Language::English => "Index:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn sub_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Sub:",
+            Language::English => "Sub:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn payload_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Payload:",
+            Language::English => "Payload:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn slave_address_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Slave Address:",
+            Language::English => "Slave Address:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn od_index_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "OD Index:",
+            Language::English => "OD Index:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn write_download_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Write (Download)",
+            Language::English => "Write (Download)",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn read_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Read",
+            Language::English => "Read",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn send_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Send",
+            Language::English => "Send",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn add_motor_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Add Motor",
+            Language::English => "Add Motor",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn remove_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Remove",
+            Language::English => "Remove",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn train_x10_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Train x10",
+            Language::English => "Train x10",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn train_x100_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Train x100",
+            Language::English => "Train x100",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn copy_rtu_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Copy RTU",
+            Language::English => "Copy RTU",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn copy_tcp_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Copy TCP",
+            Language::English => "Copy TCP",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn no_parsed_fields(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "No parsed numeric fields",
+            Language::English => "No parsed numeric fields",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn no_channels_hint(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "No channels configured",
+            Language::English => "No channels configured",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn scanning_ports(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Scanning for ports...",
+            Language::English => "Scanning for ports...",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn speed_ref_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Speed reference",
+            Language::English => "Speed reference",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn final_speed_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Final speed",
+            Language::English => "Final speed",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn speed_error_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Speed error",
+            Language::English => "Speed error",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn peak_torque_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Peak torque",
+            Language::English => "Peak torque",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn peak_current_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Peak current",
+            Language::English => "Peak current",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn max_temp_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Max temperature",
+            Language::English => "Max temperature",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn steps_executed_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Steps executed",
+            Language::English => "Steps executed",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn settled_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Settled",
+            Language::English => "Settled",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn cancelled_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Cancelled",
+            Language::English => "Cancelled",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn yes_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "yes",
+            Language::English => "yes",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn no_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "no",
+            Language::English => "no",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn csv_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "CSV",
+            Language::English => "CSV",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn json_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "JSON",
+            Language::English => "JSON",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn value_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Value",
+            Language::English => "Value",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn error_label_short(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Error",
+            Language::English => "Error",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn display_mode_hex(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "HEX",
+            Language::English => "HEX",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn display_mode_ascii(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "ASCII",
+            Language::English => "ASCII",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn display_mode_mixed(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Mixed",
+            Language::English => "Mixed",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn auto_parse_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Auto Parse",
+            Language::English => "Auto Parse",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn parse_now_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Parse Now",
+            Language::English => "Parse Now",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn builder_tab_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Builder",
+            Language::English => "Builder",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn parser_tab_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Parser",
+            Language::English => "Parser",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn loss_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Loss",
+            Language::English => "Loss",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn copy_hex_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Copy Hex",
+            Language::English => "Copy Hex",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn send_packet_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Send Packet",
+            Language::English => "Send Packet",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn add_field_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Add Field",
+            Language::English => "Add Field",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn randomize_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Randomize",
+            Language::English => "Randomize",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn remove_field_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Remove",
+            Language::English => "Remove",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn clear_btn(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Clear",
+            Language::English => "Clear",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn query_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Query:",
+            Language::English => "Query:",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn search_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Search",
+            Language::English => "Search",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn filters_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Filters",
+            Language::English => "Filters",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn results_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "Results",
+            Language::English => "Results",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn no_matching_logs(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "No matching logs.",
+            Language::English => "No matching logs.",
+        }
+    }
 }
 
 #[cfg(test)]

@@ -219,7 +219,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 .range(1..=65535),
                             );
 
-                            if ui.button("Remove").clicked() {
+                            if ui.button(Tr::remove_btn(lang)).clicked() {
                                 remove_motor = Some(mi);
                             }
                         });

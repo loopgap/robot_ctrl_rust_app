@@ -14,9 +14,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
             ui.label(format!("{}:", Tr::display(lang)));
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Hex, "HEX");
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Ascii, "ASCII");
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Mixed, "Mixed");
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Hex,
+                Tr::display_mode_hex(lang),
+            );
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Ascii,
+                Tr::display_mode_ascii(lang),
+            );
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Mixed,
+                Tr::display_mode_mixed(lang),
+            );
 
             ui.separator();
             ui.checkbox(&mut state.ui.auto_scroll, Tr::auto_scroll(lang));
@@ -98,7 +110,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
-            ui.checkbox(&mut state.ui.send_hex, "HEX");
+            ui.checkbox(&mut state.ui.send_hex, Tr::display_mode_hex(lang));
             ui.checkbox(&mut state.ui.send_with_newline, Tr::newline(lang));
 
             if state.ui.send_with_newline {

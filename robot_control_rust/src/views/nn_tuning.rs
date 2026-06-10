@@ -82,13 +82,19 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 state.control.nn_train_step();
             }
 
-            if ui.button(RichText::new("Train x10").size(14.0)).clicked() {
+            if ui
+                .button(RichText::new(Tr::train_x10_btn(lang)).size(14.0))
+                .clicked()
+            {
                 for _ in 0..10 {
                     state.control.nn_train_step();
                 }
             }
 
-            if ui.button(RichText::new("Train x100").size(14.0)).clicked() {
+            if ui
+                .button(RichText::new(Tr::train_x100_btn(lang)).size(14.0))
+                .clicked()
+            {
                 for _ in 0..100 {
                     state.control.nn_train_step();
                 }
@@ -123,7 +129,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .collect();
 
             let loss_line = Line::new(loss_points)
-                .name("Loss")
+                .name(Tr::loss_label(lang))
                 .color(state.anim.animate_color(
                     "nn_tuning_1".into(),
                     theme.accent_orange,

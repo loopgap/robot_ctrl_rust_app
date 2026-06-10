@@ -247,7 +247,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                                     .desired_width(110.0),
                                 );
 
-                                if ui.button("Remove").clicked() {
+                                if ui.button(Tr::remove_btn(lang)).clicked() {
                                     remove_idx = Some(fi);
                                 }
                             });

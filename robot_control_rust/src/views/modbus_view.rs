@@ -195,11 +195,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }
             }
 
-            if ui.button("Copy RTU").clicked() {
+            if ui.button(Tr::copy_rtu_btn(lang)).clicked() {
                 ui.ctx().copy_text(bytes_to_hex(&rtu_frame));
             }
 
-            if ui.button("Copy TCP").clicked() {
+            if ui.button(Tr::copy_tcp_btn(lang)).clicked() {
                 ui.ctx().copy_text(bytes_to_hex(&tcp_frame));
             }
         });

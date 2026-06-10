@@ -119,7 +119,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             }
                         });
                 } else if packet_fields.is_empty() {
-                    ui.label(RichText::new("No parsed numeric fields").color(Color32::GRAY));
+                    ui.label(RichText::new(Tr::no_parsed_fields(lang)).color(Color32::GRAY));
                 } else {
                     if state.ui.viz_pkt_template_idx >= packet_fields.len() {
                         state.ui.viz_pkt_template_idx = 0;
