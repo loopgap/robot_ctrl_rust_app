@@ -1,8 +1,8 @@
 use egui::{self, Color32, RichText, Ui};
 
 /// Centralized color theme for consistent UI/UX across all views.
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AppTheme {
     pub bg_dark: Color32,
     pub bg_medium: Color32,
@@ -56,6 +56,202 @@ impl AppTheme {
             disconnected_color: Color32::from_rgb(128, 128, 128),
         }
     }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Reusable UI Components (available for view integration)
+// ═══════════════════════════════════════════════════════════
+#[allow(dead_code, clippy::too_many_arguments)]
+/// Animated status badge with smooth color transition.
+pub fn status_badge(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    text: &str,
+    ok: bool,
+    theme: &AppTheme,
+) {
+    let target_color = if ok {
+        theme.status_ok
+    } else {
+        theme.status_error
+    };
+    let color = anim.animate_color(
+        format!("badge_{}", key),
+        target_color,
+        target_color,
+        0.3,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    ui.horizontal(|ui| {
+        ui.colored_label(color, "●");
+        ui.label(RichText::new(text).size(13.0));
+    });
+}
+
+/// Animated status dot (colored circle only).
+#[allow(dead_code)]
+pub fn status_dot(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    ok: bool,
+    theme: &AppTheme,
+) {
+    let target_color = if ok {
+        theme.status_ok
+    } else {
+        theme.disconnected_color
+    };
+    let color = anim.animate_color(
+        format!("dot_{}", key),
+        target_color,
+        target_color,
+        0.3,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    ui.colored_label(color, "●");
+}
+
+/// Toast notification with auto-dismiss. Returns true if still visible.
+#[allow(dead_code, clippy::too_many_arguments)]
+pub fn toast(
+    ui: &mut Ui,
+    _anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    message: &str,
+    is_error: bool,
+    start_time: f64,
+    duration_secs: f64,
+    theme: &AppTheme,
+) -> bool {
+    let elapsed = current_time - start_time;
+    if elapsed > duration_secs + 0.5 {
+        return false;
+    }
+    let alpha = if elapsed > duration_secs {
+        ((duration_secs + 0.5 - elapsed) / 0.5).clamp(0.0, 1.0) as u8
+    } else {
+        255
+    };
+    let bg_color = if is_error {
+        Color32::from_rgba_premultiplied(120, 30, 30, alpha)
+    } else {
+        Color32::from_rgba_premultiplied(30, 80, 40, alpha)
+    };
+    let text_color = if is_error {
+        theme.status_error
+    } else {
+        theme.status_ok
+    };
+    egui::Frame::new()
+        .fill(bg_color)
+        .corner_radius(8.0)
+        .inner_margin(egui::Margin::symmetric(16, 10))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                let icon = if is_error { "ERR" } else { "OK" };
+                ui.label(RichText::new(icon).color(text_color).size(14.0));
+                ui.label(RichText::new(message).color(Color32::WHITE).size(13.0));
+            });
+        });
+    true
+}
+
+/// Pulsing loading spinner with text.
+#[allow(dead_code)]
+pub fn loading_spinner(
+    ui: &mut Ui,
+    _anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    _key: &str,
+    message: &str,
+    theme: &AppTheme,
+) {
+    let pulse = ((current_time * 3.0).sin() * 0.3 + 0.7).clamp(0.4, 1.0) as f32;
+    let color = theme.accent_blue.linear_multiply(pulse);
+    ui.horizontal(|ui| {
+        ui.spinner();
+        ui.label(RichText::new(message).color(color).size(13.0));
+    });
+}
+
+/// Empty state placeholder when no data is available.
+#[allow(dead_code)]
+pub fn empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, theme: &AppTheme) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(20.0);
+        ui.label(RichText::new(icon).size(32.0).color(theme.text_muted));
+        ui.add_space(6.0);
+        ui.label(
+            RichText::new(title)
+                .size(15.0)
+                .strong()
+                .color(theme.text_secondary),
+        );
+        ui.add_space(4.0);
+        ui.label(RichText::new(subtitle).size(12.0).color(theme.text_muted));
+        ui.add_space(20.0);
+    });
+}
+
+/// Styled button variants.
+#[allow(dead_code)]
+pub enum ButtonVariant {
+    Primary,
+    Secondary,
+    Danger,
+}
+
+/// Styled button with color variant.
+#[allow(dead_code)]
+pub fn styled_button(
+    ui: &mut Ui,
+    label: &str,
+    variant: ButtonVariant,
+    theme: &AppTheme,
+) -> egui::Response {
+    let (text_color, bg_color) = match variant {
+        ButtonVariant::Primary => (Color32::WHITE, theme.accent_blue),
+        ButtonVariant::Secondary => (theme.text_primary, theme.bg_medium),
+        ButtonVariant::Danger => (Color32::WHITE, theme.status_error),
+    };
+    let btn = egui::Button::new(RichText::new(label).color(text_color).size(14.0))
+        .fill(bg_color)
+        .min_size(egui::vec2(80.0, 30.0));
+    ui.add(btn)
+}
+
+/// Animated value display — smoothly transitions between values.
+#[allow(dead_code)]
+pub fn animated_value_text(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    value: f64,
+    format_fn: impl FnOnce(f64) -> String,
+    theme: &AppTheme,
+) {
+    let smooth = anim.animate_float(
+        key.to_string(),
+        value as f32,
+        value as f32,
+        0.5,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    let text = format_fn(smooth as f64);
+    ui.label(
+        RichText::new(text)
+            .size(13.0)
+            .strong()
+            .color(theme.text_primary),
+    );
 }
 
 pub fn apply_page_style(ui: &mut Ui) {
