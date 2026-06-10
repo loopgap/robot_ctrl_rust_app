@@ -50,14 +50,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     // ═══ 启动自检 ═══════════════════════════════════════
     settings_card(ui, |ui| {
-        section_title(
-            ui,
-            if lang == Language::Chinese {
-                "系统自检"
-            } else {
-                "System Check"
-            },
-        );
+        section_title(ui, Tr::system_check_label(lang));
         let (ok_count, total_count) = state.system_check_summary();
         ui.label(
             RichText::new(if lang == Language::Chinese {
@@ -299,14 +292,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     // ═══ 运行指标 ════════════════════════════════════════
     settings_card(ui, |ui| {
-        section_title(
-            ui,
-            if lang == Language::Chinese {
-                "运行指标"
-            } else {
-                "Runtime Metrics"
-            },
-        );
+        section_title(ui, Tr::runtime_metrics_label(lang));
         let (mcp_req, mcp_unauth) = state.mcp_metrics_snapshot();
         egui::Grid::new("runtime_metrics_grid")
             .num_columns(2)
@@ -418,14 +404,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     settings_card(ui, |ui| {
-        section_title(
-            ui,
-            if lang == Language::Chinese {
-                "协议分析入口"
-            } else {
-                "Protocol Analysis Entry"
-            },
-        );
+        section_title(ui, Tr::protocol_analysis_entry_label(lang));
         let (tx, rx, info) = state.log.counts();
 
         ui.horizontal_wrapped(|ui| {

@@ -46,14 +46,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     settings_card(ui, |ui| {
-        ui.label(RichText::new("MCP Server").size(15.0).strong());
+        ui.label(
+            RichText::new(Tr::mcp_server_label(lang))
+                .size(15.0)
+                .strong(),
+        );
         ui.add_space(8.0);
 
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(10.0, 8.0);
-            ui.label("Port:");
+            ui.label(Tr::port_label(lang));
             ui.add(egui::TextEdit::singleline(&mut state.ui.mcp_port_text).desired_width(100.0));
-            ui.label("Token:");
+            ui.label(Tr::token_label(lang));
             ui.add(
                 egui::TextEdit::singleline(&mut state.ui.mcp_token_text)
                     .password(true)
@@ -62,14 +66,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if state.ui.mcp_running {
                 if ui
-                    .button(RichText::new("Stop MCP").color(state.anim.animate_color(
-                        "connections_1".into(),
-                        theme.status_error,
-                        theme.status_error,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    )))
+                    .button(
+                        RichText::new(Tr::stop_mcp(lang)).color(state.anim.animate_color(
+                            "connections_1".into(),
+                            theme.status_error,
+                            theme.status_error,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        )),
+                    )
                     .clicked()
                 {
                     state.stop_mcp_server();
@@ -84,14 +90,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 )));
             } else {
                 if ui
-                    .button(RichText::new("Start MCP").color(state.anim.animate_color(
-                        "connections_2".into(),
-                        theme.status_ok,
-                        theme.status_ok,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    )))
+                    .button(
+                        RichText::new(Tr::start_mcp(lang)).color(state.anim.animate_color(
+                            "connections_2".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        )),
+                    )
                     .clicked()
                 {
                     state.start_mcp_server();
@@ -156,8 +164,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             ui.separator();
-            ui.checkbox(&mut state.ui.auto_reconnect_enabled, "Reconnect after drop");
-            ui.label("Interval(ms):");
+            ui.checkbox(
+                &mut state.ui.auto_reconnect_enabled,
+                Tr::reconnect_after_drop(lang),
+            );
+            ui.label(Tr::interval_ms_label(lang));
             ui.add(
                 egui::DragValue::new(&mut state.ui.auto_reconnect_interval_ms)
                     .range(500..=30000)

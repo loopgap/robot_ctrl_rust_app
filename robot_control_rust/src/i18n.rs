@@ -2113,6 +2113,122 @@ impl Tr {
             Language::Chinese => "优化",
         }
     }
+    pub fn mcp_server_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "MCP 服务器",
+            Language::English => "MCP Server",
+        }
+    }
+    pub fn port_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "端口:",
+            Language::English => "Port:",
+        }
+    }
+    pub fn token_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "令牌:",
+            Language::English => "Token:",
+        }
+    }
+    pub fn stop_mcp(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "停止 MCP",
+            Language::English => "Stop MCP",
+        }
+    }
+    pub fn start_mcp(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "启动 MCP",
+            Language::English => "Start MCP",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn running_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "运行中",
+            Language::English => "Running",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn stopped_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "已停止",
+            Language::English => "Stopped",
+        }
+    }
+    pub fn reconnect_after_drop(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "断开后自动重连",
+            Language::English => "Reconnect after drop",
+        }
+    }
+    pub fn interval_ms_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "间隔(ms):",
+            Language::English => "Interval(ms):",
+        }
+    }
+    pub fn system_check_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "系统自检",
+            Language::English => "System Check",
+        }
+    }
+    pub fn runtime_metrics_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "运行指标",
+            Language::English => "Runtime Metrics",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn connect_attempts_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "连接尝试次数",
+            Language::English => "Connect Attempts",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn connect_failures_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "连接失败次数",
+            Language::English => "Connect Failures",
+        }
+    }
+    pub fn protocol_analysis_entry_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "协议分析入口",
+            Language::English => "Protocol Analysis Entry",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn total_frames_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "总帧数",
+            Language::English => "Total Frames",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn open_protocol_analysis(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "打开协议分析",
+            Language::English => "Open Protocol Analysis",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn voltage_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "电压",
+            Language::English => "Voltage",
+        }
+    }
+    #[allow(dead_code)]
+    pub fn pwm_label(lang: Language) -> &'static str {
+        match lang {
+            Language::Chinese => "PWM 占空比",
+            Language::English => "PWM",
+        }
+    }
 }
 
 #[cfg(test)]
