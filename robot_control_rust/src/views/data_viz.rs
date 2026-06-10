@@ -250,13 +250,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     if state.control.state_history.is_empty()
         && state.viz.channel_buffers.iter().all(|b| b.data.is_empty())
     {
-        ui.add_space(24.0);
-        ui.label(
-            RichText::new(Tr::no_data_hint(lang))
-                .size(14.0)
-                .color(Color32::GRAY)
-                .italics(),
-        );
+        crate::views::ui_kit::empty_state(ui, "chart", "No Data", Tr::no_data_hint(lang), &theme);
         return;
     }
 
