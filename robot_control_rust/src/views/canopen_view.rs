@@ -11,6 +11,7 @@ use crate::views::ui_kit::{page_header, settings_card};
 use egui::{self, Color32, RichText, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     page_header(ui, "CAN 多协议工具 / Multi-Protocol CAN Tools", "canopen");
 
     // ═══ 协议选择器 ═══
@@ -22,15 +23,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             for (i, p) in protos.iter().enumerate() {
                 let selected = state.ui.canopen_protocol_idx == i;
                 let color = if selected {
-                    Color32::from_rgb(60, 140, 240)
+                    theme.accent_blue
                 } else {
-                    Color32::from_rgb(50, 60, 75)
+                    theme.border
                 };
                 egui::Frame::NONE
                     .fill(if selected {
-                        Color32::from_rgb(25, 50, 80)
+                        theme.bg_input
                     } else {
-                        Color32::from_rgb(22, 28, 38)
+                        theme.bg_dark
                     })
                     .stroke(egui::Stroke::new(if selected { 2.0 } else { 1.0 }, color))
                     .corner_radius(6.0)
@@ -41,9 +42,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 egui::Label::new(
                                     RichText::new(p.label()).strong().size(12.0).color(
                                         if selected {
-                                            Color32::from_rgb(100, 200, 255)
+                                            theme.status_info
                                         } else {
-                                            Color32::from_rgb(170, 175, 185)
+                                            theme.text_secondary
                                         },
                                     ),
                                 )

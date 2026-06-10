@@ -5,6 +5,7 @@ use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{self, Color32, RichText, Ui, Vec2};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_dashboard(lang), "dashboard");
 
@@ -70,18 +71,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 )
             })
             .color(if ok_count == total_count {
-                Color32::from_rgb(120, 220, 120)
+                theme.status_ok
             } else {
-                Color32::from_rgb(255, 180, 120)
+                theme.status_warn
             }),
         );
         ui.label(
             RichText::new(state.update_status_summary())
                 .size(12.0)
                 .color(if state.update_available {
-                    Color32::from_rgb(255, 200, 120)
+                    theme.status_warn
                 } else {
-                    Color32::from_rgb(170, 180, 200)
+                    theme.text_label
                 }),
         );
         ui.label(
@@ -197,11 +198,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let run_text = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(14.0)
-                    .color(Color32::from_rgb(255, 100, 100))
+                    .color(theme.status_error)
             } else {
                 RichText::new(Tr::start_control(lang))
                     .size(14.0)
-                    .color(Color32::from_rgb(100, 255, 100))
+                    .color(theme.status_ok)
             };
             if ui.button(run_text).clicked() {
                 state.toggle_running();

@@ -9,6 +9,7 @@ const CONN_LABEL_WIDTH: f32 = 140.0;
 const CONN_INPUT_WIDTH: f32 = 240.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_connections(lang), "connections");
 
@@ -60,15 +61,15 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if state.ui.mcp_running {
                 if ui
-                    .button(RichText::new("Stop MCP").color(Color32::from_rgb(255, 120, 120)))
+                    .button(RichText::new("Stop MCP").color(theme.status_error))
                     .clicked()
                 {
                     state.stop_mcp_server();
                 }
-                ui.label(RichText::new("Running").color(Color32::from_rgb(120, 220, 120)));
+                ui.label(RichText::new("Running").color(theme.status_ok));
             } else {
                 if ui
-                    .button(RichText::new("Start MCP").color(Color32::from_rgb(120, 220, 120)))
+                    .button(RichText::new("Start MCP").color(theme.status_ok))
                     .clicked()
                 {
                     state.start_mcp_server();
@@ -89,7 +90,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .button(
                         RichText::new(Tr::disconnect(lang))
                             .size(15.0)
-                            .color(Color32::from_rgb(255, 100, 100)),
+                            .color(theme.status_error),
                     )
                     .clicked()
                 {
@@ -107,7 +108,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     .button(
                         RichText::new(Tr::connect(lang))
                             .size(15.0)
-                            .color(Color32::from_rgb(100, 200, 100)),
+                            .color(theme.status_ok),
                     )
                     .clicked()
                 {

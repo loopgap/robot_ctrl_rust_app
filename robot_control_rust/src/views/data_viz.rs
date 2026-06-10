@@ -6,6 +6,7 @@ use egui::{self, Color32, RichText, Ui};
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints, Points};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_data_viz(lang), "viz");
 
@@ -222,7 +223,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         "Dropped points: {}",
                         state.viz.channel_overflow_events
                     ))
-                    .color(Color32::from_rgb(255, 180, 120)),
+                    .color(theme.status_warn),
                 );
             }
             ui.separator();

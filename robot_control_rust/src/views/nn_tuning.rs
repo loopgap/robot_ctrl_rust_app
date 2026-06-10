@@ -7,6 +7,7 @@ use egui_plot::{Line, Plot, PlotPoints};
 const NN_LABEL_WIDTH: f32 = 120.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_nn_tuning(lang), "nn");
 
@@ -122,7 +123,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             let loss_line = Line::new(loss_points)
                 .name("Loss")
-                .color(Color32::from_rgb(255, 165, 0))
+                .color(theme.accent_orange)
                 .width(1.5);
 
             Plot::new("loss_plot")
@@ -141,7 +142,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)
-                .color(Color32::from_rgb(255, 165, 0)),
+                .color(theme.accent_orange),
             );
         } else {
             ui.add_space(8.0);
@@ -174,7 +175,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .button(
                     RichText::new(Tr::apply_suggested(lang))
                         .size(14.0)
-                        .color(Color32::from_rgb(100, 255, 100)),
+                        .color(theme.status_ok),
                 )
                 .clicked()
             {
@@ -193,7 +194,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(
                     RichText::new(Tr::suggested(lang))
                         .strong()
-                        .color(Color32::from_rgb(100, 200, 255)),
+                        .color(theme.status_info),
                 );
                 ui.label(RichText::new(Tr::delta(lang)).strong());
                 ui.end_row();
@@ -270,9 +271,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(RichText::new("LLM request in progress...").color(Color32::YELLOW));
             }
             ui.label(RichText::new("LLM Analysis:").strong());
-            ui.label(
-                RichText::new(&state.ui.llm_last_response).color(Color32::from_rgb(180, 220, 255)),
-            );
+            ui.label(RichText::new(&state.ui.llm_last_response).color(theme.status_info));
         }
     });
 

@@ -8,6 +8,7 @@ const PARAM_LABEL_WIDTH: f32 = 130.0;
 const PARAM_INPUT_WIDTH: f32 = 96.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_pid_control(lang), "pid");
 
@@ -18,11 +19,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let run_btn = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(15.0)
-                    .color(Color32::from_rgb(255, 100, 100))
+                    .color(theme.status_error)
             } else {
                 RichText::new(Tr::start_control(lang))
                     .size(15.0)
-                    .color(Color32::from_rgb(100, 255, 100))
+                    .color(theme.status_ok)
             };
             if ui.button(run_btn).clicked() {
                 state.control.toggle_running();
@@ -45,7 +46,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             if state.control.is_running {
                 ui.label(
                     RichText::new(Tr::running(lang))
-                        .color(Color32::from_rgb(46, 160, 67))
+                        .color(theme.status_ok)
                         .strong(),
                 );
             } else {
@@ -75,7 +76,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 let btn = if selected {
                     RichText::new(name.to_string())
                         .strong()
-                        .color(Color32::from_rgb(88, 166, 255))
+                        .color(theme.accent_blue)
                 } else {
                     RichText::new(name.to_string())
                 };

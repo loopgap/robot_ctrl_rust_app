@@ -5,6 +5,7 @@ use egui::{self, RichText, Ui};
 use egui_plot::{Line, Plot, PlotPoints};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let _theme = state.theme.clone();
     let lang = state.lang();
     state.simulation.poll();
 

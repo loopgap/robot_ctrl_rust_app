@@ -86,6 +86,7 @@ fn contains_query(state: &AppState, haystack: &str) -> bool {
 }
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let _theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_protocol_analysis(lang), "packet");
 

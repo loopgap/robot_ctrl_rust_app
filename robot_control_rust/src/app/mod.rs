@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod connection_manager;
 pub mod control_engine;
 pub mod external_services;
@@ -452,6 +453,12 @@ pub struct AppState {
     last_error_burst_instant: Option<Instant>,
     resource_status: String,
     platform_support_note: Option<String>,
+
+    // === Theme ===
+    pub theme: crate::views::ui_kit::AppTheme,
+
+    // === Animation System ===
+    pub anim: crate::app::animation::AnimationManager,
 }
 
 const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
@@ -865,6 +872,8 @@ impl AppState {
             last_background_tick_instant: Instant::now(),
             error_burst_count: 0,
             last_error_burst_instant: None,
+            theme: crate::views::ui_kit::AppTheme::dark(),
+            anim: crate::app::animation::AnimationManager::new(),
         };
         if let Ok(api_key) = std::env::var("LLM_API_KEY") {
             if !api_key.trim().is_empty() {

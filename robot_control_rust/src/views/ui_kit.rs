@@ -1,5 +1,63 @@
 use egui::{self, Color32, RichText, Ui};
 
+/// Centralized color theme for consistent UI/UX across all views.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct AppTheme {
+    pub bg_dark: Color32,
+    pub bg_medium: Color32,
+    pub bg_card: Color32,
+    pub bg_input: Color32,
+    pub text_primary: Color32,
+    pub text_secondary: Color32,
+    pub text_muted: Color32,
+    pub text_label: Color32,
+    pub status_ok: Color32,
+    pub status_error: Color32,
+    pub status_warn: Color32,
+    pub status_info: Color32,
+    pub accent_blue: Color32,
+    pub accent_green: Color32,
+    pub accent_purple: Color32,
+    pub accent_orange: Color32,
+    pub border: Color32,
+    pub border_active: Color32,
+    pub tx_color: Color32,
+    pub rx_color: Color32,
+    pub info_color: Color32,
+    pub connected_color: Color32,
+    pub disconnected_color: Color32,
+}
+impl AppTheme {
+    pub fn dark() -> Self {
+        Self {
+            bg_dark: Color32::from_rgb(22, 28, 38),
+            bg_medium: Color32::from_rgb(30, 35, 42),
+            bg_card: Color32::from_rgba_premultiplied(50, 50, 60, 180),
+            bg_input: Color32::from_rgb(25, 50, 80),
+            text_primary: Color32::from_rgb(220, 220, 230),
+            text_secondary: Color32::from_rgb(200, 210, 220),
+            text_muted: Color32::from_rgb(140, 150, 160),
+            text_label: Color32::from_rgb(170, 180, 200),
+            status_ok: Color32::from_rgb(46, 160, 67),
+            status_error: Color32::from_rgb(255, 100, 100),
+            status_warn: Color32::from_rgb(255, 180, 120),
+            status_info: Color32::from_rgb(100, 200, 255),
+            accent_blue: Color32::from_rgb(88, 166, 255),
+            accent_green: Color32::from_rgb(0, 255, 160),
+            accent_purple: Color32::from_rgb(200, 150, 255),
+            accent_orange: Color32::from_rgb(255, 165, 0),
+            border: Color32::from_rgb(50, 60, 75),
+            border_active: Color32::from_rgb(88, 166, 255),
+            tx_color: Color32::from_rgb(120, 200, 255),
+            rx_color: Color32::from_rgb(130, 230, 160),
+            info_color: Color32::from_rgb(220, 220, 140),
+            connected_color: Color32::from_rgb(46, 160, 67),
+            disconnected_color: Color32::from_rgb(128, 128, 128),
+        }
+    }
+}
+
 pub fn apply_page_style(ui: &mut Ui) {
     let spacing = ui.spacing_mut();
     spacing.item_spacing = egui::vec2(14.0, 12.0);

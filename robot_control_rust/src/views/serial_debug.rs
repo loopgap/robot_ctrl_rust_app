@@ -5,6 +5,7 @@ use crate::views::ui_kit::{page_header, settings_card};
 use egui::{self, Color32, RichText, ScrollArea, TextEdit, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_terminal(lang), "terminal");
 
@@ -52,7 +53,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     ui.add_space(20.0);
                     ui.label(
                         RichText::new(Tr::no_data_yet(lang))
-                            .color(Color32::from_rgb(100, 100, 100))
+                            .color(theme.text_muted)
                             .italics()
                             .size(13.0),
                     );
@@ -60,9 +61,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
                 for entry in &state.log.log_entries {
                     let (prefix, color) = match entry.direction {
-                        LogDirection::Tx => ("TX", Color32::from_rgb(100, 200, 255)),
-                        LogDirection::Rx => ("RX", Color32::from_rgb(100, 255, 100)),
-                        LogDirection::Info => ("INFO", Color32::from_rgb(255, 200, 100)),
+                        LogDirection::Tx => ("TX", theme.status_info),
+                        LogDirection::Rx => ("RX", theme.status_ok),
+                        LogDirection::Info => ("INFO", theme.status_warn),
                     };
 
                     let formatted = format_data_with_mode(&entry.data, state.ui.display_mode);
@@ -72,18 +73,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         ui.label(
                             RichText::new(&entry.timestamp)
                                 .size(11.5)
-                                .color(Color32::from_rgb(100, 100, 100)),
+                                .color(theme.text_muted),
                         );
                         ui.label(
                             RichText::new(format!("[{}]", entry.channel))
                                 .size(11.5)
-                                .color(Color32::from_rgb(140, 140, 150)),
+                                .color(theme.text_muted),
                         );
                         ui.label(RichText::new(prefix).size(11.5).color(color).strong());
                         ui.label(
                             RichText::new(&formatted)
                                 .size(12.5)
-                                .color(Color32::from_rgb(220, 220, 220))
+                                .color(theme.text_primary)
                                 .monospace(),
                         );
                     });
