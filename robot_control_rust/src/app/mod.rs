@@ -1232,7 +1232,7 @@ impl AppState {
         let text = response
             .body_mut()
             .read_to_string()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| format!("Failed to read HTTP response body: {e}"))?;
         serde_json::from_str::<UpdateManifest>(&text).map_err(|e| format!("JSON parse failed: {e}"))
     }
 
@@ -2068,7 +2068,8 @@ impl AppState {
         // Try to parse raw data with registered packet templates
         if !all_raw.is_empty() && !self.protocol.packet_templates.is_empty() {
             // Ensure parser templates are in sync
-            if self.protocol.packet_parser.template_count() != self.protocol.packet_templates.len() {
+            if self.protocol.packet_parser.template_count() != self.protocol.packet_templates.len()
+            {
                 self.protocol.sync_packet_parser();
             }
             if let Some(parsed) = self.protocol.packet_parser.try_parse(&all_raw) {
