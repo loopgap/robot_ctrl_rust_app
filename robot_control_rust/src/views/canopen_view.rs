@@ -1076,7 +1076,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     // ═══════════════════════════════════════════════════════════════
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("CANopen 帧解析 / Frame Analyzer")
+            RichText::new(Tr::canopen_frame_analyzer(state.lang()))
                 .strong()
                 .size(15.0),
         );
