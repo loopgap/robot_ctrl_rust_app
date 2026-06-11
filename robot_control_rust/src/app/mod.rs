@@ -2034,12 +2034,16 @@ impl AppState {
         }
         self.conn.last_io_poll_instant = now;
 
+        // Collect raw data from all connected interfaces for packet parsing
+        let mut all_raw: Vec<u8> = Vec::new();
+
         if self.conn.serial.is_connected() {
             let raw = self.conn.serial.try_read_raw();
             if !raw.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &raw, "Serial");
                 self.conn.serial.push_rx_data(&raw);
+                all_raw.extend_from_slice(&raw);
             }
         }
 
@@ -2048,6 +2052,7 @@ impl AppState {
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "TCP");
+                all_raw.extend_from_slice(&data);
             }
         }
 
@@ -2056,6 +2061,20 @@ impl AppState {
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "UDP");
+                all_raw.extend_from_slice(&data);
+            }
+        }
+
+        // Try to parse raw data with registered packet templates
+        if !all_raw.is_empty() && !self.protocol.packet_templates.is_empty() {
+            // Ensure parser templates are in sync
+            if self.protocol.packet_parser.template_count() != self.protocol.packet_templates.len() {
+                self.protocol.sync_packet_parser();
+            }
+            if let Some(parsed) = self.protocol.packet_parser.try_parse(&all_raw) {
+                self.feed_parsed_to_channels(&parsed);
+                self.protocol.parsed_packets.push(parsed);
+                Self::trim_vec(&mut self.protocol.parsed_packets, 200);
             }
         }
 

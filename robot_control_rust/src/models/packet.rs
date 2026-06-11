@@ -415,6 +415,11 @@ impl PacketParser {
         Self { templates }
     }
 
+    /// Returns the number of registered templates.
+    pub fn template_count(&self) -> usize {
+        self.templates.len()
+    }
+
     /// Try to parse raw data against all registered templates.
     /// Returns the first successful parse, or None.
     pub fn try_parse(&self, data: &[u8]) -> Option<ParsedPacket> {
