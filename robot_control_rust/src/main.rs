@@ -798,7 +798,9 @@ impl eframe::App for RobotControlApp {
                         self.state.disconnect_active();
                     }
                 } else if ui.button(Tr::connect(lang)).clicked() {
-                    let _ = self.state.connect_active();
+                    if let Err(e) = self.state.connect_active() {
+                                    self.state.add_info_log(&format!("Connect failed: {e}"));
+                                }
                 }
             });
             ui.separator();

@@ -20,7 +20,9 @@ impl ExternalServices {
     }
 
     pub fn is_mcp_running(&self) -> bool {
-        self.mcp_server_handle.is_some() && !self.mcp_server_handle.as_ref().unwrap().is_finished()
+        self.mcp_server_handle
+            .as_ref()
+            .is_some_and(|h| !h.is_finished())
     }
 }
 
