@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::i18n::Tr;
 use crate::models::canopen::{
     analyze_canopen_frame, analyze_ecat_coe_frame, build_heartbeat_producer_sdo, build_nmt,
     build_pdo, canopen_id_role, decode_emcy, decode_heartbeat_state, ecat_state_name,
@@ -75,7 +76,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("CAN FD 帧构建 / CAN FD Frame Builder")
+            RichText::new(Tr::canopen_fd_builder(state.lang()))
                 .strong()
                 .size(15.0),
         );
@@ -201,7 +202,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
 fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("EtherCAT CoE SDO 工具 / EtherCAT CoE SDO Tool")
+            RichText::new(Tr::canopen_ecat_sdo_tool(state.lang()))
                 .strong()
                 .size(15.0),
         );
@@ -314,7 +315,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     // EtherCAT CoE 帧分析器
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("CoE 帧分析器 / CoE Frame Analyzer")
+            RichText::new(Tr::canopen_frame_analyzer(state.lang()))
                 .strong()
                 .size(15.0),
         );
@@ -387,7 +388,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     // EtherCAT 状态机参考
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("EtherCAT 状态机 / State Machine")
+            RichText::new(Tr::canopen_ecat_state_machine(state.lang()))
                 .strong()
                 .size(14.0),
         );
@@ -492,7 +493,11 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(8.0);
 
     settings_card(ui, |ui| {
-        ui.label(RichText::new("NMT 控制 / NMT Control").strong().size(15.0));
+        ui.label(
+            RichText::new(Tr::canopen_nmt_control(state.lang()))
+                .strong()
+                .size(15.0),
+        );
         ui.add_space(8.0);
         ui.horizontal_wrapped(|ui| {
             ui.label("Node ID:");
@@ -541,7 +546,11 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(8.0);
 
     settings_card(ui, |ui| {
-        ui.label(RichText::new("SDO 客户端 / SDO Client").strong().size(15.0));
+        ui.label(
+            RichText::new(Tr::canopen_sdo_client(state.lang()))
+                .strong()
+                .size(15.0),
+        );
         ui.add_space(8.0);
 
         ui.horizontal_wrapped(|ui| {
@@ -632,7 +641,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("PDO / Heartbeat / EMCY 工具")
+            RichText::new(Tr::canopen_pdo_hb_emcy(state.lang()))
                 .strong()
                 .size(15.0),
         );
@@ -737,7 +746,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     // ═══════════════════════════════════════════════════════════════
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("PDO 映射管理器 / PDO Mapping Manager")
+            RichText::new(Tr::canopen_pdo_mapper(state.lang()))
                 .strong()
                 .size(15.0),
         );
@@ -997,7 +1006,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     if !state.protocol.canopen_pdo_configs.is_empty() {
         settings_card(ui, |ui| {
             ui.label(
-                RichText::new("PDO 实时解码 / PDO Data Decoder")
+                RichText::new(Tr::canopen_pdo_decoder(state.lang()))
                     .strong()
                     .size(15.0),
             );
@@ -1270,7 +1279,7 @@ fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
         settings_card(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(
-                    RichText::new("CANopen 日志 / CANopen Log")
+                    RichText::new(Tr::canopen_log_label(state.lang()))
                         .strong()
                         .size(15.0),
                 );
