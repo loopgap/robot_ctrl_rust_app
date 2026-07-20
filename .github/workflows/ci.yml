@@ -1,3 +1,22 @@
+# ─────────────────────────────────────────────────────────────
+# CI — Continuous Integration Pipeline
+#
+# Runs on every push/PR to main and develop branches.
+# Jobs are ordered as a DAG to minimize redundant work:
+#
+#   workspace-governance ──┬── fmt
+#                          ├── clippy   (matrix: 3 OS)
+#                          ├── test     (matrix: 3 OS)
+#                          ├── doc
+#                          └── release-workflow-smoke-test
+#
+# Design principles:
+#   - Least-privilege permissions per job
+#   - Fail-fast disabled for cross-platform matrix to maximize coverage
+#   - Explicit timeouts prevent hung jobs from blocking the pipeline
+#   - Swatinem/rust-cache@v2 for deterministic dependency caching
+# ─────────────────────────────────────────────────────────────
+
 name: CI
 
 on:
@@ -7,31 +26,36 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
 jobs:
+  # ── Gate: workspace structure & file-residue audit ───────
   workspace-governance:
     name: Workspace Governance
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: scripts/go/rusktask/go.mod
+
       - name: Process file residue audit
         shell: bash
         run: |
           set -euo pipefail
           cd scripts/go/rusktask
           go run . workspace-cleanup --mode audit --strict
+
       - name: Workspace structure guard
         shell: bash
         run: |
@@ -39,83 +63,114 @@ jobs:
           cd scripts/go/rusktask
           go run . workspace-guard --mode audit --strict
 
+  # ── Formatting ───────────────────────────────────────────
   fmt:
     name: Format Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: workspace-governance
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Check formatting across products
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
         shell: bash
         run: |
           set -euo pipefail
           cargo fmt --all -- --check
 
+  # ── Linting (cross-platform matrix) ─────────────────────
   clippy:
-    name: Clippy
+    name: Clippy (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     needs: workspace-governance
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Run clippy across products
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy
         shell: bash
         run: |
           set -euo pipefail
           cargo clippy --workspace --all-targets -- -D warnings
 
+  # ── Tests (cross-platform matrix) ───────────────────────
   test:
-    name: Test
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: workspace-governance
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Run tests across products
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
         shell: bash
         run: |
           set -euo pipefail
           cargo test --workspace
 
+  # ── Documentation build ─────────────────────────────────
   doc:
     name: Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: workspace-governance
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Build docs across products
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build docs
         shell: bash
         env:
           RUSTDOCFLAGS: "-D warnings"
@@ -123,54 +178,51 @@ jobs:
           set -euo pipefail
           cargo doc --workspace --no-deps
 
+  # ── Release infrastructure smoke test ───────────────────
   release-workflow-smoke-test:
-    name: Release Workflow Smoke Test
+    name: Release Smoke Test
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: workspace-governance
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
       - name: Verify release-related files exist
         shell: bash
         run: |
           set -euo pipefail
 
-          # 1. 验证 Cargo.toml 存在
+          # 1. Cargo.toml workspace integrity
           if [ ! -f "Cargo.toml" ]; then
-            echo "[ERROR] Cargo.toml 不存在"
+            echo "::error::Cargo.toml not found"
             exit 1
           fi
-          echo "[OK] Cargo.toml 存在"
-
-          # 2. 验证 Cargo.toml 包含 workspace members
           if ! grep -q 'robot_control_rust' Cargo.toml || ! grep -q 'rust_tools_suite' Cargo.toml; then
-            echo "[ERROR] Cargo.toml 缺少 workspace members (robot_control_rust, rust_tools_suite)"
+            echo "::error::Cargo.toml missing workspace members (robot_control_rust, rust_tools_suite)"
             exit 1
           fi
-          echo "[OK] Cargo.toml 包含 robot_control_rust 和 rust_tools_suite members"
+          echo "[OK] Cargo.toml workspace members verified"
 
-          # 3. 验证 installer.nsi 存在
-          if [ ! -f ".github/workflows/installer.nsi" ]; then
-            echo "[ERROR] .github/workflows/installer.nsi 不存在"
+          # 2. NSIS installer script (canonical location)
+          if [ ! -f "scripts/nsis/installer.nsi" ]; then
+            echo "::error::scripts/nsis/installer.nsi not found"
             exit 1
           fi
-          echo "[OK] .github/workflows/installer.nsi 存在"
+          echo "[OK] scripts/nsis/installer.nsi exists"
 
-          # 4. 验证 release_notes/ 目录存在且包含 RELEASE_NOTES_*.md 文件
+          # 3. Release notes directory
           if [ ! -d "release_notes" ]; then
-            echo "[ERROR] release_notes/ 目录不存在"
+            echo "::error::release_notes/ directory not found"
             exit 1
           fi
-          echo "[OK] release_notes/ 目录存在"
-
-          RELEASE_NOTES_FILES=$(ls release_notes/RELEASE_NOTES_*.md 2>/dev/null || true)
-          if [ -z "$RELEASE_NOTES_FILES" ]; then
-            echo "[ERROR] release_notes/ 目录中未找到 RELEASE_NOTES_*.md 文件"
+          RELEASE_NOTES_COUNT=$(find release_notes -maxdepth 1 -name 'RELEASE_NOTES_*.md' -type f | wc -l)
+          if [ "$RELEASE_NOTES_COUNT" -eq 0 ]; then
+            echo "::error::No RELEASE_NOTES_*.md files found in release_notes/"
             exit 1
           fi
-          echo "[OK] release_notes/ 目录包含 RELEASE_NOTES 文件:"
-          ls -la release_notes/RELEASE_NOTES_*.md
+          echo "[OK] release_notes/ contains ${RELEASE_NOTES_COUNT} release note(s)"
 
           echo ""
-          echo "[PASS] 所有 release 相关文件验证通过!"
+          echo "[PASS] All release infrastructure files verified"

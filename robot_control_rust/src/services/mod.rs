@@ -1,6 +1,8 @@
 pub mod can_service;
 pub mod connection_provider;
+#[cfg(feature = "llm")]
 pub mod llm_service;
+#[cfg(feature = "mcp")]
 pub mod mcp_server;
 pub mod serial_service;
 pub mod tcp_service;

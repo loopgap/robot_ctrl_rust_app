@@ -1,7 +1,9 @@
+pub mod at32_boot_entry;
 pub mod base64_workshop;
 pub mod checksum;
 pub mod csv_cleaner;
 pub mod json_workshop;
+#[cfg(feature = "jwt")]
 pub mod jwt_inspector;
 pub mod log_inspector;
 pub mod regex_workbench;

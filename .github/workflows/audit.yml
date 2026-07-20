@@ -1,3 +1,11 @@
+# ─────────────────────────────────────────────────────────────
+# Security Audit — Dependency vulnerability & license policy
+#
+# Runs weekly (Monday 08:00 UTC) and on Cargo.toml/lock changes.
+# Uses cargo-audit for CVE scanning and cargo-deny for license
+# and dependency policy enforcement.
+# ─────────────────────────────────────────────────────────────
+
 name: Security Audit
 
 on:
@@ -9,21 +17,37 @@ on:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
       - 'deny.toml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      - 'deny.toml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  AUDIT_DB_PATH: ${{ github.workspace }}/.cargo-advisory-db
+  CARGO_TERM_COLOR: always
 
 jobs:
   audit:
-    name: 安全与依赖策略检查
+    name: Security & Dependency Policy Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
       - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: audit-tools
 
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
@@ -31,14 +55,14 @@ jobs:
       - name: Install cargo-deny
         run: cargo install --locked cargo-deny
 
-      - name: Run security audit across products
+      - name: Run security audit
         shell: bash
         run: |
           set -euo pipefail
-          cargo audit -d "$AUDIT_DB_PATH"
+          cargo audit
 
       - name: Run dependency policy checks
         shell: bash
         run: |
           set -euo pipefail
-          cargo deny check --config deny.toml
+          cargo deny check

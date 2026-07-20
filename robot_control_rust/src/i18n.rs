@@ -1,3 +1,6 @@
+// Auto-generated macro-based i18n module
+// Reduced from ~2970 lines using declarative macros
+
 // ═══════════════════════════════════════════════════════════════
 // 国际化 (i18n) - 中英双语支持
 // ═══════════════════════════════════════════════════════════════
@@ -25,2889 +28,618 @@ impl Language {
 }
 
 /// 所有可翻译文本的键
+
+macro_rules! tr {
+    ($name:ident, $en:expr, $zh:expr) => {
+        pub fn $name(lang: Language) -> &'static str {
+            match lang {
+                Language::English => $en,
+                Language::Chinese => $zh,
+            }
+        }
+    };
+}
+
+macro_rules! tr_fmt {
+    ($name:ident($($arg:ident : $t:ty),*), $en:expr, $zh:expr) => {
+        pub fn $name($($arg: $t,)* lang: Language) -> String {
+            match lang {
+                Language::English => format!($en, $($arg),*),
+                Language::Chinese => format!($zh, $($arg),*),
+            }
+        }
+    };
+}
+
 pub struct Tr;
 
 impl Tr {
-    // ─── 通用 ─────────────────────────────────────────────
-
-    pub fn app_title(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Robot Control Suite",
-            Language::Chinese => "机器人控制调试套件",
-        }
-    }
-
-    pub fn connect(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Connect",
-            Language::Chinese => "连接",
-        }
-    }
-
-    pub fn disconnect(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Disconnect",
-            Language::Chinese => "断开",
-        }
-    }
-
-    pub fn send(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Send",
-            Language::Chinese => "发送",
-        }
-    }
-
-    pub fn clear(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Clear",
-            Language::Chinese => "清空",
-        }
-    }
-
-    pub fn refresh(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Refresh",
-            Language::Chinese => "刷新",
-        }
-    }
-
-    pub fn save(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Save",
-            Language::Chinese => "保存",
-        }
-    }
-
-    pub fn reset(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Reset",
-            Language::Chinese => "重置",
-        }
-    }
-
-    pub fn start(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Start",
-            Language::Chinese => "启动",
-        }
-    }
-
-    pub fn stop(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Stop",
-            Language::Chinese => "停止",
-        }
-    }
-
-    pub fn error_label(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Error",
-            Language::Chinese => "错误",
-        }
-    }
-
-    pub fn connected(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Connected",
-            Language::Chinese => "已连接",
-        }
-    }
-
-    pub fn disconnected(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Disconnected",
-            Language::Chinese => "已断开",
-        }
-    }
-
-    // ─── 导航标签 ──────────────────────────────────────────
-
-    pub fn tab_dashboard(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Dashboard",
-            Language::Chinese => "仪表盘",
-        }
-    }
-
-    pub fn tab_connections(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Connections",
-            Language::Chinese => "连接管理",
-        }
-    }
-
-    pub fn tab_terminal(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Terminal",
-            Language::Chinese => "终端调试",
-        }
-    }
-
-    pub fn tab_protocol_analysis(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Protocol Analysis",
-            Language::Chinese => "协议分析",
-        }
-    }
-
-    pub fn tab_packet_builder(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Packet Builder",
-            Language::Chinese => "协议组包",
-        }
-    }
-
-    pub fn tab_topology(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Topology",
-            Language::Chinese => "机器人拓扑",
-        }
-    }
-
-    pub fn tab_pid_control(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Control Algorithms",
-            Language::Chinese => "控制算法",
-        }
-    }
-
-    pub fn tab_nn_tuning(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "NN Auto-Tune",
-            Language::Chinese => "神经网络调参",
-        }
-    }
-
-    pub fn tab_data_viz(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Data Viz",
-            Language::Chinese => "数据可视化",
-        }
-    }
-
-    pub fn tab_simulation_lab(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Simulation Lab",
-            Language::Chinese => "仿真实验室",
-        }
-    }
-
-    pub fn tab_modbus(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Modbus Tools",
-            Language::Chinese => "Modbus 工具",
-        }
-    }
-
-    pub fn tab_canopen(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "CANopen Tools",
-            Language::Chinese => "CANopen 工具",
-        }
-    }
-
-    pub fn simulation_scenario(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Scenario",
-            Language::Chinese => "仿真场景",
-        }
-    }
-
-    pub fn simulation_duration(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Duration (s)",
-            Language::Chinese => "仿真时长 (秒)",
-        }
-    }
-
-    pub fn simulation_step_us(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Step (us)",
-            Language::Chinese => "步长 (微秒)",
-        }
-    }
-
-    pub fn simulation_speed_ref(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Speed reference (rad/s)",
-            Language::Chinese => "速度给定 (rad/s)",
-        }
-    }
-
-    pub fn simulation_load_torque(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Load torque (N m)",
-            Language::Chinese => "负载转矩 (N m)",
-        }
-    }
-
-    pub fn simulation_run(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Run",
-            Language::Chinese => "运行",
-        }
-    }
-
-    pub fn simulation_cancel(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Cancel",
-            Language::Chinese => "取消",
-        }
-    }
-
-    pub fn simulation_progress(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Progress",
-            Language::Chinese => "运行进度",
-        }
-    }
-
-    pub fn simulation_status(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Status",
-            Language::Chinese => "状态",
-        }
-    }
-
-    pub fn simulation_results(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Results",
-            Language::Chinese => "结果指标",
-        }
-    }
-
-    pub fn simulation_scan(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parameter Scan",
-            Language::Chinese => "参数扫描",
-        }
-    }
-
-    pub fn simulation_export_preview(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Export Preview",
-            Language::Chinese => "导出预览",
-        }
-    }
-
-    pub fn simulation_no_result(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No simulation result yet",
-            Language::Chinese => "尚无仿真结果",
-        }
-    }
-
-    pub fn simulation_export_empty(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Run a simulation to preview JSON and CSV exports",
-            Language::Chinese => "运行仿真后可预览 JSON 和 CSV 导出",
-        }
-    }
-
-    // ─── Dashboard ────────────────────────────────────────
-
-    pub fn connection_status(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Connection Status",
-            Language::Chinese => "连接状态",
-        }
-    }
-
-    pub fn system_stats(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "System Statistics",
-            Language::Chinese => "系统统计",
-        }
-    }
-
-    pub fn quick_actions(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Quick Actions",
-            Language::Chinese => "快捷操作",
-        }
-    }
-
-    pub fn robot_state(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Robot State",
-            Language::Chinese => "机器人状态",
-        }
-    }
-
-    pub fn bytes_sent(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Bytes Sent",
-            Language::Chinese => "已发送字节",
-        }
-    }
-
-    pub fn bytes_received(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Bytes Received",
-            Language::Chinese => "已接收字节",
-        }
-    }
-
-    pub fn total_errors(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Total Errors",
-            Language::Chinese => "总错误数",
-        }
-    }
-
-    pub fn log_entries(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Log Entries",
-            Language::Chinese => "日志条目",
-        }
-    }
-
-    pub fn state_history(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "State History",
-            Language::Chinese => "状态历史",
-        }
-    }
-
-    pub fn active_channel(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Active Channel",
-            Language::Chinese => "当前通道",
-        }
-    }
-
-    pub fn last_comm(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Last Comm",
-            Language::Chinese => "最近通信",
-        }
-    }
-
-    pub fn topology_info(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Topology",
-            Language::Chinese => "拓扑信息",
-        }
-    }
-
-    pub fn motors(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "motors",
-            Language::Chinese => "个电机",
-        }
-    }
-
-    pub fn refresh_ports(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Refresh Ports",
-            Language::Chinese => "刷新端口",
-        }
-    }
-
-    pub fn start_control(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Start Control",
-            Language::Chinese => "启动控制",
-        }
-    }
-
-    pub fn stop_control(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Stop Control",
-            Language::Chinese => "停止控制",
-        }
-    }
-
-    pub fn emergency_stop(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "E-STOP",
-            Language::Chinese => "急停",
-        }
-    }
-
-    // ─── Connections ──────────────────────────────────────
-
-    pub fn protocol(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Protocol",
-            Language::Chinese => "协议类型",
-        }
-    }
-
-    pub fn serial_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Serial Port Configuration",
-            Language::Chinese => "串口配置",
-        }
-    }
-
-    pub fn tcp_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "TCP Configuration",
-            Language::Chinese => "TCP 配置",
-        }
-    }
-
-    pub fn udp_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "UDP Configuration",
-            Language::Chinese => "UDP 配置",
-        }
-    }
-
-    pub fn can_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "CAN / CAN FD Configuration",
-            Language::Chinese => "CAN / CAN FD 配置",
-        }
-    }
-
-    pub fn port(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Port",
-            Language::Chinese => "端口",
-        }
-    }
-
-    pub fn baud_rate(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Baud Rate",
-            Language::Chinese => "波特率",
-        }
-    }
-
-    pub fn data_bits(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Data Bits",
-            Language::Chinese => "数据位",
-        }
-    }
-
-    pub fn stop_bits(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Stop Bits",
-            Language::Chinese => "停止位",
-        }
-    }
-
-    pub fn parity(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parity",
-            Language::Chinese => "校验位",
-        }
-    }
-
-    pub fn flow_control(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Flow Control",
-            Language::Chinese => "流控",
-        }
-    }
-
-    pub fn available_ports(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Available Ports",
-            Language::Chinese => "可用端口",
-        }
-    }
-
-    pub fn no_ports_found(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No serial ports found.",
-            Language::Chinese => "未发现串口设备。",
-        }
-    }
-
-    pub fn mode(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Mode",
-            Language::Chinese => "模式",
-        }
-    }
-
-    pub fn client(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Client",
-            Language::Chinese => "客户端",
-        }
-    }
-
-    pub fn server(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Server",
-            Language::Chinese => "服务端",
-        }
-    }
-
-    pub fn host(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Host",
-            Language::Chinese => "地址",
-        }
-    }
-
-    pub fn local_port(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Local Port",
-            Language::Chinese => "本地端口",
-        }
-    }
-
-    pub fn remote_host(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Remote Host",
-            Language::Chinese => "远程地址",
-        }
-    }
-
-    pub fn remote_port(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Remote Port",
-            Language::Chinese => "远程端口",
-        }
-    }
-
-    pub fn bitrate(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Bitrate",
-            Language::Chinese => "比特率",
-        }
-    }
-
-    pub fn enable_can_fd(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Enable CAN FD",
-            Language::Chinese => "启用 CAN FD",
-        }
-    }
-
-    pub fn data_bitrate(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Data Bitrate",
-            Language::Chinese => "数据比特率",
-        }
-    }
-
-    pub fn sw_simulation_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "(Software simulation - no physical CAN adapter required)",
-            Language::Chinese => "(软件仿真 - 无需物理CAN适配器)",
-        }
-    }
-
-    pub fn connected_clients(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Connected Clients",
-            Language::Chinese => "已连接客户端",
-        }
-    }
-
-    // ─── Terminal ──────────────────────────────────────────
-
-    pub fn display(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Display",
-            Language::Chinese => "显示",
-        }
-    }
-
-    pub fn auto_scroll(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Auto-scroll",
-            Language::Chinese => "自动滚动",
-        }
-    }
-
-    pub fn entries(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Entries",
-            Language::Chinese => "条目",
-        }
-    }
-
-    pub fn no_data_yet(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No data yet. Connect a device and start communicating...",
-            Language::Chinese => "暂无数据。请连接设备开始通信...",
-        }
-    }
-
-    pub fn newline(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Newline",
-            Language::Chinese => "换行",
-        }
-    }
-
-    pub fn type_to_send(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Type text to send...",
-            Language::Chinese => "输入要发送的内容...",
-        }
-    }
-
-    pub fn hex_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "e.g. AA 01 02 FF 55",
-            Language::Chinese => "如 AA 01 02 FF 55",
-        }
-    }
-
-    // ─── Packet Builder ───────────────────────────────────
-
-    pub fn template(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Template",
-            Language::Chinese => "模板",
-        }
-    }
-
-    pub fn new_template(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "New",
-            Language::Chinese => "新建",
-        }
-    }
-
-    pub fn delete(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Delete",
-            Language::Chinese => "删除",
-        }
-    }
-
-    pub fn name(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Name",
-            Language::Chinese => "名称",
-        }
-    }
-
-    pub fn description(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Description",
-            Language::Chinese => "描述",
-        }
-    }
-
-    pub fn header_hex(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Header (hex)",
-            Language::Chinese => "帧头 (hex)",
-        }
-    }
-
-    pub fn tail_hex(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Tail (hex)",
-            Language::Chinese => "帧尾 (hex)",
-        }
-    }
-
-    pub fn checksum(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Checksum",
-            Language::Chinese => "校验方式",
-        }
-    }
-
-    pub fn include_length(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Include Length",
-            Language::Chinese => "包含长度",
-        }
-    }
-
-    pub fn fields(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Fields",
-            Language::Chinese => "字段列表",
-        }
-    }
-
-    pub fn add_field(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Add Field",
-            Language::Chinese => "添加字段",
-        }
-    }
-
-    pub fn packet_preview(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Packet Preview",
-            Language::Chinese => "数据包预览",
-        }
-    }
-
-    pub fn send_packet(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Send Packet",
-            Language::Chinese => "发送数据包",
-        }
-    }
-
-    pub fn copy_hex(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Copy HEX",
-            Language::Chinese => "复制 HEX",
-        }
-    }
-
-    // ─── Topology ─────────────────────────────────────────
-
-    pub fn presets(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Presets",
-            Language::Chinese => "预设方案",
-        }
-    }
-
-    pub fn chassis_type(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Chassis Type",
-            Language::Chinese => "底盘类型",
-        }
-    }
-
-    pub fn geometry_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Geometry Parameters",
-            Language::Chinese => "几何参数",
-        }
-    }
-
-    pub fn wheel_radius(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Wheel Radius (mm)",
-            Language::Chinese => "轮半径 (mm)",
-        }
-    }
-
-    pub fn wheel_base(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Wheel Base (mm)",
-            Language::Chinese => "轴距 (mm)",
-        }
-    }
-
-    pub fn track_width(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Track Width (mm)",
-            Language::Chinese => "轮距 (mm)",
-        }
-    }
-
-    pub fn max_linear_vel(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Max Linear Vel (mm/s)",
-            Language::Chinese => "最大线速度 (mm/s)",
-        }
-    }
-
-    pub fn max_angular_vel(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Max Angular Vel (rad/s)",
-            Language::Chinese => "最大角速度 (rad/s)",
-        }
-    }
-
-    pub fn motors_joints(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Motors / Joints",
-            Language::Chinese => "电机 / 关节",
-        }
-    }
-
-    pub fn add_motor(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Add Motor",
-            Language::Chinese => "添加电机",
-        }
-    }
-
-    pub fn topology_viz(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Topology Visualization",
-            Language::Chinese => "拓扑可视化",
-        }
-    }
-
-    // ─── PID Control ──────────────────────────────────────
-
-    pub fn pid_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "PID Parameters",
-            Language::Chinese => "PID 参数",
-        }
-    }
-
-    pub fn advanced_options(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Advanced Options",
-            Language::Chinese => "高级选项",
-        }
-    }
-
-    pub fn deriv_filter(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Derivative Filter",
-            Language::Chinese => "微分滤波",
-        }
-    }
-
-    pub fn anti_windup(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Anti-Windup",
-            Language::Chinese => "抗积分饱和",
-        }
-    }
-
-    pub fn feedforward(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Feedforward Gain",
-            Language::Chinese => "前馈增益",
-        }
-    }
-
-    pub fn dead_zone(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Dead Zone",
-            Language::Chinese => "死区",
-        }
-    }
-
-    pub fn current_state(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Current State",
-            Language::Chinese => "当前状态",
-        }
-    }
-
-    pub fn save_preset(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Save Current as Preset",
-            Language::Chinese => "保存为预设",
-        }
-    }
-
-    pub fn running(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "RUNNING",
-            Language::Chinese => "运行中",
-        }
-    }
-
-    pub fn stopped(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "STOPPED",
-            Language::Chinese => "已停止",
-        }
-    }
-
-    // ─── 控制算法选择 ──────────────────────────────────────
-
-    pub fn algorithm_select(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Algorithm Selection",
-            Language::Chinese => "算法选择",
-        }
-    }
-
-    // ── 增量式 PID ──
-
-    pub fn increment_limit(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Increment Limit",
-            Language::Chinese => "增量限幅",
-        }
-    }
-
-    pub fn output_ramp(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Output Ramp (per sec)",
-            Language::Chinese => "输出斜率限制 (每秒)",
-        }
-    }
-
-    pub fn last_increment(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Last Increment",
-            Language::Chinese => "最近增量",
-        }
-    }
-
-    // ── Bang-Bang ──
-
-    pub fn output_high(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Output High",
-            Language::Chinese => "正向输出",
-        }
-    }
-
-    pub fn output_low(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Output Low",
-            Language::Chinese => "负向输出",
-        }
-    }
-
-    pub fn hysteresis(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Hysteresis",
-            Language::Chinese => "回滞区",
-        }
-    }
-
-    pub fn dead_band(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Dead Band",
-            Language::Chinese => "死区带宽",
-        }
-    }
-
-    pub fn switch_state(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Switch State",
-            Language::Chinese => "开关状态",
-        }
-    }
-
-    // ── 模糊 PID ──
-
-    pub fn base_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Base Parameters",
-            Language::Chinese => "基础参数",
-        }
-    }
-
-    pub fn fuzzy_tuning_range(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Fuzzy Tuning Range",
-            Language::Chinese => "模糊整定范围",
-        }
-    }
-
-    pub fn error_scale(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Error Scale",
-            Language::Chinese => "误差量化比例",
-        }
-    }
-
-    pub fn ec_scale(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Error Change Scale",
-            Language::Chinese => "误差变化率比例",
-        }
-    }
-
-    pub fn effective_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Effective Parameters",
-            Language::Chinese => "当前有效参数",
-        }
-    }
-
-    // ── 串级 PID ──
-
-    pub fn outer_loop(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Outer Loop (Position)",
-            Language::Chinese => "外环 (位置)",
-        }
-    }
-
-    pub fn inner_loop(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Inner Loop (Velocity)",
-            Language::Chinese => "内环 (速度)",
-        }
-    }
-
-    pub fn outer_output(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Outer Output",
-            Language::Chinese => "外环输出",
-        }
-    }
-
-    // ── Smith 预估 ──
-
-    pub fn process_model(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Process Model",
-            Language::Chinese => "过程模型",
-        }
-    }
-
-    pub fn model_gain(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Model Gain (K)",
-            Language::Chinese => "模型增益 (K)",
-        }
-    }
-
-    pub fn time_constant(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Time Constant (T, sec)",
-            Language::Chinese => "时间常数 (T, 秒)",
-        }
-    }
-
-    pub fn dead_time(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Dead Time (L, sec)",
-            Language::Chinese => "纯时滞 (L, 秒)",
-        }
-    }
-
-    pub fn model_prediction(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Model Prediction",
-            Language::Chinese => "模型预测值",
-        }
-    }
-
-    pub fn delay_buffer_size(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Delay Buffer Size",
-            Language::Chinese => "延迟缓冲长度",
-        }
-    }
-
-    // ─── ADRC ─────────────────────────────────────────────
-
-    pub fn adrc_td_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Tracking Differentiator (TD)",
-            Language::Chinese => "跟踪微分器 (TD)",
-        }
-    }
-
-    pub fn adrc_eso_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Extended State Observer (ESO)",
-            Language::Chinese => "扩展状态观测器 (ESO)",
-        }
-    }
-
-    pub fn adrc_nlsef_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Nonlinear State Error Feedback (NLSEF)",
-            Language::Chinese => "非线性状态误差反馈 (NLSEF)",
-        }
-    }
-
-    // ─── LADRC ────────────────────────────────────────────
-
-    pub fn ladrc_bandwidth_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "LADRC Bandwidth Parameters",
-            Language::Chinese => "LADRC 带宽参数",
-        }
-    }
-
-    pub fn ladrc_order(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Order",
-            Language::Chinese => "阶次",
-        }
-    }
-
-    pub fn ladrc_first_order(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "1st Order",
-            Language::Chinese => "一阶",
-        }
-    }
-
-    pub fn ladrc_second_order(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "2nd Order",
-            Language::Chinese => "二阶",
-        }
-    }
-
-    // ─── LQR ──────────────────────────────────────────────
-
-    pub fn lqr_weights(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "LQR State & Control Weights",
-            Language::Chinese => "LQR 状态与控制权重",
-        }
-    }
-
-    pub fn lqr_q_position(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Position Weight",
-            Language::Chinese => "位置权重",
-        }
-    }
-
-    pub fn lqr_q_velocity(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Velocity Weight",
-            Language::Chinese => "速度权重",
-        }
-    }
-
-    pub fn lqr_r_weight(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Control Weight",
-            Language::Chinese => "控制权重",
-        }
-    }
-
-    pub fn lqr_mass(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Mass (kg)",
-            Language::Chinese => "质量 (kg)",
-        }
-    }
-
-    pub fn lqr_integral(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Integral Action (optional)",
-            Language::Chinese => "积分环节 (可选)",
-        }
-    }
-
-    pub fn lqr_computed_gains(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Computed Gains:",
-            Language::Chinese => "计算增益:",
-        }
-    }
-
-    // ─── MPC ──────────────────────────────────────────────
-
-    pub fn mpc_horizons(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "MPC Horizons",
-            Language::Chinese => "MPC 预测与控制时域",
-        }
-    }
-
-    pub fn mpc_prediction_horizon(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Prediction Horizon (Np)",
-            Language::Chinese => "预测时域 (Np)",
-        }
-    }
-
-    pub fn mpc_control_horizon(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Control Horizon (Nc)",
-            Language::Chinese => "控制时域 (Nc)",
-        }
-    }
-
-    pub fn mpc_model_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Internal Model",
-            Language::Chinese => "内部模型",
-        }
-    }
-
-    pub fn mpc_sample_time(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Sample Time (sec)",
-            Language::Chinese => "采样时间 (秒)",
-        }
-    }
-
-    pub fn mpc_weights_and_constraints(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Weights & Constraints",
-            Language::Chinese => "权重与约束",
-        }
-    }
-
-    pub fn mpc_du_limit(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "ΔU Limit",
-            Language::Chinese => "ΔU 限幅",
-        }
-    }
-
-    // ─── 底盘运动学 ────────────────────────────────────────
-
-    pub fn chassis_kinematics(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Chassis Kinematics Code Examples",
-            Language::Chinese => "底盘运动学代码示例",
-        }
-    }
-
-    pub fn chassis_kinematics_desc(lang: Language) -> &'static str {
-        match lang {
-            Language::English => {
-                "Reference code templates for common robot chassis forward/inverse kinematics"
-            }
-            Language::Chinese => "常见机器人底盘正/逆运动学参考代码模板",
-        }
-    }
-
-    // ─── NN Tuning ────────────────────────────────────────
-
-    pub fn network_arch(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Network Architecture",
-            Language::Chinese => "网络架构",
-        }
-    }
-
-    pub fn training_controls(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Training Controls",
-            Language::Chinese => "训练控制",
-        }
-    }
-
-    pub fn learning_rate(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Learning Rate",
-            Language::Chinese => "学习率",
-        }
-    }
-
-    pub fn train_step(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Train Step",
-            Language::Chinese => "训练一步",
-        }
-    }
-
-    pub fn auto_train(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Auto-Train",
-            Language::Chinese => "自动训练",
-        }
-    }
-
-    pub fn training_loss(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Training Loss",
-            Language::Chinese => "训练损失",
-        }
-    }
-
-    pub fn no_training_data(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No training data. Start control and collect error data first.",
-            Language::Chinese => "暂无训练数据。请先启动控制并采集误差数据。",
-        }
-    }
-
-    pub fn suggested_params(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Suggested Parameters",
-            Language::Chinese => "建议参数",
-        }
-    }
-
-    pub fn predict(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Predict",
-            Language::Chinese => "预测",
-        }
-    }
-
-    pub fn apply_suggested(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Apply Suggested",
-            Language::Chinese => "应用建议值",
-        }
-    }
-
-    pub fn input_features(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Input Features Preview",
-            Language::Chinese => "输入特征预览",
-        }
-    }
-
-    pub fn parameter(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parameter",
-            Language::Chinese => "参数",
-        }
-    }
-
-    pub fn current(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Current",
-            Language::Chinese => "当前值",
-        }
-    }
-
-    pub fn suggested(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Suggested",
-            Language::Chinese => "建议值",
-        }
-    }
-
-    pub fn delta(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Delta",
-            Language::Chinese => "差值",
-        }
-    }
-
-    // ─── Data Viz ──────────────────────────────────────────
-
-    pub fn channels(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Channels",
-            Language::Chinese => "通道",
-        }
-    }
-
-    pub fn position(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Position",
-            Language::Chinese => "位置",
-        }
-    }
-
-    pub fn velocity(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Velocity",
-            Language::Chinese => "速度",
-        }
-    }
-
-    pub fn current_a(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Current",
-            Language::Chinese => "电流",
-        }
-    }
-
-    pub fn temperature(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Temperature",
-            Language::Chinese => "温度",
-        }
-    }
-
-    pub fn error_ch(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Error",
-            Language::Chinese => "误差",
-        }
-    }
-
-    pub fn pid_output(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "PID Output",
-            Language::Chinese => "PID 输出",
-        }
-    }
-
-    pub fn data_points(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Data Points",
-            Language::Chinese => "数据点",
-        }
-    }
-
-    pub fn clear_history(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Clear History",
-            Language::Chinese => "清空历史",
-        }
-    }
-
-    pub fn no_data_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::English => {
-                "No data to display. Connect a device and start control to see real-time charts."
-            }
-            Language::Chinese => "无数据可显示。请连接设备并启动控制以查看实时图表。",
-        }
-    }
-
-    // ─── Modbus ────────────────────────────────────────────
-
-    pub fn request_builder(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Request Builder",
-            Language::Chinese => "请求构建",
-        }
-    }
-
-    pub fn slave_id(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Slave ID",
-            Language::Chinese => "从站地址",
-        }
-    }
-
-    pub fn function(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Function",
-            Language::Chinese => "功能码",
-        }
-    }
-
-    pub fn start_address(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Start Address",
-            Language::Chinese => "起始地址",
-        }
-    }
-
-    pub fn quantity(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Quantity",
-            Language::Chinese => "数量",
-        }
-    }
-
-    pub fn write_values(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Write Values",
-            Language::Chinese => "写入值",
-        }
-    }
-
-    pub fn frame_preview(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Frame Preview",
-            Language::Chinese => "帧预览",
-        }
-    }
-
-    pub fn send_rtu(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Send RTU",
-            Language::Chinese => "发送 RTU",
-        }
-    }
-
-    pub fn send_tcp(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Send TCP",
-            Language::Chinese => "发送 TCP",
-        }
-    }
-
-    pub fn register_table(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Register Table (Simulated)",
-            Language::Chinese => "寄存器表 (模拟)",
-        }
-    }
-
-    pub fn randomize(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Randomize",
-            Language::Chinese => "随机填充",
-        }
-    }
-
-    pub fn modbus_log(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Modbus Log",
-            Language::Chinese => "Modbus 日志",
-        }
-    }
-
-    // ─── 状态栏 ────────────────────────────────────────────
-
-    pub fn found_ports(n: usize, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Found {} ports", n),
-            Language::Chinese => format!("发现 {} 个端口", n),
-        }
-    }
-
-    pub fn sent_bytes(n: usize, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Sent {} bytes", n),
-            Language::Chinese => format!("已发送 {} 字节", n),
-        }
-    }
-
-    pub fn send_error(e: &str, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Send error: {}", e),
-            Language::Chinese => format!("发送失败: {}", e),
-        }
-    }
-
-    pub fn applied_preset(name: &str, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Applied preset: {}", name),
-            Language::Chinese => format!("已应用预设: {}", name),
-        }
-    }
-
-    pub fn light_mode(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Light",
-            Language::Chinese => "浅色",
-        }
-    }
-
-    pub fn dark_mode(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Dark",
-            Language::Chinese => "深色",
-        }
-    }
-
-    pub fn select_port(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Select port...",
-            Language::Chinese => "选择端口...",
-        }
-    }
-
-    pub fn comma_values_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Comma separated values, e.g. 100,200,300",
-            Language::Chinese => "逗号分隔值, 如 100,200,300",
-        }
-    }
-
-    pub fn copied(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Copied to clipboard",
-            Language::Chinese => "已复制到剪贴板",
-        }
-    }
-
-    pub fn select(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Select...",
-            Language::Chinese => "选择...",
-        }
-    }
-
-    // ─── CAN 高级参数 ──────────────────────────────────────
-
-    pub fn sample_point(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Sample Point",
-            Language::Chinese => "采样点",
-        }
-    }
-
-    pub fn data_sample_point(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Data Sample Point",
-            Language::Chinese => "数据采样点",
-        }
-    }
-
-    pub fn can_termination(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Termination Resistor",
-            Language::Chinese => "终端电阻",
-        }
-    }
-
-    pub fn can_listen_only(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Listen Only",
-            Language::Chinese => "仅监听",
-        }
-    }
-
-    pub fn can_loopback(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Loopback",
-            Language::Chinese => "回环模式",
-        }
-    }
-
-    pub fn can_auto_retransmit(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Auto Retransmit",
-            Language::Chinese => "自动重传",
-        }
-    }
-
-    pub fn can_error_reporting(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Error Reporting",
-            Language::Chinese => "错误报告",
-        }
-    }
-
-    // ─── USB 协议 ──────────────────────────────────────────
-
-    pub fn usb_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "USB Configuration",
-            Language::Chinese => "USB 配置",
-        }
-    }
-
-    pub fn usb_protocol_label(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "USB Protocol",
-            Language::Chinese => "USB 协议",
-        }
-    }
-
-    pub fn usb_speed_label(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "USB Speed",
-            Language::Chinese => "USB 速度",
-        }
-    }
-
-    pub fn usb_endpoint_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Endpoint Configuration",
-            Language::Chinese => "端点配置",
-        }
-    }
-
-    pub fn usb_endpoint_in(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Endpoint IN",
-            Language::Chinese => "输入端点",
-        }
-    }
-
-    pub fn usb_endpoint_out(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Endpoint OUT",
-            Language::Chinese => "输出端点",
-        }
-    }
-
-    pub fn usb_max_packet_size(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Max Packet Size",
-            Language::Chinese => "最大包大小",
-        }
-    }
-
-    pub fn usb_interface(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Interface",
-            Language::Chinese => "接口",
-        }
-    }
-
-    pub fn usb_typical_speeds(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Typical Speeds",
-            Language::Chinese => "典型速度",
-        }
-    }
-
-    pub fn usb_cdc_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "CDC ACM devices use virtual COM port",
-            Language::Chinese => "CDC ACM 设备使用虚拟串口",
-        }
-    }
-
-    // ─── Packet Builder / Parser ───────────────────────────
-
-    pub fn builder_tab(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Builder",
-            Language::Chinese => "构建器",
-        }
-    }
-
-    pub fn parser_tab(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parser",
-            Language::Chinese => "解析器",
-        }
-    }
-
-    pub fn parser_template(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parse Template",
-            Language::Chinese => "解析模板",
-        }
-    }
-
-    pub fn auto_parse(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Auto Parse",
-            Language::Chinese => "自动解析",
-        }
-    }
-
-    pub fn parser_input(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "HEX Data Input",
-            Language::Chinese => "HEX 数据输入",
-        }
-    }
-
-    pub fn parse_now(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parse Now",
-            Language::Chinese => "立即解析",
-        }
-    }
-
-    pub fn parsed_count(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parsed",
-            Language::Chinese => "已解析",
-        }
-    }
-
-    pub fn parser_empty(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No parsed results yet. Paste HEX data and click Parse.",
-            Language::Chinese => "暂无解析结果。粘贴 HEX 数据后点击解析。",
-        }
-    }
-
-    pub fn parse_success(name: &str, count: usize, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Parsed '{}': {} fields", name, count),
-            Language::Chinese => format!("已解析 '{}': {} 个字段", name, count),
-        }
-    }
-
-    pub fn parse_failed(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Parse failed: no matching template",
-            Language::Chinese => "解析失败: 无匹配模板",
-        }
-    }
-
-    pub fn field_type_label(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Type",
-            Language::Chinese => "类型",
-        }
-    }
-
-    pub fn field_value_label(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Value",
-            Language::Chinese => "值",
-        }
-    }
-
-    pub fn field_numeric(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Numeric",
-            Language::Chinese => "数值",
-        }
-    }
-
-    // ─── 数据可视化 ────────────────────────────────────────
-
-    pub fn viz_channel_config(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Channel Configuration",
-            Language::Chinese => "通道配置",
-        }
-    }
-
-    pub fn viz_add_channel(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Add Channel",
-            Language::Chinese => "添加通道",
-        }
-    }
-
-    // ─── 企业级菜单栏 / Enterprise Menu Bar ──────────────
-
-    pub fn menu_file(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "File",
-            Language::Chinese => "文件",
-        }
-    }
-    pub fn menu_edit(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Edit",
-            Language::Chinese => "编辑",
-        }
-    }
-    pub fn menu_view(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "View",
-            Language::Chinese => "视图",
-        }
-    }
-    pub fn menu_tools(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Tools",
-            Language::Chinese => "工具",
-        }
-    }
-    pub fn menu_help(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Help",
-            Language::Chinese => "帮助",
-        }
-    }
-    pub fn menu_export_log(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Export Logs (CSV)",
-            Language::Chinese => "导出日志 (CSV)",
-        }
-    }
-    pub fn menu_preferences(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Preferences",
-            Language::Chinese => "偏好设置",
-        }
-    }
-    pub fn menu_quit(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Quit",
-            Language::Chinese => "退出",
-        }
-    }
-    pub fn menu_clear_logs(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Clear All Logs",
-            Language::Chinese => "清除所有日志",
-        }
-    }
-    pub fn menu_copy_frame(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Copy Last Frame",
-            Language::Chinese => "复制最后一帧",
-        }
-    }
-    pub fn menu_reset_counters(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Reset Counters",
-            Language::Chinese => "重置计数器",
-        }
-    }
-    pub fn menu_hide_sidebar(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Hide Sidebar",
-            Language::Chinese => "隐藏侧边栏",
-        }
-    }
-    pub fn menu_show_sidebar(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Show Sidebar",
-            Language::Chinese => "显示侧边栏",
-        }
-    }
-    pub fn menu_motion_level(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Motion Level",
-            Language::Chinese => "动效等级",
-        }
-    }
-    pub fn menu_ui_scale(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "UI Scale",
-            Language::Chinese => "界面缩放",
-        }
-    }
-    pub fn menu_ui_scale_reset(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Reset to 150%",
-            Language::Chinese => "重置为 150%",
-        }
-    }
-    pub fn menu_language(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Language",
-            Language::Chinese => "语言",
-        }
-    }
-    pub fn menu_mcp_server(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Toggle MCP Server",
-            Language::Chinese => "切换 MCP 服务",
-        }
-    }
-    pub fn menu_about(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "About",
-            Language::Chinese => "关于",
-        }
-    }
-    pub fn menu_shortcuts(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Keyboard Shortcuts",
-            Language::Chinese => "键盘快捷键",
-        }
-    }
-    pub fn menu_docs(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Documentation",
-            Language::Chinese => "文档",
-        }
-    }
-
-    pub fn top_health(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Health",
-            Language::Chinese => "链路健康",
-        }
-    }
-
-    pub fn top_status(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Status",
-            Language::Chinese => "状态",
-        }
-    }
-
-    pub fn menu_check_updates(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Check Updates",
-            Language::Chinese => "检查更新",
-        }
-    }
-
-    pub fn prefs_title(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Preferences",
-            Language::Chinese => "偏好设置",
-        }
-    }
-
-    pub fn prefs_sidebar(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Enable tab strip",
-            Language::Chinese => "显示标签栏",
-        }
-    }
-
-    pub fn prefs_motion_level(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Motion level",
-            Language::Chinese => "动效等级",
-        }
-    }
-
-    pub fn prefs_ui_scale(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "UI scale (%)",
-            Language::Chinese => "界面缩放 (%)",
-        }
-    }
-
-    pub fn prefs_autosave_seconds(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Auto-save interval (s)",
-            Language::Chinese => "自动保存间隔 (秒)",
-        }
-    }
-
-    pub fn prefs_saved(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Preferences saved",
-            Language::Chinese => "偏好设置已保存",
-        }
-    }
-
-    pub fn about_summary(lang: Language) -> &'static str {
-        match lang {
-            Language::English => {
-                "Integrated workspace for robot connection, protocol diagnostics, and control tuning."
-            }
-            Language::Chinese => "用于机器人连接、协议诊断与控制调参的一体化工作台。",
-        }
-    }
-
-    pub fn shortcuts_title(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Keyboard Shortcuts",
-            Language::Chinese => "键盘快捷键",
-        }
-    }
-
-    pub fn docs_opened(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Documentation opened in browser",
-            Language::Chinese => "已在浏览器中打开文档",
-        }
-    }
-
-    pub fn logs_cleared(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "All logs cleared",
-            Language::Chinese => "已清除所有日志",
-        }
-    }
-
-    pub fn counters_reset_done(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Counters reset",
-            Language::Chinese => "计数器已重置",
-        }
-    }
-
-    pub fn no_logs_to_copy(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "No log frame to copy",
-            Language::Chinese => "暂无可复制的日志帧",
-        }
-    }
-
-    pub fn copied_last_frame(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Copied latest frame",
-            Language::Chinese => "已复制最近一帧",
-        }
-    }
-
-    pub fn logs_exported(path: &str, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Logs exported: {}", path),
-            Language::Chinese => format!("日志已导出: {}", path),
-        }
-    }
-
-    pub fn logs_export_failed(err: &str, lang: Language) -> String {
-        match lang {
-            Language::English => format!("Log export failed: {}", err),
-            Language::Chinese => format!("日志导出失败: {}", err),
-        }
-    }
-
-    pub fn ui_scale_set(percent: u32, lang: Language) -> String {
-        match lang {
-            Language::English => format!("UI scale set to {}%", percent),
-            Language::Chinese => format!("界面缩放已设置为 {}%", percent),
-        }
-    }
-
-    pub fn motion_level_extreme(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Extreme",
-            Language::Chinese => "极致",
-        }
-    }
-
-    pub fn motion_level_standard(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Standard",
-            Language::Chinese => "标准",
-        }
-    }
-
-    pub fn motion_level_native(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Native",
-            Language::Chinese => "原生",
-        }
-    }
-
-    pub fn motion_level_optimized(lang: Language) -> &'static str {
-        match lang {
-            Language::English => "Optimized",
-            Language::Chinese => "优化",
-        }
-    }
-    pub fn mcp_server_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "MCP 服务器",
-            Language::English => "MCP Server",
-        }
-    }
-    pub fn port_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "端口:",
-            Language::English => "Port:",
-        }
-    }
-    pub fn token_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "令牌:",
-            Language::English => "Token:",
-        }
-    }
-    pub fn stop_mcp(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "停止 MCP",
-            Language::English => "Stop MCP",
-        }
-    }
-    pub fn start_mcp(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "启动 MCP",
-            Language::English => "Start MCP",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn running_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "运行中",
-            Language::English => "Running",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn stopped_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "已停止",
-            Language::English => "Stopped",
-        }
-    }
-    pub fn reconnect_after_drop(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "断开后自动重连",
-            Language::English => "Reconnect after drop",
-        }
-    }
-    pub fn interval_ms_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "间隔(ms):",
-            Language::English => "Interval(ms):",
-        }
-    }
-    pub fn system_check_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "系统自检",
-            Language::English => "System Check",
-        }
-    }
-    pub fn runtime_metrics_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "运行指标",
-            Language::English => "Runtime Metrics",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn connect_attempts_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "连接尝试次数",
-            Language::English => "Connect Attempts",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn connect_failures_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "连接失败次数",
-            Language::English => "Connect Failures",
-        }
-    }
-    pub fn protocol_analysis_entry_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "协议分析入口",
-            Language::English => "Protocol Analysis Entry",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn total_frames_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "总帧数",
-            Language::English => "Total Frames",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn open_protocol_analysis(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "打开协议分析",
-            Language::English => "Open Protocol Analysis",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn voltage_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "电压",
-            Language::English => "Voltage",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn pwm_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "PWM 占空比",
-            Language::English => "PWM",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn can_id_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CAN ID:",
-            Language::English => "CAN ID:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn data_hex_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Data HEX:",
-            Language::English => "Data HEX:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn cob_id_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "COB-ID:",
-            Language::English => "COB-ID:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn node_id_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Node ID:",
-            Language::English => "Node ID:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn index_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Index:",
-            Language::English => "Index:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn sub_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Sub:",
-            Language::English => "Sub:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn payload_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Payload:",
-            Language::English => "Payload:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn slave_address_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Slave Address:",
-            Language::English => "Slave Address:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn od_index_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "OD Index:",
-            Language::English => "OD Index:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn write_download_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Write (Download)",
-            Language::English => "Write (Download)",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn read_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Read",
-            Language::English => "Read",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn send_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Send",
-            Language::English => "Send",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn add_motor_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Add Motor",
-            Language::English => "Add Motor",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn remove_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Remove",
-            Language::English => "Remove",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn train_x10_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Train x10",
-            Language::English => "Train x10",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn train_x100_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Train x100",
-            Language::English => "Train x100",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn copy_rtu_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Copy RTU",
-            Language::English => "Copy RTU",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn copy_tcp_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Copy TCP",
-            Language::English => "Copy TCP",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn no_parsed_fields(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "No parsed numeric fields",
-            Language::English => "No parsed numeric fields",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn no_channels_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "No channels configured",
-            Language::English => "No channels configured",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn scanning_ports(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Scanning for ports...",
-            Language::English => "Scanning for ports...",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn speed_ref_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Speed reference",
-            Language::English => "Speed reference",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn final_speed_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Final speed",
-            Language::English => "Final speed",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn speed_error_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Speed error",
-            Language::English => "Speed error",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn peak_torque_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Peak torque",
-            Language::English => "Peak torque",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn peak_current_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Peak current",
-            Language::English => "Peak current",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn max_temp_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Max temperature",
-            Language::English => "Max temperature",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn steps_executed_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Steps executed",
-            Language::English => "Steps executed",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn settled_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Settled",
-            Language::English => "Settled",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn cancelled_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Cancelled",
-            Language::English => "Cancelled",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn yes_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "yes",
-            Language::English => "yes",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn no_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "no",
-            Language::English => "no",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn csv_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CSV",
-            Language::English => "CSV",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn json_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "JSON",
-            Language::English => "JSON",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn value_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Value",
-            Language::English => "Value",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn error_label_short(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Error",
-            Language::English => "Error",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn display_mode_hex(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "HEX",
-            Language::English => "HEX",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn display_mode_ascii(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "ASCII",
-            Language::English => "ASCII",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn display_mode_mixed(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Mixed",
-            Language::English => "Mixed",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn auto_parse_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Auto Parse",
-            Language::English => "Auto Parse",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn parse_now_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Parse Now",
-            Language::English => "Parse Now",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn builder_tab_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Builder",
-            Language::English => "Builder",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn parser_tab_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Parser",
-            Language::English => "Parser",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn loss_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Loss",
-            Language::English => "Loss",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn copy_hex_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Copy Hex",
-            Language::English => "Copy Hex",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn send_packet_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Send Packet",
-            Language::English => "Send Packet",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn add_field_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Add Field",
-            Language::English => "Add Field",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn randomize_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Randomize",
-            Language::English => "Randomize",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn remove_field_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Remove",
-            Language::English => "Remove",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn clear_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Clear",
-            Language::English => "Clear",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn query_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Query:",
-            Language::English => "Query:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn search_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Search",
-            Language::English => "Search",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn filters_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Filters",
-            Language::English => "Filters",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn results_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Results",
-            Language::English => "Results",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn no_matching_logs(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "No matching logs.",
-            Language::English => "No matching logs.",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn output_limit_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "输出限幅:",
-            Language::English => "Output Limit:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn integral_limit_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "积分限幅:",
-            Language::English => "Integral Limit:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn setpoint_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "设定值:",
-            Language::English => "Setpoint:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn integral_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "积分:",
-            Language::English => "Integral:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn derivative_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "微分:",
-            Language::English => "Derivative:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn output_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "输出:",
-            Language::English => "Output:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn bang_bang_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Bang-Bang",
-            Language::English => "Bang-Bang",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn layers_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "层数",
-            Language::English => "Layers",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn llm_api_tuning(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "LLM API 调参",
-            Language::English => "LLM API Tuning",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn api_url_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "API URL:",
-            Language::English => "API URL:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn model_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "模型:",
-            Language::English => "Model:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn api_key_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "API 密钥:",
-            Language::English => "API Key:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn llm_suggest_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "LLM 建议",
-            Language::English => "LLM Suggest",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn apply_llm_suggestion(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "应用 LLM 建议",
-            Language::English => "Apply LLM Suggestion",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn llm_loading_text(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "LLM 请求中...",
-            Language::English => "LLM request in progress...",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn llm_analysis_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "LLM 分析:",
-            Language::English => "LLM Analysis:",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn current_loss_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "当前损失",
-            Language::English => "Current Loss",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn q_output_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "Q (输出):",
-            Language::English => "Q (output):",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn r_input_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "R (输入):",
-            Language::English => "R (input):",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn s_rate_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "S (变化率):",
-            Language::English => "S (rate):",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn use_first_btn(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "使用第一个",
-            Language::English => "Use first",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn resume_retry(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "恢复重试",
-            Language::English => "Resume retry",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn stop_retry(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "停止重试",
-            Language::English => "Stop retry",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn retry_now(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "立即重试",
-            Language::English => "Retry now",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn background_retry_off(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "后台重试已关闭，直到您启用它。",
-            Language::English => "Background retry is off until you enable it.",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn retry_arms_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "重试在一次成功手动连接后启用。",
-            Language::English => "Retry arms after one successful manual connection.",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn retry_idle_hint(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "重试在当前连接断开前保持空闲。",
-            Language::English => "Retry idle until the current link drops.",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_fd_builder(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CAN FD 帧构建",
-            Language::English => "CAN FD Frame Builder",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_log_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CANopen 日志",
-            Language::English => "CANopen Log",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_frame_analyzer(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CANopen 帧解析",
-            Language::English => "Frame Analyzer",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_cobid_map(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CANopen COB-ID 映射",
-            Language::English => "CANopen COB-ID Map",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_sdo_bitfield(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "SDO 命令字节位域",
-            Language::English => "SDO Command Byte Bitfield",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_ecat_sdo_tool(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "EtherCAT CoE SDO 工具",
-            Language::English => "EtherCAT CoE SDO Tool",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_coe_analyzer(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "CoE 帧分析器",
-            Language::English => "CoE Frame Analyzer",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_ecat_state_machine(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "EtherCAT 状态机",
-            Language::English => "EtherCAT State Machine",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_pdo_mapper(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "PDO 映射管理器",
-            Language::English => "PDO Mapping Manager",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_pdo_decoder(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "PDO 实时解码",
-            Language::English => "PDO Data Decoder",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_nmt_control(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "NMT 控制",
-            Language::English => "NMT Control",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_sdo_client(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "SDO 客户端",
-            Language::English => "SDO Client",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn canopen_pdo_hb_emcy(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "PDO / Heartbeat / EMCY 工具",
-            Language::English => "PDO / Heartbeat / EMCY",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn valid_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "有效",
-            Language::English => "VALID",
-        }
-    }
-    #[allow(dead_code)]
-    pub fn invalid_label(lang: Language) -> &'static str {
-        match lang {
-            Language::Chinese => "无效",
-            Language::English => "INVALID",
-        }
-    }
+    tr!(app_title, "Robot Control Suite", "机器人控制调试套件");
+    tr!(connect, "Connect", "连接");
+    tr!(disconnect, "Disconnect", "断开");
+    tr!(send, "Send", "发送");
+    tr!(clear, "Clear", "清空");
+    tr!(refresh, "Refresh", "刷新");
+    tr!(save, "Save", "保存");
+    tr!(reset, "Reset", "重置");
+    tr!(start, "Start", "启动");
+    tr!(stop, "Stop", "停止");
+    tr!(error_label, "Error", "错误");
+    tr!(connected, "Connected", "已连接");
+    tr!(disconnected, "Disconnected", "已断开");
+    tr!(tab_dashboard, "Dashboard", "仪表盘");
+    tr!(tab_connections, "Connections", "连接管理");
+    tr!(tab_terminal, "Terminal", "终端调试");
+    tr!(tab_protocol_analysis, "Protocol Analysis", "协议分析");
+    tr!(tab_packet_builder, "Packet Builder", "协议组包");
+    tr!(tab_topology, "Topology", "机器人拓扑");
+    tr!(tab_pid_control, "Control Algorithms", "控制算法");
+    tr!(tab_nn_tuning, "NN Auto-Tune", "神经网络调参");
+    tr!(tab_data_viz, "Data Viz", "数据可视化");
+    tr!(tab_simulation_lab, "Simulation Lab", "仿真实验室");
+    tr!(tab_modbus, "Modbus Tools", "Modbus 工具");
+    tr!(tab_canopen, "CANopen Tools", "CANopen 工具");
+    tr!(simulation_scenario, "Scenario", "仿真场景");
+    tr!(simulation_duration, "Duration (s)", "仿真时长 (秒)");
+    tr!(simulation_step_us, "Step (us)", "步长 (微秒)");
+    tr!(
+        simulation_speed_ref,
+        "Speed reference (rad/s)",
+        "速度给定 (rad/s)"
+    );
+    tr!(
+        simulation_load_torque,
+        "Load torque (N m)",
+        "负载转矩 (N m)"
+    );
+    tr!(simulation_run, "Run", "运行");
+    tr!(simulation_cancel, "Cancel", "取消");
+    tr!(simulation_progress, "Progress", "运行进度");
+    tr!(simulation_status, "Status", "状态");
+    tr!(simulation_results, "Results", "结果指标");
+    tr!(simulation_scan, "Parameter Scan", "参数扫描");
+    tr!(simulation_export_preview, "Export Preview", "导出预览");
+    tr!(
+        simulation_no_result,
+        "No simulation result yet",
+        "尚无仿真结果"
+    );
+    tr!(
+        simulation_export_empty,
+        "Run a simulation to preview JSON and CSV exports",
+        "运行仿真后可预览 JSON 和 CSV 导出"
+    );
+    tr!(connection_status, "Connection Status", "连接状态");
+    tr!(system_stats, "System Statistics", "系统统计");
+    tr!(quick_actions, "Quick Actions", "快捷操作");
+    tr!(robot_state, "Robot State", "机器人状态");
+    tr!(bytes_sent, "Bytes Sent", "已发送字节");
+    tr!(bytes_received, "Bytes Received", "已接收字节");
+    tr!(total_errors, "Total Errors", "总错误数");
+    tr!(log_entries, "Log Entries", "日志条目");
+    tr!(state_history, "State History", "状态历史");
+    tr!(active_channel, "Active Channel", "当前通道");
+    tr!(last_comm, "Last Comm", "最近通信");
+    tr!(topology_info, "Topology", "拓扑信息");
+    tr!(motors, "motors", "个电机");
+    tr!(refresh_ports, "Refresh Ports", "刷新端口");
+    tr!(start_control, "Start Control", "启动控制");
+    tr!(stop_control, "Stop Control", "停止控制");
+    tr!(emergency_stop, "E-STOP", "急停");
+    tr!(protocol, "Protocol", "协议类型");
+    tr!(serial_config, "Serial Port Configuration", "串口配置");
+    tr!(tcp_config, "TCP Configuration", "TCP 配置");
+    tr!(udp_config, "UDP Configuration", "UDP 配置");
+    tr!(
+        can_config,
+        "CAN / CAN FD Configuration",
+        "CAN / CAN FD 配置"
+    );
+    tr!(port, "Port", "端口");
+    tr!(baud_rate, "Baud Rate", "波特率");
+    tr!(data_bits, "Data Bits", "数据位");
+    tr!(stop_bits, "Stop Bits", "停止位");
+    tr!(parity, "Parity", "校验位");
+    tr!(flow_control, "Flow Control", "流控");
+    tr!(available_ports, "Available Ports", "可用端口");
+    tr!(no_ports_found, "No serial ports found.", "未发现串口设备。");
+    tr!(mode, "Mode", "模式");
+    tr!(client, "Client", "客户端");
+    tr!(server, "Server", "服务端");
+    tr!(host, "Host", "地址");
+    tr!(local_port, "Local Port", "本地端口");
+    tr!(remote_host, "Remote Host", "远程地址");
+    tr!(remote_port, "Remote Port", "远程端口");
+    tr!(bitrate, "Bitrate", "比特率");
+    tr!(enable_can_fd, "Enable CAN FD", "启用 CAN FD");
+    tr!(data_bitrate, "Data Bitrate", "数据比特率");
+    tr!(
+        sw_simulation_hint,
+        "(Software simulation - no physical CAN adapter required)",
+        "(软件仿真 - 无需物理CAN适配器)"
+    );
+    tr!(connected_clients, "Connected Clients", "已连接客户端");
+    tr!(display, "Display", "显示");
+    tr!(auto_scroll, "Auto-scroll", "自动滚动");
+    tr!(entries, "Entries", "条目");
+    tr!(
+        no_data_yet,
+        "No data yet. Connect a device and start communicating...",
+        "暂无数据。请连接设备开始通信..."
+    );
+    tr!(newline, "Newline", "换行");
+    tr!(type_to_send, "Type text to send...", "输入要发送的内容...");
+    tr!(hex_hint, "e.g. AA 01 02 FF 55", "如 AA 01 02 FF 55");
+    tr!(template, "Template", "模板");
+    tr!(new_template, "New", "新建");
+    tr!(delete, "Delete", "删除");
+    tr!(name, "Name", "名称");
+    tr!(description, "Description", "描述");
+    tr!(header_hex, "Header (hex)", "帧头 (hex)");
+    tr!(tail_hex, "Tail (hex)", "帧尾 (hex)");
+    tr!(checksum, "Checksum", "校验方式");
+    tr!(include_length, "Include Length", "包含长度");
+    tr!(fields, "Fields", "字段列表");
+    tr!(add_field, "Add Field", "添加字段");
+    tr!(packet_preview, "Packet Preview", "数据包预览");
+    tr!(send_packet, "Send Packet", "发送数据包");
+    tr!(copy_hex, "Copy HEX", "复制 HEX");
+    tr!(presets, "Presets", "预设方案");
+    tr!(chassis_type, "Chassis Type", "底盘类型");
+    tr!(geometry_params, "Geometry Parameters", "几何参数");
+    tr!(wheel_radius, "Wheel Radius (mm)", "轮半径 (mm)");
+    tr!(wheel_base, "Wheel Base (mm)", "轴距 (mm)");
+    tr!(track_width, "Track Width (mm)", "轮距 (mm)");
+    tr!(max_linear_vel, "Max Linear Vel (mm/s)", "最大线速度 (mm/s)");
+    tr!(
+        max_angular_vel,
+        "Max Angular Vel (rad/s)",
+        "最大角速度 (rad/s)"
+    );
+    tr!(motors_joints, "Motors / Joints", "电机 / 关节");
+    tr!(add_motor, "Add Motor", "添加电机");
+    tr!(topology_viz, "Topology Visualization", "拓扑可视化");
+    tr!(pid_params, "PID Parameters", "PID 参数");
+    tr!(advanced_options, "Advanced Options", "高级选项");
+    tr!(deriv_filter, "Derivative Filter", "微分滤波");
+    tr!(anti_windup, "Anti-Windup", "抗积分饱和");
+    tr!(feedforward, "Feedforward Gain", "前馈增益");
+    tr!(dead_zone, "Dead Zone", "死区");
+    tr!(current_state, "Current State", "当前状态");
+    tr!(save_preset, "Save Current as Preset", "保存为预设");
+    tr!(running, "RUNNING", "运行中");
+    tr!(stopped, "STOPPED", "已停止");
+    tr!(algorithm_select, "Algorithm Selection", "算法选择");
+    tr!(increment_limit, "Increment Limit", "增量限幅");
+    tr!(output_ramp, "Output Ramp (per sec)", "输出斜率限制 (每秒)");
+    tr!(last_increment, "Last Increment", "最近增量");
+    tr!(output_high, "Output High", "正向输出");
+    tr!(output_low, "Output Low", "负向输出");
+    tr!(hysteresis, "Hysteresis", "回滞区");
+    tr!(dead_band, "Dead Band", "死区带宽");
+    tr!(switch_state, "Switch State", "开关状态");
+    tr!(base_params, "Base Parameters", "基础参数");
+    tr!(fuzzy_tuning_range, "Fuzzy Tuning Range", "模糊整定范围");
+    tr!(error_scale, "Error Scale", "误差量化比例");
+    tr!(ec_scale, "Error Change Scale", "误差变化率比例");
+    tr!(effective_params, "Effective Parameters", "当前有效参数");
+    tr!(outer_loop, "Outer Loop (Position)", "外环 (位置)");
+    tr!(inner_loop, "Inner Loop (Velocity)", "内环 (速度)");
+    tr!(outer_output, "Outer Output", "外环输出");
+    tr!(process_model, "Process Model", "过程模型");
+    tr!(model_gain, "Model Gain (K)", "模型增益 (K)");
+    tr!(time_constant, "Time Constant (T, sec)", "时间常数 (T, 秒)");
+    tr!(dead_time, "Dead Time (L, sec)", "纯时滞 (L, 秒)");
+    tr!(model_prediction, "Model Prediction", "模型预测值");
+    tr!(delay_buffer_size, "Delay Buffer Size", "延迟缓冲长度");
+    tr!(
+        adrc_td_params,
+        "Tracking Differentiator (TD)",
+        "跟踪微分器 (TD)"
+    );
+    tr!(
+        adrc_eso_params,
+        "Extended State Observer (ESO)",
+        "扩展状态观测器 (ESO)"
+    );
+    tr!(
+        adrc_nlsef_params,
+        "Nonlinear State Error Feedback (NLSEF)",
+        "非线性状态误差反馈 (NLSEF)"
+    );
+    tr!(
+        ladrc_bandwidth_params,
+        "LADRC Bandwidth Parameters",
+        "LADRC 带宽参数"
+    );
+    tr!(ladrc_order, "Order", "阶次");
+    tr!(ladrc_first_order, "1st Order", "一阶");
+    tr!(ladrc_second_order, "2nd Order", "二阶");
+    tr!(
+        lqr_weights,
+        "LQR State & Control Weights",
+        "LQR 状态与控制权重"
+    );
+    tr!(lqr_q_position, "Position Weight", "位置权重");
+    tr!(lqr_q_velocity, "Velocity Weight", "速度权重");
+    tr!(lqr_r_weight, "Control Weight", "控制权重");
+    tr!(lqr_mass, "Mass (kg)", "质量 (kg)");
+    tr!(
+        lqr_integral,
+        "Integral Action (optional)",
+        "积分环节 (可选)"
+    );
+    tr!(lqr_computed_gains, "Computed Gains:", "计算增益:");
+    tr!(mpc_horizons, "MPC Horizons", "MPC 预测与控制时域");
+    tr!(
+        mpc_prediction_horizon,
+        "Prediction Horizon (Np)",
+        "预测时域 (Np)"
+    );
+    tr!(mpc_control_horizon, "Control Horizon (Nc)", "控制时域 (Nc)");
+    tr!(mpc_model_params, "Internal Model", "内部模型");
+    tr!(mpc_sample_time, "Sample Time (sec)", "采样时间 (秒)");
+    tr!(
+        mpc_weights_and_constraints,
+        "Weights & Constraints",
+        "权重与约束"
+    );
+    tr!(mpc_du_limit, "ΔU Limit", "ΔU 限幅");
+    tr!(
+        chassis_kinematics,
+        "Chassis Kinematics Code Examples",
+        "底盘运动学代码示例"
+    );
+    tr!(network_arch, "Network Architecture", "网络架构");
+    tr!(training_controls, "Training Controls", "训练控制");
+    tr!(learning_rate, "Learning Rate", "学习率");
+    tr!(train_step, "Train Step", "训练一步");
+    tr!(auto_train, "Auto-Train", "自动训练");
+    tr!(training_loss, "Training Loss", "训练损失");
+    tr!(
+        no_training_data,
+        "No training data. Start control and collect error data first.",
+        "暂无训练数据。请先启动控制并采集误差数据。"
+    );
+    tr!(suggested_params, "Suggested Parameters", "建议参数");
+    tr!(predict, "Predict", "预测");
+    tr!(apply_suggested, "Apply Suggested", "应用建议值");
+    tr!(input_features, "Input Features Preview", "输入特征预览");
+    tr!(parameter, "Parameter", "参数");
+    tr!(current, "Current", "当前值");
+    tr!(suggested, "Suggested", "建议值");
+    tr!(delta, "Delta", "差值");
+    tr!(channels, "Channels", "通道");
+    tr!(position, "Position", "位置");
+    tr!(velocity, "Velocity", "速度");
+    tr!(current_a, "Current", "电流");
+    tr!(temperature, "Temperature", "温度");
+    tr!(error_ch, "Error", "误差");
+    tr!(pid_output, "PID Output", "PID 输出");
+    tr!(data_points, "Data Points", "数据点");
+    tr!(clear_history, "Clear History", "清空历史");
+    tr!(request_builder, "Request Builder", "请求构建");
+    tr!(slave_id, "Slave ID", "从站地址");
+    tr!(function, "Function", "功能码");
+    tr!(start_address, "Start Address", "起始地址");
+    tr!(quantity, "Quantity", "数量");
+    tr!(write_values, "Write Values", "写入值");
+    tr!(frame_preview, "Frame Preview", "帧预览");
+    tr!(send_rtu, "Send RTU", "发送 RTU");
+    tr!(send_tcp, "Send TCP", "发送 TCP");
+    tr!(
+        register_table,
+        "Register Table (Simulated)",
+        "寄存器表 (模拟)"
+    );
+    tr!(randomize, "Randomize", "随机填充");
+    tr!(modbus_log, "Modbus Log", "Modbus 日志");
+    tr!(light_mode, "Light", "浅色");
+    tr!(dark_mode, "Dark", "深色");
+    tr!(select_port, "Select port...", "选择端口...");
+    tr!(
+        comma_values_hint,
+        "Comma separated values, e.g. 100,200,300",
+        "逗号分隔值, 如 100,200,300"
+    );
+    tr!(copied, "Copied to clipboard", "已复制到剪贴板");
+    tr!(select, "Select...", "选择...");
+    tr!(sample_point, "Sample Point", "采样点");
+    tr!(data_sample_point, "Data Sample Point", "数据采样点");
+    tr!(can_termination, "Termination Resistor", "终端电阻");
+    tr!(can_listen_only, "Listen Only", "仅监听");
+    tr!(can_loopback, "Loopback", "回环模式");
+    tr!(can_auto_retransmit, "Auto Retransmit", "自动重传");
+    tr!(can_error_reporting, "Error Reporting", "错误报告");
+    tr!(usb_config, "USB Configuration", "USB 配置");
+    tr!(usb_protocol_label, "USB Protocol", "USB 协议");
+    tr!(usb_speed_label, "USB Speed", "USB 速度");
+    tr!(usb_endpoint_config, "Endpoint Configuration", "端点配置");
+    tr!(usb_endpoint_in, "Endpoint IN", "输入端点");
+    tr!(usb_endpoint_out, "Endpoint OUT", "输出端点");
+    tr!(usb_max_packet_size, "Max Packet Size", "最大包大小");
+    tr!(usb_interface, "Interface", "接口");
+    tr!(usb_typical_speeds, "Typical Speeds", "典型速度");
+    tr!(
+        usb_cdc_hint,
+        "CDC ACM devices use virtual COM port",
+        "CDC ACM 设备使用虚拟串口"
+    );
+    tr!(builder_tab, "Builder", "构建器");
+    tr!(parser_tab, "Parser", "解析器");
+    tr!(parser_template, "Parse Template", "解析模板");
+    tr!(auto_parse, "Auto Parse", "自动解析");
+    tr!(parser_input, "HEX Data Input", "HEX 数据输入");
+    tr!(parse_now, "Parse Now", "立即解析");
+    tr!(parsed_count, "Parsed", "已解析");
+    tr!(
+        parser_empty,
+        "No parsed results yet. Paste HEX data and click Parse.",
+        "暂无解析结果。粘贴 HEX 数据后点击解析。"
+    );
+    tr!(
+        parse_failed,
+        "Parse failed: no matching template",
+        "解析失败: 无匹配模板"
+    );
+    tr!(field_type_label, "Type", "类型");
+    tr!(field_value_label, "Value", "值");
+    tr!(field_numeric, "Numeric", "数值");
+    tr!(viz_channel_config, "Channel Configuration", "通道配置");
+    tr!(viz_add_channel, "Add Channel", "添加通道");
+    tr!(menu_file, "File", "文件");
+    tr!(menu_edit, "Edit", "编辑");
+    tr!(menu_view, "View", "视图");
+    tr!(menu_tools, "Tools", "工具");
+    tr!(menu_help, "Help", "帮助");
+    tr!(menu_export_log, "Export Logs (CSV)", "导出日志 (CSV)");
+    tr!(menu_preferences, "Preferences", "偏好设置");
+    tr!(menu_quit, "Quit", "退出");
+    tr!(menu_clear_logs, "Clear All Logs", "清除所有日志");
+    tr!(menu_copy_frame, "Copy Last Frame", "复制最后一帧");
+    tr!(menu_reset_counters, "Reset Counters", "重置计数器");
+    tr!(menu_hide_sidebar, "Hide Sidebar", "隐藏侧边栏");
+    tr!(menu_show_sidebar, "Show Sidebar", "显示侧边栏");
+    tr!(menu_motion_level, "Motion Level", "动效等级");
+    tr!(menu_ui_scale, "UI Scale", "界面缩放");
+    tr!(menu_ui_scale_reset, "Reset to 150%", "重置为 150%");
+    tr!(menu_language, "Language", "语言");
+    tr!(menu_mcp_server, "Toggle MCP Server", "切换 MCP 服务");
+    tr!(menu_about, "About", "关于");
+    tr!(menu_shortcuts, "Keyboard Shortcuts", "键盘快捷键");
+    tr!(menu_docs, "Documentation", "文档");
+    tr!(top_health, "Health", "链路健康");
+    tr!(top_status, "Status", "状态");
+    tr!(menu_check_updates, "Check Updates", "检查更新");
+    tr!(prefs_title, "Preferences", "偏好设置");
+    tr!(prefs_sidebar, "Enable tab strip", "显示标签栏");
+    tr!(prefs_motion_level, "Motion level", "动效等级");
+    tr!(prefs_ui_scale, "UI scale (%)", "界面缩放 (%)");
+    tr!(
+        prefs_autosave_seconds,
+        "Auto-save interval (s)",
+        "自动保存间隔 (秒)"
+    );
+    tr!(prefs_saved, "Preferences saved", "偏好设置已保存");
+    tr!(shortcuts_title, "Keyboard Shortcuts", "键盘快捷键");
+    tr!(
+        docs_opened,
+        "Documentation opened in browser",
+        "已在浏览器中打开文档"
+    );
+    tr!(logs_cleared, "All logs cleared", "已清除所有日志");
+    tr!(counters_reset_done, "Counters reset", "计数器已重置");
+    tr!(
+        no_logs_to_copy,
+        "No log frame to copy",
+        "暂无可复制的日志帧"
+    );
+    tr!(copied_last_frame, "Copied latest frame", "已复制最近一帧");
+    tr!(motion_level_extreme, "Extreme", "极致");
+    tr!(motion_level_standard, "Standard", "标准");
+    tr!(motion_level_native, "Native", "原生");
+    tr!(motion_level_optimized, "Optimized", "优化");
+
+    tr!(
+        about_summary,
+        "A unified workspace for robot control, diagnostics, tuning, and data analysis.",
+        "机器人控制、诊断、调参与数据分析一体化工作台。"
+    );
+    tr!(remove_btn, "Remove", "移除");
+    tr!(csv_label, "CSV", "CSV");
+    tr!(json_label, "JSON", "JSON");
+
+    tr!(chassis_kinematics_desc, "", "");
+    tr!(no_data_hint, "", "");
+
+    tr!(final_speed_label, "Final Speed", "最终转速");
+    tr!(peak_torque_label, "Peak Torque", "峰值扭矩");
+    tr!(settled_label, "Settled", "已稳定");
+
+    tr!(mcp_server_label, "MCP Server", "MCP 服务器");
+    tr!(port_label, "Port:", "端口:");
+    tr!(token_label, "Token:", "令牌:");
+    tr!(stop_mcp, "Stop MCP", "停止 MCP");
+    tr!(start_mcp, "Start MCP", "启动 MCP");
+    tr!(running_label, "Running", "运行中");
+    tr!(stopped_label, "Stopped", "已停止");
+    tr!(
+        reconnect_after_drop,
+        "Reconnect after drop",
+        "断开后自动重连"
+    );
+    tr!(interval_ms_label, "Interval(ms):", "间隔(ms):");
+    tr!(system_check_label, "System Check", "系统自检");
+    tr!(runtime_metrics_label, "Runtime Metrics", "运行指标");
+    tr!(connect_attempts_label, "Connect Attempts", "连接尝试次数");
+    tr!(connect_failures_label, "Connect Failures", "连接失败次数");
+    tr!(
+        protocol_analysis_entry_label,
+        "Protocol Analysis Entry",
+        "协议分析入口"
+    );
+    tr!(total_frames_label, "Total Frames", "总帧数");
+    tr!(
+        open_protocol_analysis,
+        "Open Protocol Analysis",
+        "打开协议分析"
+    );
+    tr!(voltage_label, "Voltage", "电压");
+    tr!(pwm_label, "PWM", "PWM 占空比");
+    tr!(can_id_label, "CAN ID:", "CAN ID:");
+    tr!(data_hex_label, "Data HEX:", "Data HEX:");
+    tr!(cob_id_label, "COB-ID:", "COB-ID:");
+    tr!(node_id_label, "Node ID:", "Node ID:");
+    tr!(index_label, "Index:", "Index:");
+    tr!(sub_label, "Sub:", "Sub:");
+    tr!(payload_label, "Payload:", "Payload:");
+    tr!(slave_address_label, "Slave Address:", "Slave Address:");
+    tr!(od_index_label, "OD Index:", "OD Index:");
+    tr!(write_download_label, "Write (Download)", "Write (Download)");
+    tr!(read_label, "Read", "Read");
+    tr!(send_label, "Send", "Send");
+    tr!(add_motor_btn, "Add Motor", "Add Motor");
+    tr!(train_x10_btn, "Train x10", "Train x10");
+    tr!(train_x100_btn, "Train x100", "Train x100");
+    tr!(copy_rtu_btn, "Copy RTU", "Copy RTU");
+    tr!(copy_tcp_btn, "Copy TCP", "Copy TCP");
+    tr!(
+        no_parsed_fields,
+        "No parsed numeric fields",
+        "No parsed numeric fields"
+    );
+    tr!(
+        no_channels_hint,
+        "No channels configured",
+        "No channels configured"
+    );
+    tr!(
+        scanning_ports,
+        "Scanning for ports...",
+        "Scanning for ports..."
+    );
+    tr!(speed_ref_label, "Speed reference", "Speed reference");
+    tr!(speed_error_label, "Speed error", "Speed error");
+    tr!(peak_current_label, "Peak current", "Peak current");
+    tr!(max_temp_label, "Max temperature", "Max temperature");
+    tr!(steps_executed_label, "Steps executed", "Steps executed");
+    tr!(cancelled_label, "Cancelled", "Cancelled");
+    tr!(yes_label, "yes", "yes");
+    tr!(no_label, "no", "no");
+    tr!(value_label, "Value", "Value");
+    tr!(error_label_short, "Error", "Error");
+    tr!(display_mode_hex, "HEX", "HEX");
+    tr!(display_mode_ascii, "ASCII", "ASCII");
+    tr!(display_mode_mixed, "Mixed", "Mixed");
+    tr!(auto_parse_label, "Auto Parse", "Auto Parse");
+    tr!(parse_now_btn, "Parse Now", "Parse Now");
+    tr!(builder_tab_label, "Builder", "Builder");
+    tr!(parser_tab_label, "Parser", "Parser");
+    tr!(loss_label, "Loss", "Loss");
+    tr!(copy_hex_btn, "Copy Hex", "Copy Hex");
+    tr!(send_packet_btn, "Send Packet", "Send Packet");
+    tr!(add_field_btn, "Add Field", "Add Field");
+    tr!(randomize_btn, "Randomize", "Randomize");
+    tr!(remove_field_btn, "Remove", "Remove");
+    tr!(clear_btn, "Clear", "Clear");
+    tr!(query_label, "Query:", "Query:");
+    tr!(search_label, "Search", "Search");
+    tr!(filters_label, "Filters", "Filters");
+    tr!(results_label, "Results", "Results");
+    tr!(no_matching_logs, "No matching logs.", "No matching logs.");
+    tr!(output_limit_label, "Output Limit:", "输出限幅:");
+    tr!(integral_limit_label, "Integral Limit:", "积分限幅:");
+    tr!(setpoint_label, "Setpoint:", "设定值:");
+    tr!(integral_label, "Integral:", "积分:");
+    tr!(derivative_label, "Derivative:", "微分:");
+    tr!(output_label, "Output:", "输出:");
+    tr!(bang_bang_label, "Bang-Bang", "Bang-Bang");
+    tr!(layers_label, "Layers", "层数");
+    tr!(llm_api_tuning, "LLM API Tuning", "LLM API 调参");
+    tr!(api_url_label, "API URL:", "API URL:");
+    tr!(model_label, "Model:", "模型:");
+    tr!(api_key_label, "API Key:", "API 密钥:");
+    tr!(llm_suggest_btn, "LLM Suggest", "LLM 建议");
+    tr!(
+        apply_llm_suggestion,
+        "Apply LLM Suggestion",
+        "应用 LLM 建议"
+    );
+    tr!(
+        llm_loading_text,
+        "LLM request in progress...",
+        "LLM 请求中..."
+    );
+    tr!(llm_analysis_label, "LLM Analysis:", "LLM 分析:");
+    tr!(current_loss_label, "Current Loss", "当前损失");
+    tr!(q_output_label, "Q (output):", "Q (输出):");
+    tr!(r_input_label, "R (input):", "R (输入):");
+    tr!(s_rate_label, "S (rate):", "S (变化率):");
+    tr!(use_first_btn, "Use first", "使用第一个");
+    tr!(resume_retry, "Resume retry", "恢复重试");
+    tr!(stop_retry, "Stop retry", "停止重试");
+    tr!(retry_now, "Retry now", "立即重试");
+    tr!(
+        background_retry_off,
+        "Background retry is off until you enable it.",
+        "后台重试已关闭，直到您启用它。"
+    );
+    tr!(
+        retry_arms_hint,
+        "Retry arms after one successful manual connection.",
+        "重试在一次成功手动连接后启用。"
+    );
+    tr!(
+        retry_idle_hint,
+        "Retry idle until the current link drops.",
+        "重试在当前连接断开前保持空闲。"
+    );
+    tr!(canopen_fd_builder, "CAN FD Frame Builder", "CAN FD 帧构建");
+    tr!(canopen_log_label, "CANopen Log", "CANopen 日志");
+    tr!(canopen_frame_analyzer, "Frame Analyzer", "CANopen 帧解析");
+    tr!(
+        canopen_cobid_map,
+        "CANopen COB-ID Map",
+        "CANopen COB-ID 映射"
+    );
+    tr!(
+        canopen_sdo_bitfield,
+        "SDO Command Byte Bitfield",
+        "SDO 命令字节位域"
+    );
+    tr!(
+        canopen_ecat_sdo_tool,
+        "EtherCAT CoE SDO Tool",
+        "EtherCAT CoE SDO 工具"
+    );
+    tr!(canopen_coe_analyzer, "CoE Frame Analyzer", "CoE 帧分析器");
+    tr!(
+        canopen_ecat_state_machine,
+        "EtherCAT State Machine",
+        "EtherCAT 状态机"
+    );
+    tr!(canopen_pdo_mapper, "PDO Mapping Manager", "PDO 映射管理器");
+    tr!(canopen_pdo_decoder, "PDO Data Decoder", "PDO 实时解码");
+    tr!(canopen_nmt_control, "NMT Control", "NMT 控制");
+    tr!(canopen_sdo_client, "SDO Client", "SDO 客户端");
+    tr!(
+        canopen_pdo_hb_emcy,
+        "PDO / Heartbeat / EMCY",
+        "PDO / Heartbeat / EMCY 工具"
+    );
+    tr!(valid_label, "VALID", "有效");
+    tr!(invalid_label, "INVALID", "无效");
+
+    // ── 动态格式化翻译 ─────────────────────────────────────
+
+    tr_fmt!(found_ports(n: usize), "Found {} ports", "发现 {} 个端口");
+    tr_fmt!(sent_bytes(n: usize), "Sent {} bytes", "已发送 {} 字节");
+    tr_fmt!(send_error(e: &str), "Send error: {}", "发送失败: {}");
+    tr_fmt!(applied_preset(name: &str), "Applied preset: {}", "已应用预设: {}");
+    tr_fmt!(parse_success(name: &str, count: usize), "Parsed '{}': {} fields", "已解析 '{}': {} 个字段");
+    tr_fmt!(logs_exported(path: &str), "Logs exported: {}", "日志已导出: {}");
+    tr_fmt!(logs_export_failed(err: &str), "Log export failed: {}", "日志导出失败: {}");
+    tr_fmt!(ui_scale_set(percent: u32), "UI scale: {}%", "界面缩放: {}%");
 }
 
 #[cfg(test)]
@@ -2966,5 +698,32 @@ mod tests {
         assert!(!Tr::disconnect(Language::Chinese).is_empty());
         assert!(!Tr::send(Language::English).is_empty());
         assert!(!Tr::clear(Language::Chinese).is_empty());
+    }
+
+    #[test]
+    fn test_tr_format_strings() {
+        let s = Tr::found_ports(5, Language::English);
+        assert!(s.contains("5"), "Should contain port count: {}", s);
+        let s = Tr::ui_scale_set(150, Language::Chinese);
+        assert!(s.contains("150"), "Should contain scale: {}", s);
+    }
+
+    #[test]
+    fn test_macro_coverage() {
+        // Verify every static translation returns non-empty for both languages
+        let checks: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::app_title, "app_title"),
+            (Tr::connect, "connect"),
+            (Tr::disconnect, "disconnect"),
+            (Tr::error_label, "error_label"),
+            (Tr::save, "save"),
+            (Tr::reset, "reset"),
+        ];
+        for (f, name) in checks {
+            for lang in &[Language::English, Language::Chinese] {
+                let val = f(*lang);
+                assert!(!val.is_empty(), "{} returned empty for {:?}", name, lang);
+            }
+        }
     }
 }

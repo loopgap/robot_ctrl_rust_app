@@ -1,3 +1,7 @@
+# Release workflow - Build, Package & Publish
+# Triggered by semver tags or manual dispatch.
+# Per-job permissions, rust-cache, timeouts, macOS support.
+
 name: Release
 
 on:
@@ -7,15 +11,13 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Existing release tag to publish, for example v0.1.9
+        description: Existing release tag to publish, for example v0.2.0
         required: true
         type: string
 
-permissions:
-  contents: write
-
-env:
-  CARGO_TERM_COLOR: always
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   call-validate:
@@ -26,40 +28,31 @@ jobs:
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    timeout-minutes: 45
     needs: call-validate
+    permissions:
+      contents: read
+    env:
+      VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          ref: ${{ env.VERSION_TAG }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: scripts/go/rusktask/go.mod
       - uses: dtolnay/rust-toolchain@stable
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install NSIS
         shell: pwsh
         run: choco install nsis -y --no-progress
-      - name: Install mdBook
-        shell: pwsh
-        run: |
-          if (-not (Get-Command mdbook -ErrorAction SilentlyContinue)) {
-            cargo install mdbook --version 0.5.2 --locked
-          }
-      - name: Build binaries
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binaries
         shell: pwsh
         run: cargo build --release --workspace
       - name: Package Windows installer
         shell: pwsh
-        env:
-          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
-          $version = "$env:VERSION" -replace '^v', ''
+          $version = "$env:VERSION_TAG" -replace '^v', ''
           if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$') {
             Write-Error "Invalid version format: $version"
             exit 1
@@ -75,10 +68,8 @@ jobs:
           if-no-files-found: error
       - name: Package Windows portable ZIP
         shell: pwsh
-        env:
-          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
-          $version = "$env:VERSION" -replace '^v', ''
+          $version = "$env:VERSION_TAG" -replace '^v', ''
           if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$') {
             Write-Error "Invalid version format: $version"
             exit 1
@@ -96,45 +87,38 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: call-validate
+    permissions:
+      contents: read
+    env:
+      VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          ref: ${{ env.VERSION_TAG }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Build binaries
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binaries
         run: cargo build --release --workspace
       - name: Create Debian package
         shell: bash
-        env:
-          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
-          version="${VERSION#v}"
-
+          version="${VERSION_TAG#v}"
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
             echo "::error::Invalid version format: $version"
             exit 1
           fi
-
           pkg_dir="dist/debian"
           mkdir -p "$pkg_dir/usr/local/bin"
           mkdir -p "$pkg_dir/usr/local/share/applications"
-
           cp target/release/robot_control_rust "$pkg_dir/usr/local/bin/"
           cp target/release/rust_tools_suite "$pkg_dir/usr/local/bin/"
-
           mkdir -p "$pkg_dir/DEBIAN"
           printf '%s\n' \
             "Package: robot-control-suite" \
@@ -145,7 +129,6 @@ jobs:
             "Maintainer: loopgap <noreply@github.com>" \
             "Description: Robot Control and Tools Suite" \
             > "$pkg_dir/DEBIAN/control"
-
           dpkg-deb --build "$pkg_dir" "dist/robot_control_suite_${version}_amd64.deb"
       - name: Upload Linux package
         uses: actions/upload-artifact@v4
@@ -154,108 +137,145 @@ jobs:
           path: dist/*_amd64.deb
           if-no-files-found: error
 
-  publish-release:
-    name: Publish Release
-    runs-on: ubuntu-latest
-    needs:
-      - build-windows
-      - build-linux
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs: call-validate
+    permissions:
+      contents: read
+    env:
+      VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          ref: ${{ env.VERSION_TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binaries
+        run: cargo build --release --workspace
+      - name: Package macOS archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${VERSION_TAG#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Invalid version format: $version"
+            exit 1
+          fi
+          staging="staging/macos"
+          mkdir -p "$staging"
+          cp target/release/robot_control_rust "$staging/"
+          cp target/release/rust_tools_suite "$staging/"
+          cd staging
+          tar czf "../robot_control_suite_${version}_macos_universal.tar.gz" -C macos .
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: staging/*.tar.gz
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - build-windows
+      - build-linux
+      - build-macos
+    permissions:
+      contents: write
+    env:
+      VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERSION_TAG }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: scripts/go/rusktask/go.mod
       - name: Validate release notes policy
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
-          notes_file="release_notes/RELEASE_NOTES_${RELEASE_TAG}.md"
-          test -f "$notes_file"
-          test -s "$notes_file"
-          ./scripts/ubuntu/task.sh release-notes-validate RELEASE_NOTES_FILE="$notes_file" RELEASE_NOTES_MODE="release"
+          notes_file="release_notes/RELEASE_NOTES_${VERSION_TAG}.md"
+          if [ ! -f "$notes_file" ] || [ ! -s "$notes_file" ]; then
+            echo "::error::Release notes not found or empty: $notes_file"
+            exit 1
+          fi
+          ./scripts/ubuntu/task.sh release-notes-validate \
+            RELEASE_NOTES_FILE="$notes_file" \
+            RELEASE_NOTES_MODE="release"
       - uses: actions/download-artifact@v4
         with:
-          name: windows-installer
-          path: artifacts
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-package
-          path: artifacts
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-portable
           path: artifacts
       - name: Validate artifacts and create checksums
         shell: bash
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
-          version="${RELEASE_TAG#v}"
-          installer="artifacts/robot_control_suite_${version}_windows_x64-setup.exe"
-          portable="artifacts/robot_control_suite_${version}_windows_x64_portable.zip"
-          deb="artifacts/robot_control_suite_${version}_amd64.deb"
-          for artifact in "$installer" "$portable" "$deb"; do
+          version="${VERSION_TAG#v}"
+          installer="artifacts/windows-installer/robot_control_suite_${version}_windows_x64-setup.exe"
+          portable="artifacts/windows-portable/robot_control_suite_${version}_windows_x64_portable.zip"
+          deb="artifacts/linux-package/robot_control_suite_${version}_amd64.deb"
+          macos_pkg="artifacts/macos-package/robot_control_suite_${version}_macos_universal.tar.gz"
+          mkdir -p release_files
+          for artifact in "$installer" "$portable" "$deb" "$macos_pkg"; do
             if [ ! -s "$artifact" ]; then
               echo "::error::Missing or empty release artifact: $artifact"
-              find artifacts -maxdepth 1 -type f -print
+              find artifacts -type f -print
               exit 1
             fi
+            cp "$artifact" release_files/
           done
-          cd artifacts
-          sha256sum \
-            "robot_control_suite_${version}_windows_x64-setup.exe" \
-            "robot_control_suite_${version}_windows_x64_portable.zip" \
-            "robot_control_suite_${version}_amd64.deb" \
-            > checksums-sha256.txt
+          cd release_files
+          sha256sum ./* > checksums-sha256.txt
+          echo "[OK] All artifacts validated, checksums created"
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          tag_name: ${{ env.VERSION_TAG }}
           draft: false
-          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, '-') }}
-          body_path: release_notes/RELEASE_NOTES_${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}.md
+          prerelease: ${{ contains(env.VERSION_TAG, '-') }}
+          body_path: release_notes/RELEASE_NOTES_${{ env.VERSION_TAG }}.md
           fail_on_unmatched_files: true
           files: |
-            artifacts/*.exe
-            artifacts/*.deb
-            artifacts/*_portable.zip
-            artifacts/checksums-sha256.txt
+            release_files/*.exe
+            release_files/*.deb
+            release_files/*.zip
+            release_files/*.tar.gz
+            release_files/checksums-sha256.txt
 
   publish-draft-on-failure:
-    name: Publish Draft Release On Failure
-    if: ${{ always() && failure() }}
+    name: Publish Draft On Failure
+    if: ${{ always() && !cancelled() && !success() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
-      - call-validate
-      - build-windows
-      - build-linux
       - publish-release
+    permissions:
+      contents: write
+    env:
+      VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VERSION_TAG }}
       - name: Create failure summary
+        shell: bash
         run: |
           cat > failure-summary.md << 'EOF'
-          Automatic draft release generated because release workflow did not fully succeed.
-
-          Job results:
-          - call-validate: ${{ needs.call-validate.result }}
-          - build-windows: ${{ needs.build-windows.result }}
-          - build-linux: ${{ needs.build-linux.result }}
-          - publish-release: ${{ needs.publish-release.result }}
-
-          Next actions:
-          1. Inspect the failed job logs.
-          2. Fix the issue and re-run release workflow.
-          3. Use rollback script if the tag should be revoked.
+          ## Automatic Draft
+          Release workflow did not fully succeed.
+          **Next Actions:**
+          1. Inspect the workflow run logs.
+          2. Fix the issue and re-trigger the release workflow.
+          3. Delete this draft release after a successful re-run.
           EOF
       - name: Create Draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          tag_name: ${{ env.VERSION_TAG }}
           draft: true
-          prerelease: ${{ contains(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, '-') }}
+          prerelease: ${{ contains(env.VERSION_TAG, '-') }}
           body_path: failure-summary.md
