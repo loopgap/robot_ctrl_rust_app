@@ -1,3 +1,4 @@
+use robot_control_core::error::AppError;
 use robot_control_core::simulation::{
     run_parameter_scan, run_pmsm_foc_with_hooks, ScanPoint, SimulationConfig, SimulationRunResult,
 };
@@ -24,6 +25,15 @@ pub struct SimulationLabState {
     scan_rx: Option<Receiver<Result<Vec<ScanPoint>, String>>>,
     progress_rx: Option<Receiver<f32>>,
     cancel_tx: Option<Sender<()>>,
+}
+
+/// UI-facing error text: keep validation messages verbatim (no
+/// "Validation error:" prefix) so status lines read the same as before.
+fn ui_err_text(e: AppError) -> String {
+    match e {
+        AppError::Validation(msg) => msg,
+        other => other.to_string(),
+    }
 }
 
 impl SimulationLabState {
@@ -82,7 +92,7 @@ impl SimulationLabState {
         self.config.dt_ns = dt_ns;
         self.config.speed_ref = speed_ref;
         self.config.load_torque = load_torque;
-        self.config.validate()
+        self.config.validate().map_err(ui_err_text)
     }
 
     pub fn start_run(&mut self) -> Result<(), String> {
@@ -104,7 +114,7 @@ impl SimulationLabState {
                         let _ = progress_tx.send(value.clamp(0.0, 1.0));
                     },
                 );
-                let _ = result_tx.send(outcome);
+                let _ = result_tx.send(outcome.map_err(ui_err_text));
             })
             .map_err(|err| format!("failed to spawn simulation worker: {err}"))?;
 
@@ -130,7 +140,8 @@ impl SimulationLabState {
         thread::Builder::new()
             .name("simulation-lab-scan".into())
             .spawn(move || {
-                let _ = scan_tx.send(run_parameter_scan(&config, &param, &values));
+                let _ =
+                    scan_tx.send(run_parameter_scan(&config, &param, &values).map_err(ui_err_text));
             })
             .map_err(|err| format!("failed to spawn scan worker: {err}"))?;
 
