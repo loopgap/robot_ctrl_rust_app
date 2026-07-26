@@ -138,7 +138,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     crate::app::animation::Easing::EaseOut,
                     current_time,
                 ))
-                .width(1.5);
+                .width(1.5_f32);
 
             Plot::new("loss_plot")
                 .height(170.0)
@@ -152,7 +152,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!(
-                    "Current Loss: {:.6}",
+                    "{}: {:.6}",
+                    Tr::current_loss_label(lang),
                     state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)

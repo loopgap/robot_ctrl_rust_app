@@ -28,7 +28,6 @@ impl Language {
 }
 
 /// 所有可翻译文本的键
-
 macro_rules! tr {
     ($name:ident, $en:expr, $zh:expr) => {
         pub fn $name(lang: Language) -> &'static str {
@@ -461,8 +460,6 @@ impl Tr {
     tr!(token_label, "Token:", "令牌:");
     tr!(stop_mcp, "Stop MCP", "停止 MCP");
     tr!(start_mcp, "Start MCP", "启动 MCP");
-    tr!(running_label, "Running", "运行中");
-    tr!(stopped_label, "Stopped", "已停止");
     tr!(
         reconnect_after_drop,
         "Reconnect after drop",
@@ -471,36 +468,47 @@ impl Tr {
     tr!(interval_ms_label, "Interval(ms):", "间隔(ms):");
     tr!(system_check_label, "System Check", "系统自检");
     tr!(runtime_metrics_label, "Runtime Metrics", "运行指标");
-    tr!(connect_attempts_label, "Connect Attempts", "连接尝试次数");
-    tr!(connect_failures_label, "Connect Failures", "连接失败次数");
     tr!(
         protocol_analysis_entry_label,
         "Protocol Analysis Entry",
         "协议分析入口"
     );
-    tr!(total_frames_label, "Total Frames", "总帧数");
-    tr!(
-        open_protocol_analysis,
-        "Open Protocol Analysis",
-        "打开协议分析"
-    );
-    tr!(voltage_label, "Voltage", "电压");
-    tr!(pwm_label, "PWM", "PWM 占空比");
-    tr!(can_id_label, "CAN ID:", "CAN ID:");
-    tr!(data_hex_label, "Data HEX:", "Data HEX:");
-    tr!(cob_id_label, "COB-ID:", "COB-ID:");
-    tr!(node_id_label, "Node ID:", "Node ID:");
-    tr!(index_label, "Index:", "Index:");
-    tr!(sub_label, "Sub:", "Sub:");
-    tr!(payload_label, "Payload:", "Payload:");
-    tr!(slave_address_label, "Slave Address:", "Slave Address:");
-    tr!(od_index_label, "OD Index:", "OD Index:");
-    tr!(write_download_label, "Write (Download)", "Write (Download)");
-    tr!(read_label, "Read", "Read");
-    tr!(send_label, "Send", "Send");
-    tr!(add_motor_btn, "Add Motor", "Add Motor");
     tr!(train_x10_btn, "Train x10", "Train x10");
     tr!(train_x100_btn, "Train x100", "Train x100");
+    tr!(loss_label, "Loss", "Loss");
+    tr!(current_loss_label, "Current Loss", "当前损失");
+    tr!(running_label, "Running", "运行中");
+    tr!(stopped_label, "Stopped", "已停止");
+    tr!(q_output_label, "Q (output):", "Q (输出):");
+    tr!(r_input_label, "R (input):", "R (输入):");
+    tr!(s_rate_label, "S (rate):", "S (变化率):");
+    tr!(valid_label, "VALID", "有效");
+    tr!(invalid_label, "INVALID", "无效");
+    tr!(
+        canopen_cobid_map,
+        "CANopen COB-ID Map",
+        "CANopen COB-ID 映射"
+    );
+    tr!(
+        canopen_sdo_bitfield,
+        "SDO Command Byte Bitfield",
+        "SDO 命令字节位域"
+    );
+    tr!(
+        background_retry_off,
+        "Background retry is off until you enable it.",
+        "后台重试已关闭，直到您启用它。"
+    );
+    tr!(
+        retry_arms_hint,
+        "Retry arms after one successful manual connection.",
+        "重试在一次成功手动连接后启用。"
+    );
+    tr!(
+        retry_idle_hint,
+        "Retry idle until the current link drops.",
+        "重试在当前连接断开前保持空闲。"
+    );
     tr!(copy_rtu_btn, "Copy RTU", "Copy RTU");
     tr!(copy_tcp_btn, "Copy TCP", "Copy TCP");
     tr!(
@@ -508,44 +516,15 @@ impl Tr {
         "No parsed numeric fields",
         "No parsed numeric fields"
     );
-    tr!(
-        no_channels_hint,
-        "No channels configured",
-        "No channels configured"
-    );
-    tr!(
-        scanning_ports,
-        "Scanning for ports...",
-        "Scanning for ports..."
-    );
     tr!(speed_ref_label, "Speed reference", "Speed reference");
     tr!(speed_error_label, "Speed error", "Speed error");
     tr!(peak_current_label, "Peak current", "Peak current");
     tr!(max_temp_label, "Max temperature", "Max temperature");
     tr!(steps_executed_label, "Steps executed", "Steps executed");
     tr!(cancelled_label, "Cancelled", "Cancelled");
-    tr!(yes_label, "yes", "yes");
-    tr!(no_label, "no", "no");
-    tr!(value_label, "Value", "Value");
-    tr!(error_label_short, "Error", "Error");
     tr!(display_mode_hex, "HEX", "HEX");
     tr!(display_mode_ascii, "ASCII", "ASCII");
     tr!(display_mode_mixed, "Mixed", "Mixed");
-    tr!(auto_parse_label, "Auto Parse", "Auto Parse");
-    tr!(parse_now_btn, "Parse Now", "Parse Now");
-    tr!(builder_tab_label, "Builder", "Builder");
-    tr!(parser_tab_label, "Parser", "Parser");
-    tr!(loss_label, "Loss", "Loss");
-    tr!(copy_hex_btn, "Copy Hex", "Copy Hex");
-    tr!(send_packet_btn, "Send Packet", "Send Packet");
-    tr!(add_field_btn, "Add Field", "Add Field");
-    tr!(randomize_btn, "Randomize", "Randomize");
-    tr!(remove_field_btn, "Remove", "Remove");
-    tr!(clear_btn, "Clear", "Clear");
-    tr!(query_label, "Query:", "Query:");
-    tr!(search_label, "Search", "Search");
-    tr!(filters_label, "Filters", "Filters");
-    tr!(results_label, "Results", "Results");
     tr!(no_matching_logs, "No matching logs.", "No matching logs.");
     tr!(output_limit_label, "Output Limit:", "输出限幅:");
     tr!(integral_limit_label, "Integral Limit:", "积分限幅:");
@@ -554,7 +533,6 @@ impl Tr {
     tr!(derivative_label, "Derivative:", "微分:");
     tr!(output_label, "Output:", "输出:");
     tr!(bang_bang_label, "Bang-Bang", "Bang-Bang");
-    tr!(layers_label, "Layers", "层数");
     tr!(llm_api_tuning, "LLM API Tuning", "LLM API 调参");
     tr!(api_url_label, "API URL:", "API URL:");
     tr!(model_label, "Model:", "模型:");
@@ -571,48 +549,18 @@ impl Tr {
         "LLM 请求中..."
     );
     tr!(llm_analysis_label, "LLM Analysis:", "LLM 分析:");
-    tr!(current_loss_label, "Current Loss", "当前损失");
-    tr!(q_output_label, "Q (output):", "Q (输出):");
-    tr!(r_input_label, "R (input):", "R (输入):");
-    tr!(s_rate_label, "S (rate):", "S (变化率):");
     tr!(use_first_btn, "Use first", "使用第一个");
     tr!(resume_retry, "Resume retry", "恢复重试");
     tr!(stop_retry, "Stop retry", "停止重试");
     tr!(retry_now, "Retry now", "立即重试");
-    tr!(
-        background_retry_off,
-        "Background retry is off until you enable it.",
-        "后台重试已关闭，直到您启用它。"
-    );
-    tr!(
-        retry_arms_hint,
-        "Retry arms after one successful manual connection.",
-        "重试在一次成功手动连接后启用。"
-    );
-    tr!(
-        retry_idle_hint,
-        "Retry idle until the current link drops.",
-        "重试在当前连接断开前保持空闲。"
-    );
     tr!(canopen_fd_builder, "CAN FD Frame Builder", "CAN FD 帧构建");
     tr!(canopen_log_label, "CANopen Log", "CANopen 日志");
     tr!(canopen_frame_analyzer, "Frame Analyzer", "CANopen 帧解析");
-    tr!(
-        canopen_cobid_map,
-        "CANopen COB-ID Map",
-        "CANopen COB-ID 映射"
-    );
-    tr!(
-        canopen_sdo_bitfield,
-        "SDO Command Byte Bitfield",
-        "SDO 命令字节位域"
-    );
     tr!(
         canopen_ecat_sdo_tool,
         "EtherCAT CoE SDO Tool",
         "EtherCAT CoE SDO 工具"
     );
-    tr!(canopen_coe_analyzer, "CoE Frame Analyzer", "CoE 帧分析器");
     tr!(
         canopen_ecat_state_machine,
         "EtherCAT State Machine",
@@ -627,8 +575,6 @@ impl Tr {
         "PDO / Heartbeat / EMCY",
         "PDO / Heartbeat / EMCY 工具"
     );
-    tr!(valid_label, "VALID", "有效");
-    tr!(invalid_label, "INVALID", "无效");
 
     // ── 动态格式化翻译 ─────────────────────────────────────
 
@@ -711,7 +657,8 @@ mod tests {
     #[test]
     fn test_macro_coverage() {
         // Verify every static translation returns non-empty for both languages
-        let checks: &[(fn(Language) -> &'static str, &str)] = &[
+        type TrCheck = (fn(Language) -> &'static str, &'static str);
+        let checks: &[TrCheck] = &[
             (Tr::app_title, "app_title"),
             (Tr::connect, "connect"),
             (Tr::disconnect, "disconnect"),

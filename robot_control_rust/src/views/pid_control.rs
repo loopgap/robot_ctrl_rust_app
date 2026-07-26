@@ -1324,21 +1324,21 @@ fn show_mpc(ui: &mut Ui, state: &mut AppState) {
         .num_columns(2)
         .spacing([20.0, 10.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Q (output):").strong());
+            ui.label(RichText::new(Tr::q_output_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().q_weight, 0.01..=100.0)
                     .step_by(0.01)
                     .logarithmic(true),
             );
             ui.end_row();
-            ui.label(RichText::new("R (input):").strong());
+            ui.label(RichText::new(Tr::r_input_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().r_weight, 0.001..=10.0)
                     .step_by(0.001)
                     .logarithmic(true),
             );
             ui.end_row();
-            ui.label(RichText::new("S (rate):").strong());
+            ui.label(RichText::new(Tr::s_rate_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().s_weight, 0.0..=10.0).step_by(0.001),
             );

@@ -54,9 +54,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui,
                 "CAN",
                 if state.conn.can.is_running {
-                    "Running"
+                    Tr::running_label(lang)
                 } else {
-                    "Stopped"
+                    Tr::stopped_label(lang)
                 },
                 status_color(state.conn.can.is_running),
                 if lang == Language::Chinese {

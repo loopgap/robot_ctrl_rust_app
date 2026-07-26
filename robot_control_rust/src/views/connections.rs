@@ -80,14 +80,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 {
                     state.stop_mcp_server();
                 }
-                ui.label(RichText::new("Running").color(state.anim.animate_color(
-                    "connections_1".into(),
-                    theme.status_ok,
-                    theme.status_ok,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )));
+                ui.label(
+                    RichText::new(Tr::running_label(lang)).color(state.anim.animate_color(
+                        "connections_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )),
+                );
             } else {
                 if ui
                     .button(
@@ -104,7 +106,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 {
                     state.start_mcp_server();
                 }
-                ui.label(RichText::new("Stopped").color(Color32::GRAY));
+                ui.label(RichText::new(Tr::stopped_label(lang)).color(Color32::GRAY));
             }
         });
     });
@@ -180,7 +182,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             if !state.ui.auto_reconnect_enabled {
                 ui.label(
-                    RichText::new("Background retry is off until you enable it.")
+                    RichText::new(Tr::background_retry_off(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
@@ -189,7 +191,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if !state.reconnect_armed() {
                 ui.label(
-                    RichText::new("Retry arms after one successful manual connection.")
+                    RichText::new(Tr::retry_arms_hint(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
@@ -200,7 +202,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(RichText::new(countdown).small().color(Color32::LIGHT_BLUE));
             } else {
                 ui.label(
-                    RichText::new("Retry idle until the current link drops.")
+                    RichText::new(Tr::retry_idle_hint(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
