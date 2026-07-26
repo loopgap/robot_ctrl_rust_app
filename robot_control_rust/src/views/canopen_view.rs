@@ -1,5 +1,5 @@
 use crate::app::AppState;
-use crate::i18n::Tr;
+use crate::i18n::{Language, Tr};
 use crate::models::canopen::{
     analyze_canopen_frame, analyze_ecat_coe_frame, build_heartbeat_producer_sdo, build_nmt,
     build_pdo, canopen_id_role, decode_emcy, decode_heartbeat_state, ecat_state_name,
@@ -34,7 +34,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         theme.bg_dark
                     })
-                    .stroke(egui::Stroke::new(if selected { 2.0 } else { 1.0 }, color))
+                    .stroke(egui::Stroke::new(
+                        if selected { 2.0_f32 } else { 1.0_f32 },
+                        color,
+                    ))
                     .corner_radius(6.0)
                     .inner_margin(egui::Margin::symmetric(14, 5))
                     .show(ui, |ui| {
@@ -74,6 +77,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 // CAN FD 专用页面
 // ═══════════════════════════════════════════════════════════════
 fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
+    let lang = state.lang();
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_fd_builder(state.lang()))
@@ -84,19 +88,31 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
 
         ui.horizontal_wrapped(|ui| {
             ui.label("CAN ID:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_analyze_cobid_text)
-                    .desired_width(100.0),
+            let id_ok = parse_u32_text(&state.ui.canopen_analyze_cobid_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_analyze_cobid_text,
+                100.0,
+                id_ok,
+                "",
+                num_warn(lang),
             );
-            ui.checkbox(&mut state.ui.can_extended, "29-bit Extended");
+            ui.checkbox(
+                &mut state.ui.can_extended,
+                bi(lang, "29-bit Extended", "29 位扩展帧"),
+            );
         });
 
         ui.horizontal_wrapped(|ui| {
-            ui.label("FD Data (max 64B):");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_fd_data_text)
-                    .desired_width(500.0)
-                    .hint_text("00 01 02 ... up to 64 bytes"),
+            ui.label(bi(lang, "FD Data (max 64B):", "FD 数据 (最大 64B):"));
+            let fd_ok = hex_text_ok(&state.ui.canopen_fd_data_text);
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_fd_data_text,
+                500.0,
+                fd_ok,
+                "00 01 02 ... up to 64 bytes",
+                hex_warn(lang),
             );
         });
 
@@ -136,42 +152,45 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
 
         // FD DLC 映射表
         ui.add_space(4.0);
-        egui::CollapsingHeader::new("CAN FD DLC 映射表").show(ui, |ui| {
-            egui::Grid::new("fd_dlc_table")
-                .num_columns(2)
-                .spacing([12.0, 3.0])
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label(RichText::new("DLC Code").strong());
-                    ui.label(RichText::new("Payload Length").strong());
-                    ui.end_row();
-                    for dlc in 0..=15u8 {
-                        let len = crate::models::canopen::fd_dlc_to_len(dlc);
-                        let current = dlc_code == dlc;
-                        let color = if current {
-                            Color32::from_rgb(100, 220, 160)
-                        } else {
-                            Color32::from_rgb(180, 185, 195)
-                        };
-                        ui.label(RichText::new(format!("{}", dlc)).monospace().color(color));
-                        ui.label(
-                            RichText::new(format!("{} bytes", len))
-                                .monospace()
-                                .color(color),
-                        );
+        egui::CollapsingHeader::new(bi(lang, "CAN FD DLC Mapping", "CAN FD DLC 映射表")).show(
+            ui,
+            |ui| {
+                egui::Grid::new("fd_dlc_table")
+                    .num_columns(2)
+                    .spacing([12.0, 3.0])
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label(RichText::new("DLC Code").strong());
+                        ui.label(RichText::new("Payload Length").strong());
                         ui.end_row();
-                    }
-                });
-        });
+                        for dlc in 0..=15u8 {
+                            let len = crate::models::canopen::fd_dlc_to_len(dlc);
+                            let current = dlc_code == dlc;
+                            let color = if current {
+                                Color32::from_rgb(100, 220, 160)
+                            } else {
+                                Color32::from_rgb(180, 185, 195)
+                            };
+                            ui.label(RichText::new(format!("{}", dlc)).monospace().color(color));
+                            ui.label(
+                                RichText::new(format!("{} bytes", len))
+                                    .monospace()
+                                    .color(color),
+                            );
+                            ui.end_row();
+                        }
+                    });
+            },
+        );
 
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
-            if ui.button("发送 CAN FD").clicked() {
+            if ui.button(bi(lang, "Send CAN FD", "发送 CAN FD")).clicked() {
                 let mp = MultiProtocolFrame::can_fd_pdo(can_id as u16, &fd_data);
                 let data = mp.to_bytes();
                 send_canopen_frame(state, "CAN_FD", can_id as u16, &data);
             }
-            if ui.button("复制帧").clicked() {
+            if ui.button(bi(lang, "Copy Frame", "复制帧")).clicked() {
                 ui.ctx().copy_text(format!(
                     "FD ID=0x{:X} DLC={} DATA={}",
                     frame.can_id,
@@ -187,12 +206,24 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
     // CANopen-over-FD: reuse standard tools with FD badge
     settings_card(ui, |ui| {
         ui.label(
-            RichText::new("CANopen-over-FD 兼容模式")
-                .strong()
-                .size(14.0),
+            RichText::new(bi(
+                lang,
+                "CANopen-over-FD Compatibility",
+                "CANopen-over-FD 兼容模式",
+            ))
+            .strong()
+            .size(14.0),
         );
-        ui.label("CAN FD 帧可兼容标准 CANopen 协议（COB-ID ≤ 0x7FF, 数据 ≤ 8B 时自动降级为 CAN 2.0 语义）");
-        ui.label("超过 8 字节的 FD 载荷可用于扩展 PDO 映射（如 CiA 1301 FD Profile）");
+        ui.label(bi(
+            lang,
+            "CAN FD frames stay compatible with standard CANopen (COB-ID <= 0x7FF; payloads <= 8B fall back to CAN 2.0 semantics)",
+            "CAN FD 帧可兼容标准 CANopen 协议（COB-ID ≤ 0x7FF, 数据 ≤ 8B 时自动降级为 CAN 2.0 语义）",
+        ));
+        ui.label(bi(
+            lang,
+            "FD payloads beyond 8 bytes can carry extended PDO mapping (e.g. CiA 1301 FD Profile)",
+            "超过 8 字节的 FD 载荷可用于扩展 PDO 映射（如 CiA 1301 FD Profile）",
+        ));
     });
 }
 
@@ -200,6 +231,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
 // EtherCAT CoE 专用页面
 // ═══════════════════════════════════════════════════════════════
 fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
+    let lang = state.lang();
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_ecat_sdo_tool(state.lang()))
@@ -210,25 +242,47 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
 
         ui.horizontal_wrapped(|ui| {
             ui.label("Slave Address:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_node_id_text).desired_width(70.0),
+            let addr_ok = parse_u16_text(&state.ui.canopen_node_id_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_node_id_text,
+                70.0,
+                addr_ok,
+                "",
+                num_warn(lang),
             );
             ui.label("OD Index:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_index_text).desired_width(90.0),
+            let idx_ok = parse_u16_text(&state.ui.canopen_index_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_index_text,
+                90.0,
+                idx_ok,
+                "",
+                num_warn(lang),
             );
             ui.label("Sub:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_subidx_text).desired_width(60.0),
+            let sub_ok = parse_u8_text(&state.ui.canopen_subidx_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_subidx_text,
+                60.0,
+                sub_ok,
+                "",
+                num_warn(lang),
             );
         });
 
         ui.horizontal_wrapped(|ui| {
             ui.label("Payload:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_payload_text)
-                    .desired_width(210.0)
-                    .hint_text("06 00"),
+            let payload_ok = hex_text_ok(&state.ui.canopen_payload_text);
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_payload_text,
+                210.0,
+                payload_ok,
+                "06 00",
+                hex_warn(lang),
             );
             ui.checkbox(&mut state.ui.canopen_ecat_write, "Write (Download)");
         });
@@ -291,7 +345,10 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
         );
 
         ui.horizontal_wrapped(|ui| {
-            if ui.button("发送 CoE SDO").clicked() {
+            if ui
+                .button(bi(lang, "Send CoE SDO", "发送 CoE SDO"))
+                .clicked()
+            {
                 let mp = MultiProtocolFrame::ecat_coe_sdo(
                     slave_addr,
                     idx,
@@ -302,7 +359,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 let data = mp.to_bytes();
                 send_canopen_frame(state, "ECAT_CoE", slave_addr, &data);
             }
-            if ui.button("复制帧").clicked() {
+            if ui.button(bi(lang, "Copy Frame", "复制帧")).clicked() {
                 let mut full = coe_frame.mailbox_header.clone();
                 full.extend_from_slice(&coe_frame.coe_data);
                 ui.ctx().copy_text(bytes_to_hex(&full));
@@ -337,7 +394,11 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 draw_pdo_badge(ui, "EtherCAT", true);
                 draw_pdo_badge(
                     ui,
-                    if analysis.valid { "VALID" } else { "INVALID" },
+                    if analysis.valid {
+                        Tr::valid_label(state.lang())
+                    } else {
+                        Tr::invalid_label(state.lang())
+                    },
                     analysis.valid,
                 );
             });
@@ -406,11 +467,19 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                     ui.label(RichText::new(format!("0x{:02X}", code)).monospace());
                     ui.label(ecat_state_name(code));
                     let desc = match code {
-                        1 => "初始化，无 PDO 交换",
-                        2 => "可配置 SDO，无 PDI",
-                        3 => "固件更新模式",
-                        4 => "PDO 激活，输出安全值",
-                        8 => "完全运行，实时 PDO 交换",
+                        1 => bi(lang, "Init: no PDO exchange", "初始化，无 PDO 交换"),
+                        2 => bi(lang, "Pre-Op: SDO available, no PDI", "可配置 SDO，无 PDI"),
+                        3 => bi(lang, "Boot: firmware update mode", "固件更新模式"),
+                        4 => bi(
+                            lang,
+                            "Safe-Op: PDO active, safe outputs",
+                            "PDO 激活，输出安全值",
+                        ),
+                        8 => bi(
+                            lang,
+                            "Op: full real-time PDO exchange",
+                            "完全运行，实时 PDO 交换",
+                        ),
                         _ => "",
                     };
                     ui.label(desc);
@@ -428,6 +497,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
 // 标准 CANopen (CAN 2.0) 页面
 // ═══════════════════════════════════════════════════════════════
 fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
+    let lang = state.lang();
     let node_id = parse_u8_text(&state.ui.canopen_node_id_text)
         .unwrap_or(1)
         .clamp(1, 127);
@@ -487,7 +557,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         );
 
         ui.add_space(6.0);
-        draw_id_map(ui, node_id);
+        draw_id_map(ui, node_id, lang);
     });
 
     ui.add_space(8.0);
@@ -501,8 +571,15 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(8.0);
         ui.horizontal_wrapped(|ui| {
             ui.label("Node ID:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_node_id_text).desired_width(70.0),
+            let node_ok = parse_u8_text(&state.ui.canopen_node_id_text)
+                .is_some_and(|v| (1..=127).contains(&v));
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_node_id_text,
+                70.0,
+                node_ok,
+                "",
+                num_warn(lang),
             );
 
             let cmds = NmtCommand::all();
@@ -518,10 +595,10 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 });
 
             let frame = build_nmt(node_id, cmd);
-            if ui.button("发送 NMT").clicked() {
+            if ui.button(bi(lang, "Send NMT", "发送 NMT")).clicked() {
                 send_canopen_frame(state, "NMT", frame.cob_id, &frame.data);
             }
-            if ui.button("复制").clicked() {
+            if ui.button(bi(lang, "Copy", "复制")).clicked() {
                 ui.ctx().copy_text(format!(
                     "ID={:#05X} DATA={}",
                     frame.cob_id,
@@ -573,18 +650,34 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 });
 
             ui.label("Index:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_index_text).desired_width(90.0),
+            let idx_ok = parse_u16_text(&state.ui.canopen_index_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_index_text,
+                90.0,
+                idx_ok,
+                "",
+                num_warn(lang),
             );
             ui.label("Sub:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_subidx_text).desired_width(60.0),
+            let sub_ok = parse_u8_text(&state.ui.canopen_subidx_text).is_some();
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_subidx_text,
+                60.0,
+                sub_ok,
+                "",
+                num_warn(lang),
             );
             ui.label("Payload:");
-            ui.add(
-                egui::TextEdit::singleline(&mut state.ui.canopen_payload_text)
-                    .desired_width(210.0)
-                    .hint_text("11 22 33 44"),
+            let payload_ok = hex_text_ok(&state.ui.canopen_payload_text);
+            flagged_edit(
+                ui,
+                &mut state.ui.canopen_payload_text,
+                210.0,
+                payload_ok,
+                "11 22 33 44",
+                hex_warn(lang),
             );
         });
 
@@ -599,7 +692,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         let frame = req.build();
 
         ui.add_space(6.0);
-        draw_sdo_bits(ui, frame.data[0]);
+        draw_sdo_bits(ui, frame.data[0], lang);
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(
@@ -624,10 +717,10 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         );
 
         ui.horizontal_wrapped(|ui| {
-            if ui.button("发送 SDO").clicked() {
+            if ui.button(bi(lang, "Send SDO", "发送 SDO")).clicked() {
                 send_canopen_frame(state, "SDO", frame.cob_id, &frame.data);
             }
-            if ui.button("复制 SDO").clicked() {
+            if ui.button(bi(lang, "Copy SDO", "复制 SDO")).clicked() {
                 ui.ctx().copy_text(format!(
                     "ID={:#05X} DATA={}",
                     frame.cob_id,
@@ -652,24 +745,43 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             .spacing([16.0, 8.0])
             .show(ui, |ui| {
                 ui.label("PDO COB-ID:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.ui.canopen_pdo_cobid_text)
-                        .desired_width(100.0),
+                let cobid_ok = parse_u16_text(&state.ui.canopen_pdo_cobid_text).is_some();
+                flagged_edit(
+                    ui,
+                    &mut state.ui.canopen_pdo_cobid_text,
+                    100.0,
+                    cobid_ok,
+                    "",
+                    num_warn(lang),
                 );
                 ui.end_row();
 
                 ui.label("PDO Data:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.ui.canopen_pdo_data_text)
-                        .desired_width(320.0)
-                        .hint_text("01 02 03 04 05 06 07 08"),
+                let data_ok = hex_text_ok(&state.ui.canopen_pdo_data_text);
+                flagged_edit(
+                    ui,
+                    &mut state.ui.canopen_pdo_data_text,
+                    320.0,
+                    data_ok,
+                    "01 02 03 04 05 06 07 08",
+                    hex_warn(lang),
                 );
                 ui.end_row();
 
                 ui.label("Heartbeat(ms):");
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.ui.canopen_heartbeat_ms_text)
-                        .desired_width(100.0),
+                let hb_ok = state
+                    .ui
+                    .canopen_heartbeat_ms_text
+                    .trim()
+                    .parse::<u16>()
+                    .is_ok();
+                flagged_edit(
+                    ui,
+                    &mut state.ui.canopen_heartbeat_ms_text,
+                    100.0,
+                    hb_ok,
+                    "",
+                    num_warn(lang),
                 );
                 ui.end_row();
             });
@@ -699,16 +811,25 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             );
         });
         ui.horizontal_wrapped(|ui| {
-            if ui.button("发送 PDO").clicked() {
+            if ui.button(bi(lang, "Send PDO", "发送 PDO")).clicked() {
                 send_canopen_frame(state, "PDO", pdo.cob_id, &pdo.data);
             }
-            if ui.button("发送 Heartbeat 配置(SDO 0x1017)").clicked() {
+            if ui
+                .button(bi(
+                    lang,
+                    "Send Heartbeat Config (SDO 0x1017)",
+                    "发送 Heartbeat 配置(SDO 0x1017)",
+                ))
+                .clicked()
+            {
                 send_canopen_frame(state, "HB_CFG", hb.cob_id, &hb.data);
             }
         });
 
         ui.separator();
-        ui.label(RichText::new("EMCY / Heartbeat 解码").strong());
+        ui.label(
+            RichText::new(bi(lang, "EMCY / Heartbeat Decode", "EMCY / Heartbeat 解码")).strong(),
+        );
         ui.horizontal_wrapped(|ui| {
             ui.label("Decode HEX:");
             ui.add(
@@ -753,14 +874,17 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(6.0);
 
         ui.horizontal_wrapped(|ui| {
-            if ui.button("加载 CiA 402 预设").clicked() {
+            if ui
+                .button(bi(lang, "Load CiA 402 Preset", "加载 CiA 402 预设"))
+                .clicked()
+            {
                 state.protocol.canopen_pdo_configs = preset_pdo_configs();
                 state
                     .protocol
                     .canopen_log
                     .push("[INFO] Loaded CiA 402 preset PDO configs".into());
             }
-            if ui.button("新增 PDO").clicked() {
+            if ui.button(bi(lang, "Add PDO", "新增 PDO")).clicked() {
                 let pdo_count = state.protocol.canopen_pdo_configs.len();
                 let new_pdo = PdoConfig {
                     name: format!("PDO{}", pdo_count + 1),
@@ -774,7 +898,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 };
                 state.protocol.canopen_pdo_configs.push(new_pdo);
             }
-            if ui.button("导出 JSON").clicked() {
+            if ui.button(bi(lang, "Export JSON", "导出 JSON")).clicked() {
                 if let Ok(json) = serde_json::to_string_pretty(&state.protocol.canopen_pdo_configs)
                 {
                     ui.ctx().copy_text(json.clone());
@@ -785,7 +909,10 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                         .push("[INFO] PDO configs exported to clipboard".into());
                 }
             }
-            if ui.button("从剪贴板导入 JSON").clicked() {
+            if ui
+                .button(bi(lang, "Import JSON from Clipboard", "从剪贴板导入 JSON"))
+                .clicked()
+            {
                 // 使用 decode_input 字段临时存放
                 if let Ok(configs) =
                     serde_json::from_str::<Vec<PdoConfig>>(&state.ui.canopen_decode_input)
@@ -829,7 +956,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
             egui::Frame::NONE
                 .fill(Color32::from_rgb(22, 28, 38))
-                .stroke(egui::Stroke::new(1.0, Color32::from_rgb(50, 60, 75)))
+                .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(50, 60, 75)))
                 .corner_radius(6.0)
                 .inner_margin(egui::Margin::symmetric(10, 6))
                 .show(ui, |ui| {
@@ -911,7 +1038,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     }
 
                     ui.horizontal_wrapped(|ui| {
-                        if ui.small_button("发送").clicked() {
+                        if ui.small_button(bi(lang, "Send", "发送")).clicked() {
                             let values: Vec<f64> = (0..mappings_count).map(|_| 0.0).collect();
                             let frame = state.protocol.canopen_pdo_configs[pdo_idx]
                                 .build_from_values(&values);
@@ -921,7 +1048,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                 frame.data,
                             ));
                         }
-                        if ui.small_button("复制帧").clicked() {
+                        if ui.small_button(bi(lang, "Copy Frame", "复制帧")).clicked() {
                             let values: Vec<f64> = (0..mappings_count).map(|_| 0.0).collect();
                             let frame = state.protocol.canopen_pdo_configs[pdo_idx]
                                 .build_from_values(&values);
@@ -931,7 +1058,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                 bytes_to_hex(&frame.data)
                             ));
                         }
-                        if ui.small_button("删除").clicked() {
+                        if ui.small_button(bi(lang, "Delete", "删除")).clicked() {
                             remove_idx = Some(pdo_idx);
                         }
                     });
@@ -1016,7 +1143,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 ui.add(
                     egui::TextEdit::singleline(&mut state.ui.canopen_pdo_decode_hex)
                         .desired_width(360.0)
-                        .hint_text("例: E8 03 00 00 64 00"),
+                        .hint_text(bi(lang, "e.g. E8 03 00 00 64 00", "例: E8 03 00 00 64 00")),
                 );
             });
 
@@ -1034,7 +1161,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
                     egui::Frame::NONE
                         .fill(Color32::from_rgb(22, 30, 40))
-                        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(45, 55, 70)))
+                        .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(45, 55, 70)))
                         .corner_radius(4.0)
                         .inner_margin(egui::Margin::symmetric(8, 4))
                         .show(ui, |ui| {
@@ -1109,7 +1236,11 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 draw_pdo_badge(ui, &format!("Node {}", analysis.node_id), true);
                 draw_pdo_badge(
                     ui,
-                    if analysis.valid { "VALID" } else { "INVALID" },
+                    if analysis.valid {
+                        Tr::valid_label(state.lang())
+                    } else {
+                        Tr::invalid_label(state.lang())
+                    },
                     analysis.valid,
                 );
             });
@@ -1274,6 +1405,7 @@ fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
 }
 
 fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
+    let lang = state.lang();
     if !state.protocol.canopen_log.is_empty() {
         ui.add_space(8.0);
         settings_card(ui, |ui| {
@@ -1283,7 +1415,7 @@ fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
                         .strong()
                         .size(15.0),
                 );
-                if ui.button("清空").clicked() {
+                if ui.button(bi(lang, "Clear", "清空")).clicked() {
                     state.protocol.canopen_log.clear();
                 }
             });
@@ -1304,16 +1436,77 @@ fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
     }
 }
 
+/// True when the text is a clean hex byte sequence (even digit count, hex
+/// digits only; spaces/commas and a 0x prefix are allowed).
+fn hex_text_ok(text: &str) -> bool {
+    let cleaned = text.trim().replace([' ', ','], "");
+    let digits = cleaned
+        .strip_prefix("0x")
+        .or_else(|| cleaned.strip_prefix("0X"))
+        .unwrap_or(&cleaned);
+    digits.len().is_multiple_of(2) && digits.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn num_warn(lang: Language) -> &'static str {
+    bi(
+        lang,
+        "Invalid value - the default will be used when sending. Enter decimal or 0x-prefixed hex.",
+        "输入无效——发送时将使用默认值。支持十进制或 0x 前缀十六进制。",
+    )
+}
+
+fn hex_warn(lang: Language) -> &'static str {
+    bi(
+        lang,
+        "Invalid hex - malformed bytes are dropped when sending. Use pairs of hex digits.",
+        "十六进制无效——发送时畸形字节会被丢弃。请使用成对的十六进制数字。",
+    )
+}
+
+/// Single-line input that flags unparseable text in red with a hover
+/// explanation instead of failing silently at send time.
+fn flagged_edit(ui: &mut Ui, text: &mut String, width: f32, ok: bool, hint: &str, warn: &str) {
+    let mut edit = egui::TextEdit::singleline(text).desired_width(width);
+    if !hint.is_empty() {
+        edit = edit.hint_text(hint);
+    }
+    if !ok {
+        edit = edit.text_color(Color32::from_rgb(240, 110, 110));
+    }
+    let response = ui.add(edit);
+    if !ok {
+        response.on_hover_text(warn);
+    }
+}
+
+/// Inline bilingual text helper for compact controls.
+fn bi(lang: Language, en: &'static str, zh: &'static str) -> &'static str {
+    match lang {
+        Language::Chinese => zh,
+        _ => en,
+    }
+}
+
 fn send_canopen_frame(state: &mut AppState, tag: &str, cob_id: u16, data: &[u8]) {
+    let lang = state.lang();
     match state.send_data(data) {
         Ok(()) => {
             let line = format!("[TX {}] ID={:#05X} {}", tag, cob_id, bytes_to_hex(data));
             state.protocol.canopen_log.push(line.clone());
-            state.status_message = format!("CANopen sent {} bytes", data.len());
+            state.status_message = format!(
+                "{} {} {}",
+                bi(lang, "CANopen sent", "CANopen 已发送"),
+                data.len(),
+                bi(lang, "bytes", "字节"),
+            );
             state.add_info_log(&line);
         }
         Err(e) => {
-            state.status_message = format!("CANopen send error: {}", e);
+            state.status_message = format!(
+                "{}: {}",
+                bi(lang, "CANopen send error", "CANopen 发送失败"),
+                e
+            );
             state
                 .protocol
                 .canopen_log
@@ -1366,7 +1559,7 @@ fn draw_status_chip(ui: &mut Ui, text: &str, ok: bool) {
 
     egui::Frame::NONE
         .fill(bg)
-        .stroke(egui::Stroke::new(1.0, fg.gamma_multiply(0.7)))
+        .stroke(egui::Stroke::new(1.0_f32, fg.gamma_multiply(0.7)))
         .corner_radius(4.0)
         .inner_margin(egui::Margin::symmetric(8, 4))
         .show(ui, |ui| {
@@ -1374,8 +1567,12 @@ fn draw_status_chip(ui: &mut Ui, text: &str, ok: bool) {
         });
 }
 
-fn draw_id_map(ui: &mut Ui, node_id: u8) {
-    ui.label(RichText::new("CANopen COB-ID Map").strong().size(12.0));
+fn draw_id_map(ui: &mut Ui, node_id: u8, lang: Language) {
+    ui.label(
+        RichText::new(Tr::canopen_cobid_map(lang))
+            .strong()
+            .size(12.0),
+    );
     let rows = [
         ("NMT", 0x000u16),
         ("EMCY", 0x080u16 + node_id as u16),
@@ -1407,9 +1604,9 @@ fn draw_id_map(ui: &mut Ui, node_id: u8) {
         });
 }
 
-fn draw_sdo_bits(ui: &mut Ui, cmd: u8) {
+fn draw_sdo_bits(ui: &mut Ui, cmd: u8, lang: Language) {
     ui.label(
-        RichText::new("SDO Command Byte Bitfield")
+        RichText::new(Tr::canopen_sdo_bitfield(lang))
             .strong()
             .size(12.0),
     );
@@ -1473,7 +1670,7 @@ fn draw_pdo_badge(ui: &mut Ui, text: &str, ok: bool) {
 
     egui::Frame::NONE
         .fill(bg)
-        .stroke(egui::Stroke::new(1.0, stroke))
+        .stroke(egui::Stroke::new(1.0_f32, stroke))
         .corner_radius(4.0)
         .inner_margin(egui::Margin::symmetric(7, 2))
         .show(ui, |ui| {
