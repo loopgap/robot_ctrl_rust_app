@@ -1,0 +1,20 @@
+# Normalize line endings: store LF in the repository, let Git convert on
+# checkout per-platform (works with and without core.autocrlf).
+* text=auto
+
+# Always-LF: shell scripts and CI must not receive CRLF
+*.sh text eol=lf
+.githooks/* text eol=lf
+
+# Always-CRLF: Windows-native scripts
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets — never touch
+*.png binary
+*.jpg binary
+*.ico binary
+*.gif binary
+*.exe binary
+*.dll binary
+*.pdf binary
