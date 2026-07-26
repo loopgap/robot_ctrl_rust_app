@@ -8,6 +8,8 @@ const PARAM_LABEL_WIDTH: f32 = 130.0;
 const PARAM_INPUT_WIDTH: f32 = 96.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_pid_control(lang), "pid");
 
@@ -18,11 +20,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let run_btn = if state.control.is_running {
                 RichText::new(Tr::stop_control(lang))
                     .size(15.0)
-                    .color(Color32::from_rgb(255, 100, 100))
+                    .color(state.anim.animate_color(
+                        "pid_control_1".into(),
+                        theme.status_error,
+                        theme.status_error,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             } else {
                 RichText::new(Tr::start_control(lang))
                     .size(15.0)
-                    .color(Color32::from_rgb(100, 255, 100))
+                    .color(state.anim.animate_color(
+                        "pid_control_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ))
             };
             if ui.button(run_btn).clicked() {
                 state.control.toggle_running();
@@ -45,7 +61,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             if state.control.is_running {
                 ui.label(
                     RichText::new(Tr::running(lang))
-                        .color(Color32::from_rgb(46, 160, 67))
+                        .color(state.anim.animate_color(
+                            "pid_control_2".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ))
                         .strong(),
                 );
             } else {
@@ -75,7 +98,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 let btn = if selected {
                     RichText::new(name.to_string())
                         .strong()
-                        .color(Color32::from_rgb(88, 166, 255))
+                        .color(state.anim.animate_color(
+                            "pid_control_1".into(),
+                            theme.accent_blue,
+                            theme.accent_blue,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ))
                 } else {
                     RichText::new(name.to_string())
                 };
@@ -325,7 +355,7 @@ fn show_classic_pid(ui: &mut Ui, state: &mut AppState) {
             // Setpoint
             ui.add_sized(
                 [PARAM_LABEL_WIDTH, 20.0],
-                egui::Label::new(RichText::new("Setpoint:").strong()),
+                egui::Label::new(RichText::new(Tr::setpoint_label(lang)).strong()),
             );
             ui.add(
                 egui::Slider::new(&mut state.control.pid_mut().setpoint, -500.0..=500.0)
@@ -343,7 +373,10 @@ fn show_classic_pid(ui: &mut Ui, state: &mut AppState) {
             ui.end_row();
 
             // Output Limit
-            ui.add_sized([PARAM_LABEL_WIDTH, 20.0], egui::Label::new("Output Limit:"));
+            ui.add_sized(
+                [PARAM_LABEL_WIDTH, 20.0],
+                egui::Label::new(Tr::output_limit_label(lang)),
+            );
             ui.add(
                 egui::Slider::new(&mut state.control.pid_mut().output_limit, 1.0..=1000.0)
                     .step_by(1.0),
@@ -362,7 +395,7 @@ fn show_classic_pid(ui: &mut Ui, state: &mut AppState) {
             // Integral Limit
             ui.add_sized(
                 [PARAM_LABEL_WIDTH, 20.0],
-                egui::Label::new("Integral Limit:"),
+                egui::Label::new(Tr::integral_limit_label(lang)),
             );
             ui.add(
                 egui::Slider::new(&mut state.control.pid_mut().integral_limit, 1.0..=1000.0)
@@ -423,13 +456,13 @@ fn show_classic_pid(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(14.0, 8.0);
-        ui.label("Integral:");
+        ui.label(Tr::integral_label(lang));
         ui.label(
             RichText::new(format!("{:.3}", state.control.pid_mut().integral))
                 .strong()
                 .monospace(),
         );
-        ui.label("Derivative:");
+        ui.label(Tr::derivative_label(lang));
         ui.label(
             RichText::new(format!("{:.3}", state.control.pid_mut().derivative))
                 .strong()
@@ -476,7 +509,7 @@ fn show_incremental_pid(ui: &mut Ui, state: &mut AppState) {
             ui.end_row();
             ui.add_sized(
                 [PARAM_LABEL_WIDTH, 20.0],
-                egui::Label::new(RichText::new("Setpoint:").strong()),
+                egui::Label::new(RichText::new(Tr::setpoint_label(lang)).strong()),
             );
             ui.add(
                 egui::Slider::new(
@@ -486,7 +519,10 @@ fn show_incremental_pid(ui: &mut Ui, state: &mut AppState) {
                 .step_by(0.1),
             );
             ui.end_row();
-            ui.add_sized([PARAM_LABEL_WIDTH, 20.0], egui::Label::new("Output Limit:"));
+            ui.add_sized(
+                [PARAM_LABEL_WIDTH, 20.0],
+                egui::Label::new(Tr::output_limit_label(lang)),
+            );
             ui.add(
                 egui::Slider::new(
                     &mut state.control.incremental_pid_mut().output_limit,
@@ -545,7 +581,7 @@ fn show_incremental_pid(ui: &mut Ui, state: &mut AppState) {
             .strong()
             .monospace(),
         );
-        ui.label("Output:");
+        ui.label(Tr::output_label(lang));
         ui.label(
             RichText::new(format!("{:.3}", state.control.incremental_pid_mut().output))
                 .strong()
@@ -556,14 +592,14 @@ fn show_incremental_pid(ui: &mut Ui, state: &mut AppState) {
 
 fn show_bang_bang(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
-    ui.label(RichText::new("Bang-Bang").size(16.0).strong());
+    ui.label(RichText::new(Tr::bang_bang_label(lang)).size(16.0).strong());
     ui.add_space(8.0);
 
     egui::Grid::new("bangbang_grid")
         .num_columns(2)
         .spacing([20.0, 10.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Setpoint:").strong());
+            ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.bang_bang_mut().setpoint, -500.0..=500.0)
                     .step_by(0.1),
@@ -609,7 +645,7 @@ fn show_bang_bang(ui: &mut Ui, state: &mut AppState) {
             crate::models::bang_bang::BangBangState::Low => Color32::from_rgb(255, 100, 100),
         };
         ui.label(RichText::new(state_str).strong().color(color).monospace());
-        ui.label("Output:");
+        ui.label(Tr::output_label(lang));
         ui.label(
             RichText::new(format!("{:.1}", state.control.bang_bang_mut().output))
                 .strong()
@@ -646,13 +682,13 @@ fn show_fuzzy_pid(ui: &mut Ui, state: &mut AppState) {
                     .step_by(0.001),
             );
             ui.end_row();
-            ui.label(RichText::new("Setpoint:").strong());
+            ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.fuzzy_pid_mut().setpoint, -500.0..=500.0)
                     .step_by(0.1),
             );
             ui.end_row();
-            ui.label("Output Limit:");
+            ui.label(Tr::output_limit_label(lang));
             ui.add(
                 egui::Slider::new(
                     &mut state.control.fuzzy_pid_mut().output_limit,
@@ -661,7 +697,7 @@ fn show_fuzzy_pid(ui: &mut Ui, state: &mut AppState) {
                 .step_by(1.0),
             );
             ui.end_row();
-            ui.label("Integral Limit:");
+            ui.label(Tr::integral_limit_label(lang));
             ui.add(
                 egui::Slider::new(
                     &mut state.control.fuzzy_pid_mut().integral_limit,
@@ -769,7 +805,7 @@ fn show_cascade_pid(ui: &mut Ui, state: &mut AppState) {
                     .step_by(0.001),
             );
             ui.end_row();
-            ui.label("Output Limit:");
+            ui.label(Tr::output_limit_label(lang));
             ui.add(
                 egui::Slider::new(
                     &mut state.control.cascade_pid_mut().outer_output_limit,
@@ -807,7 +843,7 @@ fn show_cascade_pid(ui: &mut Ui, state: &mut AppState) {
                     .step_by(0.001),
             );
             ui.end_row();
-            ui.label("Output Limit:");
+            ui.label(Tr::output_limit_label(lang));
             ui.add(
                 egui::Slider::new(
                     &mut state.control.cascade_pid_mut().inner_output_limit,
@@ -819,7 +855,7 @@ fn show_cascade_pid(ui: &mut Ui, state: &mut AppState) {
         });
 
     ui.add_space(4.0);
-    ui.label(RichText::new("Setpoint:").strong());
+    ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
     ui.add(
         egui::Slider::new(
             &mut state.control.cascade_pid_mut().setpoint,
@@ -840,7 +876,7 @@ fn show_cascade_pid(ui: &mut Ui, state: &mut AppState) {
             .strong()
             .monospace(),
         );
-        ui.label("Output:");
+        ui.label(Tr::output_label(lang));
         ui.label(
             RichText::new(format!("{:.3}", state.control.cascade_pid_mut().output))
                 .strong()
@@ -877,7 +913,7 @@ fn show_smith_predictor(ui: &mut Ui, state: &mut AppState) {
                     .step_by(0.001),
             );
             ui.end_row();
-            ui.label(RichText::new("Setpoint:").strong());
+            ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
             ui.add(
                 egui::Slider::new(
                     &mut state.control.smith_predictor_mut().setpoint,
@@ -886,7 +922,7 @@ fn show_smith_predictor(ui: &mut Ui, state: &mut AppState) {
                 .step_by(0.1),
             );
             ui.end_row();
-            ui.label("Output Limit:");
+            ui.label(Tr::output_limit_label(lang));
             ui.add(
                 egui::Slider::new(
                     &mut state.control.smith_predictor_mut().output_limit,
@@ -1067,9 +1103,9 @@ fn show_adrc(ui: &mut Ui, state: &mut AppState) {
         });
 
     ui.add_space(4.0);
-    ui.label(RichText::new("Setpoint:").strong());
+    ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.adrc_mut().setpoint, -500.0..=500.0).step_by(0.1));
-    ui.label(RichText::new("Output Limit:").strong());
+    ui.label(RichText::new(Tr::output_limit_label(lang)).strong());
     ui.add(
         egui::Slider::new(&mut state.control.adrc_mut().output_limit, 1.0..=1000.0).step_by(1.0),
     );
@@ -1129,9 +1165,9 @@ fn show_ladrc(ui: &mut Ui, state: &mut AppState) {
         });
 
     ui.add_space(4.0);
-    ui.label(RichText::new("Setpoint:").strong());
+    ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.ladrc_mut().setpoint, -500.0..=500.0).step_by(0.1));
-    ui.label(RichText::new("Output Limit:").strong());
+    ui.label(RichText::new(Tr::output_limit_label(lang)).strong());
     ui.add(
         egui::Slider::new(&mut state.control.ladrc_mut().output_limit, 1.0..=1000.0).step_by(1.0),
     );
@@ -1188,7 +1224,7 @@ fn show_lqr(ui: &mut Ui, state: &mut AppState) {
             ui.label(RichText::new("Ki:").strong());
             ui.add(egui::Slider::new(&mut state.control.lqr_mut().ki, 0.0..=5.0).step_by(0.001));
             ui.end_row();
-            ui.label(RichText::new("Integral Limit:").strong());
+            ui.label(RichText::new(Tr::integral_limit_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.lqr_mut().integral_limit, 0.0..=500.0)
                     .step_by(1.0),
@@ -1210,9 +1246,9 @@ fn show_lqr(ui: &mut Ui, state: &mut AppState) {
     });
 
     ui.add_space(4.0);
-    ui.label(RichText::new("Setpoint:").strong());
+    ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.lqr_mut().setpoint, -500.0..=500.0).step_by(0.1));
-    ui.label(RichText::new("Output Limit:").strong());
+    ui.label(RichText::new(Tr::output_limit_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.lqr_mut().output_limit, 1.0..=1000.0).step_by(1.0));
 }
 
@@ -1288,21 +1324,21 @@ fn show_mpc(ui: &mut Ui, state: &mut AppState) {
         .num_columns(2)
         .spacing([20.0, 10.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Q (output):").strong());
+            ui.label(RichText::new(Tr::q_output_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().q_weight, 0.01..=100.0)
                     .step_by(0.01)
                     .logarithmic(true),
             );
             ui.end_row();
-            ui.label(RichText::new("R (input):").strong());
+            ui.label(RichText::new(Tr::r_input_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().r_weight, 0.001..=10.0)
                     .step_by(0.001)
                     .logarithmic(true),
             );
             ui.end_row();
-            ui.label(RichText::new("S (rate):").strong());
+            ui.label(RichText::new(Tr::s_rate_label(lang)).strong());
             ui.add(
                 egui::Slider::new(&mut state.control.mpc_mut().s_weight, 0.0..=10.0).step_by(0.001),
             );
@@ -1315,8 +1351,8 @@ fn show_mpc(ui: &mut Ui, state: &mut AppState) {
         });
 
     ui.add_space(4.0);
-    ui.label(RichText::new("Setpoint:").strong());
+    ui.label(RichText::new(Tr::setpoint_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.mpc_mut().setpoint, -500.0..=500.0).step_by(0.1));
-    ui.label(RichText::new("Output Limit:").strong());
+    ui.label(RichText::new(Tr::output_limit_label(lang)).strong());
     ui.add(egui::Slider::new(&mut state.control.mpc_mut().output_limit, 1.0..=1000.0).step_by(1.0));
 }

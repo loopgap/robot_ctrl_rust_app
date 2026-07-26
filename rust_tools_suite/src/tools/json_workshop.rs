@@ -67,7 +67,8 @@ impl JsonTool {
         ui.label(lang.tr("输入 JSON", "Input JSON"));
         ui.add_sized(
             [ui.available_width(), 220.0],
-            egui::TextEdit::multiline(&mut self.input).hint_text("粘贴 JSON 内容"),
+            egui::TextEdit::multiline(&mut self.input)
+                .hint_text(lang.tr("粘贴 JSON 内容", "Paste JSON content")),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -95,7 +96,7 @@ impl JsonTool {
         ui.label(lang.tr("输出", "Output"));
         ui.add_sized(
             [ui.available_width(), 220.0],
-            egui::TextEdit::multiline(&mut self.output).hint_text("输出结果"),
+            egui::TextEdit::multiline(&mut self.output).hint_text(lang.tr("输出结果", "Output")),
         );
 
         if ui.button(lang.tr("复制输出", "Copy Output")).clicked() {

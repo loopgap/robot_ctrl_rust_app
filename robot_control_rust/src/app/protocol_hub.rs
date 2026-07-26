@@ -24,6 +24,12 @@ impl ProtocolHub {
             parsed_packets: Vec::new(),
         }
     }
+
+    /// Synchronize the packet parser with current templates.
+    /// Must be called after packet_templates is modified.
+    pub fn sync_packet_parser(&mut self) {
+        self.packet_parser = PacketParser::new(self.packet_templates.clone());
+    }
 }
 
 #[cfg(test)]

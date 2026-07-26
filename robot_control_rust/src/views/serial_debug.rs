@@ -5,6 +5,7 @@ use crate::views::ui_kit::{page_header, settings_card};
 use egui::{self, Color32, RichText, ScrollArea, TextEdit, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_terminal(lang), "terminal");
 
@@ -13,9 +14,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
             ui.label(format!("{}:", Tr::display(lang)));
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Hex, "HEX");
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Ascii, "ASCII");
-            ui.selectable_value(&mut state.ui.display_mode, DisplayMode::Mixed, "Mixed");
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Hex,
+                Tr::display_mode_hex(lang),
+            );
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Ascii,
+                Tr::display_mode_ascii(lang),
+            );
+            ui.selectable_value(
+                &mut state.ui.display_mode,
+                DisplayMode::Mixed,
+                Tr::display_mode_mixed(lang),
+            );
 
             ui.separator();
             ui.checkbox(&mut state.ui.auto_scroll, Tr::auto_scroll(lang));
@@ -49,20 +62,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.set_min_width(ui.available_width());
 
                 if state.log.log_entries.is_empty() {
-                    ui.add_space(20.0);
-                    ui.label(
-                        RichText::new(Tr::no_data_yet(lang))
-                            .color(Color32::from_rgb(100, 100, 100))
-                            .italics()
-                            .size(13.0),
+                    crate::views::ui_kit::empty_state(
+                        ui,
+                        "term",
+                        Tr::no_data_yet(lang),
+                        "Connect and send data to see logs.",
+                        &theme,
                     );
                 }
 
                 for entry in &state.log.log_entries {
                     let (prefix, color) = match entry.direction {
-                        LogDirection::Tx => ("TX", Color32::from_rgb(100, 200, 255)),
-                        LogDirection::Rx => ("RX", Color32::from_rgb(100, 255, 100)),
-                        LogDirection::Info => ("INFO", Color32::from_rgb(255, 200, 100)),
+                        LogDirection::Tx => ("TX", theme.status_info),
+                        LogDirection::Rx => ("RX", theme.status_ok),
+                        LogDirection::Info => ("INFO", theme.status_warn),
                     };
 
                     let formatted = format_data_with_mode(&entry.data, state.ui.display_mode);
@@ -72,18 +85,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         ui.label(
                             RichText::new(&entry.timestamp)
                                 .size(11.5)
-                                .color(Color32::from_rgb(100, 100, 100)),
+                                .color(theme.text_muted),
                         );
                         ui.label(
                             RichText::new(format!("[{}]", entry.channel))
                                 .size(11.5)
-                                .color(Color32::from_rgb(140, 140, 150)),
+                                .color(theme.text_muted),
                         );
                         ui.label(RichText::new(prefix).size(11.5).color(color).strong());
                         ui.label(
                             RichText::new(&formatted)
                                 .size(12.5)
-                                .color(Color32::from_rgb(220, 220, 220))
+                                .color(theme.text_primary)
                                 .monospace(),
                         );
                     });
@@ -97,7 +110,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
-            ui.checkbox(&mut state.ui.send_hex, "HEX");
+            ui.checkbox(&mut state.ui.send_hex, Tr::display_mode_hex(lang));
             ui.checkbox(&mut state.ui.send_with_newline, Tr::newline(lang));
 
             if state.ui.send_with_newline {

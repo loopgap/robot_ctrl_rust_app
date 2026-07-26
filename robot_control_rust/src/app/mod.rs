@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod connection_manager;
 pub mod control_engine;
 pub mod external_services;
@@ -452,6 +453,12 @@ pub struct AppState {
     last_error_burst_instant: Option<Instant>,
     resource_status: String,
     platform_support_note: Option<String>,
+
+    // === Theme ===
+    pub theme: crate::views::ui_kit::AppTheme,
+
+    // === Animation System ===
+    pub anim: crate::app::animation::AnimationManager,
 }
 
 const LOG_FILE_MAX_BYTES: u64 = 5 * 1024 * 1024;
@@ -865,6 +872,8 @@ impl AppState {
             last_background_tick_instant: Instant::now(),
             error_burst_count: 0,
             last_error_burst_instant: None,
+            theme: crate::views::ui_kit::AppTheme::dark(),
+            anim: crate::app::animation::AnimationManager::new(),
         };
         if let Ok(api_key) = std::env::var("LLM_API_KEY") {
             if !api_key.trim().is_empty() {
@@ -1216,12 +1225,15 @@ impl AppState {
             .timeout_global(Some(Duration::from_millis(timeout)))
             .build();
         let agent: ureq::Agent = config.into();
-        let mut response = agent.get(manifest_url).call().map_err(|e| e.to_string())?;
+        let mut response = agent
+            .get(manifest_url)
+            .call()
+            .map_err(|e| format!("HTTP request failed: {e}"))?;
         let text = response
             .body_mut()
             .read_to_string()
-            .map_err(|e| e.to_string())?;
-        serde_json::from_str::<UpdateManifest>(&text).map_err(|e| e.to_string())
+            .map_err(|e| format!("Failed to read HTTP response body: {e}"))?;
+        serde_json::from_str::<UpdateManifest>(&text).map_err(|e| format!("JSON parse failed: {e}"))
     }
 
     fn evaluate_update_manifest(
@@ -1846,7 +1858,9 @@ impl AppState {
         }
 
         self.conn.next_reconnect_at = Some(now + Duration::from_millis(interval_ms));
-        let _ = self.connect_active();
+        if let Err(e) = self.connect_active() {
+            self.add_info_log(&format!("Auto-reconnect failed: {e}"));
+        }
     }
 
     pub fn connect_active(&mut self) -> Result<(), String> {
@@ -1883,9 +1897,15 @@ impl AppState {
                 self.conn.tcp.port = parse_port(&self.ui.tcp_port_text, "TCP port")?;
                 self.conn.tcp.is_server = self.ui.tcp_is_server;
                 if self.ui.tcp_is_server {
-                    self.conn.tcp.start_server().map_err(|e| e.to_string())
+                    self.conn
+                        .tcp
+                        .start_server()
+                        .map_err(|e| format!("TCP server start failed: {e}"))
                 } else {
-                    self.conn.tcp.connect_client().map_err(|e| e.to_string())
+                    self.conn
+                        .tcp
+                        .connect_client()
+                        .map_err(|e| format!("TCP client connect failed: {e}"))
                 }
             }
             ConnectionType::Udp => {
@@ -1897,7 +1917,10 @@ impl AppState {
                 if self.conn.udp.remote_addr.is_empty() {
                     return Err("UDP remote host required".into());
                 }
-                self.conn.udp.bind().map_err(|e| e.to_string())
+                self.conn
+                    .udp
+                    .bind()
+                    .map_err(|e| format!("UDP bind failed: {e}"))
             }
             ConnectionType::Can | ConnectionType::CanFd => {
                 self.conn.can.is_running = true;
@@ -1945,7 +1968,10 @@ impl AppState {
         thread::spawn(move || {
             let mut svc = SerialService::new();
             svc.config = cfg;
-            let result = svc.connect().map(|_| svc).map_err(|e| e.to_string());
+            let result = svc
+                .connect()
+                .map(|_| svc)
+                .map_err(|e| format!("Serial port open failed: {e}"));
             let _ = tx.send(result);
         });
 
@@ -1972,13 +1998,21 @@ impl AppState {
 
     pub fn send_data(&mut self, data: &[u8]) -> Result<(), String> {
         let result = match self.conn.active_conn {
-            ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => {
-                self.conn.serial.send_data(data).map_err(|e| e.to_string())
-            }
-            ConnectionType::Tcp | ConnectionType::ModbusTcp => {
-                self.conn.tcp.send_data(data).map_err(|e| e.to_string())
-            }
-            ConnectionType::Udp => self.conn.udp.send_default(data).map_err(|e| e.to_string()),
+            ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => self
+                .conn
+                .serial
+                .send_data(data)
+                .map_err(|e| format!("Serial send failed: {e}")),
+            ConnectionType::Tcp | ConnectionType::ModbusTcp => self
+                .conn
+                .tcp
+                .send_data(data)
+                .map_err(|e| format!("TCP send failed: {e}")),
+            ConnectionType::Udp => self
+                .conn
+                .udp
+                .send_default(data)
+                .map_err(|e| format!("UDP send failed: {e}")),
             _ => Err("Channel not supported".into()),
         };
 
@@ -2000,12 +2034,16 @@ impl AppState {
         }
         self.conn.last_io_poll_instant = now;
 
+        // Collect raw data from all connected interfaces for packet parsing
+        let mut all_raw: Vec<u8> = Vec::new();
+
         if self.conn.serial.is_connected() {
             let raw = self.conn.serial.try_read_raw();
             if !raw.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &raw, "Serial");
                 self.conn.serial.push_rx_data(&raw);
+                all_raw.extend_from_slice(&raw);
             }
         }
 
@@ -2014,6 +2052,7 @@ impl AppState {
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "TCP");
+                all_raw.extend_from_slice(&data);
             }
         }
 
@@ -2022,6 +2061,21 @@ impl AppState {
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
                 self.add_log(LogDirection::Rx, &data, "UDP");
+                all_raw.extend_from_slice(&data);
+            }
+        }
+
+        // Try to parse raw data with registered packet templates
+        if !all_raw.is_empty() && !self.protocol.packet_templates.is_empty() {
+            // Ensure parser templates are in sync
+            if self.protocol.packet_parser.template_count() != self.protocol.packet_templates.len()
+            {
+                self.protocol.sync_packet_parser();
+            }
+            if let Some(parsed) = self.protocol.packet_parser.try_parse(&all_raw) {
+                self.feed_parsed_to_channels(&parsed);
+                self.protocol.parsed_packets.push(parsed);
+                Self::trim_vec(&mut self.protocol.parsed_packets, 200);
             }
         }
 
@@ -2032,7 +2086,9 @@ impl AppState {
                     let output = self.compute_active_algorithm(s.position, s.velocity);
                     s.pid_output = output;
                     s.error = self.get_active_setpoint() - s.position;
-                    let _ = self.conn.serial.send_position_control(output);
+                    if let Err(e) = self.conn.serial.send_position_control(output) {
+                        self.report_error(format!("Position control send failed: {e}"));
+                    }
                 }
                 self.control.current_state = s.clone();
                 self.control.state_history.push(s);
@@ -2087,11 +2143,23 @@ impl AppState {
 
     pub fn emergency_stop(&mut self) {
         self.control.is_running = false;
-        if self.conn.serial.is_connected() {
-            let _ = self.conn.serial.send_emergency_stop();
+        let send_result = if self.conn.serial.is_connected() {
+            self.conn.serial.send_emergency_stop()
+        } else {
+            Ok(())
+        };
+        match send_result {
+            Ok(()) => {
+                self.status_message = "EMERGENCY STOP!".into();
+                self.add_info_log("Warning: Emergency Stop activated!");
+            }
+            Err(e) => {
+                self.status_message = "EMERGENCY STOP \u{2014} send failed!".into();
+                self.report_error(format!(
+                    "Emergency stop command failed to send: {e}. Motor may still be running!"
+                ));
+            }
         }
-        self.status_message = "EMERGENCY STOP!".into();
-        self.add_info_log("Warning: Emergency Stop activated!");
     }
 
     // Control algorithm dispatch
@@ -2325,7 +2393,7 @@ impl AppState {
             let llm = LlmService::new(api_url, api_key, model);
             let result = llm
                 .suggest_pid_params(&current_params, &errors)
-                .map_err(|e| e.to_string());
+                .map_err(|e| format!("LLM service error: {e}"));
             let _ = tx.send(result);
         });
     }

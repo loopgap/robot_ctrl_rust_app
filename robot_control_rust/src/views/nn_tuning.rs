@@ -7,6 +7,8 @@ use egui_plot::{Line, Plot, PlotPoints};
 const NN_LABEL_WIDTH: f32 = 120.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_nn_tuning(lang), "nn");
 
@@ -80,13 +82,19 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 state.control.nn_train_step();
             }
 
-            if ui.button(RichText::new("Train x10").size(14.0)).clicked() {
+            if ui
+                .button(RichText::new(Tr::train_x10_btn(lang)).size(14.0))
+                .clicked()
+            {
                 for _ in 0..10 {
                     state.control.nn_train_step();
                 }
             }
 
-            if ui.button(RichText::new("Train x100").size(14.0)).clicked() {
+            if ui
+                .button(RichText::new(Tr::train_x100_btn(lang)).size(14.0))
+                .clicked()
+            {
                 for _ in 0..100 {
                     state.control.nn_train_step();
                 }
@@ -121,9 +129,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 .collect();
 
             let loss_line = Line::new(loss_points)
-                .name("Loss")
-                .color(Color32::from_rgb(255, 165, 0))
-                .width(1.5);
+                .name(Tr::loss_label(lang))
+                .color(state.anim.animate_color(
+                    "nn_tuning_1".into(),
+                    theme.accent_orange,
+                    theme.accent_orange,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                ))
+                .width(1.5_f32);
 
             Plot::new("loss_plot")
                 .height(170.0)
@@ -137,15 +152,29 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(4.0);
             ui.label(
                 RichText::new(format!(
-                    "Current Loss: {:.6}",
+                    "{}: {:.6}",
+                    Tr::current_loss_label(lang),
                     state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)
-                .color(Color32::from_rgb(255, 165, 0)),
+                .color(state.anim.animate_color(
+                    "nn_tuning_2".into(),
+                    theme.accent_orange,
+                    theme.accent_orange,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
             );
         } else {
             ui.add_space(8.0);
-            ui.label(RichText::new(Tr::no_training_data(lang)).color(Color32::GRAY));
+            crate::views::ui_kit::empty_state(
+                ui,
+                "nn",
+                "No Training Data",
+                Tr::no_training_data(lang),
+                &theme,
+            );
         }
     });
 
@@ -171,11 +200,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             if ui
-                .button(
-                    RichText::new(Tr::apply_suggested(lang))
-                        .size(14.0)
-                        .color(Color32::from_rgb(100, 255, 100)),
-                )
+                .button(RichText::new(Tr::apply_suggested(lang)).size(14.0).color(
+                    state.anim.animate_color(
+                        "nn_tuning_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ),
+                ))
                 .clicked()
             {
                 state.apply_nn_params();
@@ -190,11 +224,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show(ui, |ui| {
                 ui.label(RichText::new(Tr::parameter(lang)).strong());
                 ui.label(RichText::new(Tr::current(lang)).strong());
-                ui.label(
-                    RichText::new(Tr::suggested(lang))
-                        .strong()
-                        .color(Color32::from_rgb(100, 200, 255)),
-                );
+                ui.label(RichText::new(Tr::suggested(lang)).strong().color(
+                    state.anim.animate_color(
+                        "nn_tuning_1".into(),
+                        theme.status_info,
+                        theme.status_info,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    ),
+                ));
                 ui.label(RichText::new(Tr::delta(lang)).strong());
                 ui.end_row();
 
@@ -222,24 +261,33 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     settings_card(ui, |ui| {
-        ui.label(RichText::new("LLM API Tuning").size(15.0).strong());
+        ui.label(RichText::new(Tr::llm_api_tuning(lang)).size(15.0).strong());
         ui.add_space(8.0);
 
         egui::Grid::new("llm_tuning_grid")
             .num_columns(2)
             .spacing([18.0, 12.0])
             .show(ui, |ui| {
-                ui.add_sized([NN_LABEL_WIDTH, 20.0], egui::Label::new("API URL:"));
+                ui.add_sized(
+                    [NN_LABEL_WIDTH, 20.0],
+                    egui::Label::new(Tr::api_url_label(lang)),
+                );
                 ui.add(egui::TextEdit::singleline(&mut state.ui.llm_api_url).desired_width(420.0));
                 ui.end_row();
 
-                ui.add_sized([NN_LABEL_WIDTH, 20.0], egui::Label::new("Model:"));
+                ui.add_sized(
+                    [NN_LABEL_WIDTH, 20.0],
+                    egui::Label::new(Tr::model_label(lang)),
+                );
                 ui.add(
                     egui::TextEdit::singleline(&mut state.ui.llm_model_name).desired_width(260.0),
                 );
                 ui.end_row();
 
-                ui.add_sized([NN_LABEL_WIDTH, 20.0], egui::Label::new("API Key:"));
+                ui.add_sized(
+                    [NN_LABEL_WIDTH, 20.0],
+                    egui::Label::new(Tr::api_key_label(lang)),
+                );
                 ui.add(
                     egui::TextEdit::singleline(&mut state.ui.llm_api_key)
                         .password(true)
@@ -251,13 +299,13 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             let llm_btn = ui.add_enabled(
                 !state.ui.llm_loading,
-                egui::Button::new(RichText::new("LLM Suggest").size(14.0)),
+                egui::Button::new(RichText::new(Tr::llm_suggest_btn(lang)).size(14.0)),
             );
             if llm_btn.clicked() {
                 state.llm_suggest_params();
             }
             if ui
-                .button(RichText::new("Apply LLM Suggestion").size(14.0))
+                .button(RichText::new(Tr::apply_llm_suggestion(lang)).size(14.0))
                 .clicked()
             {
                 state.apply_nn_params();
@@ -267,11 +315,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         if !state.ui.llm_last_response.is_empty() {
             ui.add_space(6.0);
             if state.ui.llm_loading {
-                ui.label(RichText::new("LLM request in progress...").color(Color32::YELLOW));
+                crate::views::ui_kit::loading_spinner(
+                    ui,
+                    &mut state.anim,
+                    current_time,
+                    "llm_loading",
+                    Tr::llm_loading_text(lang),
+                    &theme,
+                );
             }
-            ui.label(RichText::new("LLM Analysis:").strong());
+            ui.label(RichText::new(Tr::llm_analysis_label(lang)).strong());
             ui.label(
-                RichText::new(&state.ui.llm_last_response).color(Color32::from_rgb(180, 220, 255)),
+                RichText::new(&state.ui.llm_last_response).color(state.anim.animate_color(
+                    "nn_tuning_2".into(),
+                    theme.status_info,
+                    theme.status_info,
+                    0.3,
+                    crate::app::animation::Easing::EaseOut,
+                    current_time,
+                )),
             );
         }
     });

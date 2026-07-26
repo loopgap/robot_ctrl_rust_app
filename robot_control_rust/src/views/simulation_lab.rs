@@ -5,6 +5,7 @@ use egui::{self, RichText, Ui};
 use egui_plot::{Line, Plot, PlotPoints};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     state.simulation.poll();
 
@@ -27,7 +28,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(10.0);
             settings_card(ui, |ui| {
                 section_title(ui, Tr::simulation_results(lang));
-                show_metrics(ui, &state.simulation, lang);
+                show_metrics(ui, &state.simulation, lang, &theme);
             });
 
             ui.add_space(10.0);
@@ -39,7 +40,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.add_space(10.0);
             settings_card(ui, |ui| {
                 section_title(ui, Tr::simulation_export_preview(lang));
-                show_export_preview(ui, &state.simulation, lang);
+                show_export_preview(ui, &state.simulation, lang, &theme);
             });
         });
 }
@@ -109,7 +110,12 @@ fn show_run_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i18
     );
 }
 
-fn show_metrics(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Language) {
+fn show_metrics(
+    ui: &mut Ui,
+    sim: &SimulationLabState,
+    lang: crate::i18n::Language,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     if let Some(result) = &sim.result {
         let metrics = &result.metrics;
         egui::Grid::new("simulation_metrics_grid")
@@ -119,27 +125,39 @@ fn show_metrics(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Langua
             .show(ui, |ui| {
                 metric(
                     ui,
-                    "Final speed",
+                    Tr::final_speed_label(lang),
                     format!("{:.3} rad/s", metrics.final_speed),
                 );
                 metric(
                     ui,
-                    "Speed error",
+                    Tr::speed_error_label(lang),
                     format!("{:.3}%", metrics.speed_error_pct),
                 );
                 ui.end_row();
-                metric(ui, "Peak torque", format!("{:.3} N m", metrics.peak_torque));
-                metric(ui, "Peak current", format!("{:.3} A", metrics.peak_current));
+                metric(
+                    ui,
+                    Tr::peak_torque_label(lang),
+                    format!("{:.3} N m", metrics.peak_torque),
+                );
+                metric(
+                    ui,
+                    Tr::peak_current_label(lang),
+                    format!("{:.3} A", metrics.peak_current),
+                );
                 ui.end_row();
                 metric(
                     ui,
-                    "Max temperature",
+                    Tr::max_temp_label(lang),
                     format!("{:.2} C", metrics.max_temperature_c),
                 );
-                metric(ui, "Steps executed", metrics.steps_executed.to_string());
+                metric(
+                    ui,
+                    Tr::steps_executed_label(lang),
+                    metrics.steps_executed.to_string(),
+                );
                 ui.end_row();
-                metric(ui, "Settled", yes_no(metrics.settled));
-                metric(ui, "Cancelled", yes_no(metrics.cancelled));
+                metric(ui, Tr::settled_label(lang), yes_no(metrics.settled));
+                metric(ui, Tr::cancelled_label(lang), yes_no(metrics.cancelled));
                 ui.end_row();
             });
 
@@ -162,7 +180,13 @@ fn show_metrics(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Langua
                 plot_ui.line(Line::new(ref_points).name("speed_ref"));
             });
     } else {
-        ui.label(RichText::new(Tr::simulation_no_result(lang)).weak());
+        crate::views::ui_kit::empty_state(
+            ui,
+            "sim",
+            "No Results",
+            Tr::simulation_no_result(lang),
+            theme,
+        );
     }
 }
 
@@ -172,7 +196,7 @@ fn show_scan_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i1
         let selected = params
             .get(sim.scan_param_idx)
             .map(|(_, label)| *label)
-            .unwrap_or("Speed reference");
+            .unwrap_or(Tr::speed_ref_label(lang));
         egui::ComboBox::from_id_salt("simulation_scan_param")
             .selected_text(selected)
             .width(190.0)
@@ -205,10 +229,10 @@ fn show_scan_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i1
             .striped(true)
             .show(ui, |ui| {
                 ui.strong("Value");
-                ui.strong("Final speed");
+                ui.strong(Tr::final_speed_label(lang));
                 ui.strong("Error");
-                ui.strong("Peak torque");
-                ui.strong("Settled");
+                ui.strong(Tr::peak_torque_label(lang));
+                ui.strong(Tr::settled_label(lang));
                 ui.end_row();
                 for point in &sim.scan_results {
                     ui.label(format!("{:.4}", point.param_value));
@@ -222,13 +246,24 @@ fn show_scan_controls(ui: &mut Ui, sim: &mut SimulationLabState, lang: crate::i1
     }
 }
 
-fn show_export_preview(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n::Language) {
+fn show_export_preview(
+    ui: &mut Ui,
+    sim: &SimulationLabState,
+    lang: crate::i18n::Language,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     if sim.result.is_none() {
-        ui.label(RichText::new(Tr::simulation_export_empty(lang)).weak());
+        crate::views::ui_kit::empty_state(
+            ui,
+            "export",
+            "No Data",
+            Tr::simulation_export_empty(lang),
+            theme,
+        );
         return;
     }
 
-    ui.label("CSV");
+    ui.label(Tr::csv_label(lang));
     let mut csv_preview = preview_text(&sim.export_csv_text(), 1_800);
     ui.add(
         egui::TextEdit::multiline(&mut csv_preview)
@@ -238,7 +273,7 @@ fn show_export_preview(ui: &mut Ui, sim: &SimulationLabState, lang: crate::i18n:
     );
 
     ui.add_space(8.0);
-    ui.label("JSON");
+    ui.label(Tr::json_label(lang));
     let mut json_preview = preview_text(&sim.export_json_text(), 1_800);
     ui.add(
         egui::TextEdit::multiline(&mut json_preview)

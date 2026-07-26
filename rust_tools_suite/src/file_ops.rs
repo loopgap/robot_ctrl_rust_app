@@ -5,7 +5,9 @@ use std::time::Duration;
 
 use rfd::FileDialog;
 
-pub fn open_text_file() -> Result<Option<(PathBuf, String)>, String> {
+use crate::error::{ToolError, ToolResult};
+
+pub fn open_text_file() -> ToolResult<Option<(PathBuf, String)>> {
     let Some(path) = FileDialog::new()
         .add_filter(
             "Text",
@@ -31,11 +33,12 @@ pub fn open_text_file() -> Result<Option<(PathBuf, String)>, String> {
         }
     }
 
-    let content = result.map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let content =
+        result.map_err(|e| ToolError::Other(format!("Failed to read {}: {e}", path.display())))?;
     Ok(Some((path, content)))
 }
 
-pub fn save_text_file(default_file_name: &str, content: &str) -> Result<Option<PathBuf>, String> {
+pub fn save_text_file(default_file_name: &str, content: &str) -> ToolResult<Option<PathBuf>> {
     let Some(path) = FileDialog::new()
         .set_file_name(default_file_name)
         .save_file()
@@ -56,6 +59,6 @@ pub fn save_text_file(default_file_name: &str, content: &str) -> Result<Option<P
         }
     }
 
-    result.map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+    result.map_err(|e| ToolError::Other(format!("Failed to write {}: {e}", path.display())))?;
     Ok(Some(path))
 }

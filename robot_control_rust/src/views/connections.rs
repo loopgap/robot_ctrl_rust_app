@@ -9,6 +9,8 @@ const CONN_LABEL_WIDTH: f32 = 140.0;
 const CONN_INPUT_WIDTH: f32 = 240.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_connections(lang), "connections");
 
@@ -44,14 +46,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     settings_card(ui, |ui| {
-        ui.label(RichText::new("MCP Server").size(15.0).strong());
+        ui.label(
+            RichText::new(Tr::mcp_server_label(lang))
+                .size(15.0)
+                .strong(),
+        );
         ui.add_space(8.0);
 
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(10.0, 8.0);
-            ui.label("Port:");
+            ui.label(Tr::port_label(lang));
             ui.add(egui::TextEdit::singleline(&mut state.ui.mcp_port_text).desired_width(100.0));
-            ui.label("Token:");
+            ui.label(Tr::token_label(lang));
             ui.add(
                 egui::TextEdit::singleline(&mut state.ui.mcp_token_text)
                     .password(true)
@@ -60,20 +66,47 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if state.ui.mcp_running {
                 if ui
-                    .button(RichText::new("Stop MCP").color(Color32::from_rgb(255, 120, 120)))
+                    .button(
+                        RichText::new(Tr::stop_mcp(lang)).color(state.anim.animate_color(
+                            "connections_1".into(),
+                            theme.status_error,
+                            theme.status_error,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        )),
+                    )
                     .clicked()
                 {
                     state.stop_mcp_server();
                 }
-                ui.label(RichText::new("Running").color(Color32::from_rgb(120, 220, 120)));
+                ui.label(
+                    RichText::new(Tr::running_label(lang)).color(state.anim.animate_color(
+                        "connections_1".into(),
+                        theme.status_ok,
+                        theme.status_ok,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )),
+                );
             } else {
                 if ui
-                    .button(RichText::new("Start MCP").color(Color32::from_rgb(120, 220, 120)))
+                    .button(
+                        RichText::new(Tr::start_mcp(lang)).color(state.anim.animate_color(
+                            "connections_2".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        )),
+                    )
                     .clicked()
                 {
                     state.start_mcp_server();
                 }
-                ui.label(RichText::new("Stopped").color(Color32::GRAY));
+                ui.label(RichText::new(Tr::stopped_label(lang)).color(Color32::GRAY));
             }
         });
     });
@@ -86,11 +119,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.spacing_mut().item_spacing.x = 16.0;
             if connected {
                 if ui
-                    .button(
-                        RichText::new(Tr::disconnect(lang))
-                            .size(15.0)
-                            .color(Color32::from_rgb(255, 100, 100)),
-                    )
+                    .button(RichText::new(Tr::disconnect(lang)).size(15.0).color(
+                        state.anim.animate_color(
+                            "connections_2".into(),
+                            theme.status_error,
+                            theme.status_error,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ),
+                    ))
                     .clicked()
                 {
                     state.disconnect_active();
@@ -104,11 +142,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 );
             } else {
                 if ui
-                    .button(
-                        RichText::new(Tr::connect(lang))
-                            .size(15.0)
-                            .color(Color32::from_rgb(100, 200, 100)),
-                    )
+                    .button(RichText::new(Tr::connect(lang)).size(15.0).color(
+                        state.anim.animate_color(
+                            "connections_3".into(),
+                            theme.status_ok,
+                            theme.status_ok,
+                            0.3,
+                            crate::app::animation::Easing::EaseOut,
+                            current_time,
+                        ),
+                    ))
                     .clicked()
                 {
                     match state.connect_active() {
@@ -123,8 +166,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             ui.separator();
-            ui.checkbox(&mut state.ui.auto_reconnect_enabled, "Reconnect after drop");
-            ui.label("Interval(ms):");
+            ui.checkbox(
+                &mut state.ui.auto_reconnect_enabled,
+                Tr::reconnect_after_drop(lang),
+            );
+            ui.label(Tr::interval_ms_label(lang));
             ui.add(
                 egui::DragValue::new(&mut state.ui.auto_reconnect_interval_ms)
                     .range(500..=30000)
@@ -136,7 +182,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal_wrapped(|ui| {
             if !state.ui.auto_reconnect_enabled {
                 ui.label(
-                    RichText::new("Background retry is off until you enable it.")
+                    RichText::new(Tr::background_retry_off(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
@@ -145,7 +191,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if !state.reconnect_armed() {
                 ui.label(
-                    RichText::new("Retry arms after one successful manual connection.")
+                    RichText::new(Tr::retry_arms_hint(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
@@ -156,21 +202,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui.label(RichText::new(countdown).small().color(Color32::LIGHT_BLUE));
             } else {
                 ui.label(
-                    RichText::new("Retry idle until the current link drops.")
+                    RichText::new(Tr::retry_idle_hint(lang))
                         .small()
                         .color(Color32::GRAY),
                 );
             }
 
             if state.reconnect_paused() {
-                if ui.button("Resume retry").clicked() {
+                if ui.button(Tr::resume_retry(lang)).clicked() {
                     state.resume_auto_reconnect();
                 }
-            } else if ui.button("Stop retry").clicked() {
+            } else if ui.button(Tr::stop_retry(lang)).clicked() {
                 state.pause_auto_reconnect();
             }
 
-            if ui.button("Retry now").clicked() {
+            if ui.button(Tr::retry_now(lang)).clicked() {
                 state.resume_auto_reconnect();
             }
         });
@@ -206,7 +252,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
         }
         if state.conn.serial.config.port_name.trim().is_empty()
             && !state.conn.available_ports.is_empty()
-            && ui.button("Use first").clicked()
+            && ui.button(Tr::use_first_btn(lang)).clicked()
         {
             state.conn.serial.config.port_name = state.conn.available_ports[0].clone();
         }
@@ -231,7 +277,7 @@ fn show_serial_config(ui: &mut Ui, state: &mut AppState) {
         && state.conn.available_ports.is_empty()
     {
         ui.label(
-            RichText::new("Port scan may still be running...")
+            RichText::new("Scanning for ports...")
                 .small()
                 .color(Color32::GRAY),
         );

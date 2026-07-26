@@ -1,3 +1,4 @@
+use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;
@@ -60,20 +61,25 @@ pub struct MotorModelConfig {
 }
 
 impl MotorModelConfig {
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> AppResult<()> {
         if self.model_id.trim().is_empty() {
-            return Err("model_id must not be empty".into());
+            return Err(AppError::Validation("model_id must not be empty".into()));
         }
         if !self
             .model_id
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
         {
-            return Err(format!("invalid model_id: {}", self.model_id));
+            return Err(AppError::Validation(format!(
+                "invalid model_id: {}",
+                self.model_id
+            )));
         }
         for (key, value) in &self.parameters {
             if !value.is_finite() {
-                return Err(format!("parameter {key} must be finite"));
+                return Err(AppError::Validation(format!(
+                    "parameter {key} must be finite"
+                )));
             }
         }
         Ok(())
@@ -160,32 +166,40 @@ impl Default for SimulationConfig {
 }
 
 impl SimulationConfig {
-    pub fn total_steps(&self) -> Result<u64, String> {
+    pub fn total_steps(&self) -> AppResult<u64> {
         self.validate()?;
         Ok((self.duration_s * 1.0e9 / self.dt_ns as f64).ceil() as u64)
     }
 
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> AppResult<()> {
         if self.name.trim().is_empty() {
-            return Err("simulation name must not be empty".into());
+            return Err(AppError::Validation(
+                "simulation name must not be empty".into(),
+            ));
         }
         if !self.duration_s.is_finite() || self.duration_s <= 0.0 {
-            return Err("duration_s must be finite and positive".into());
+            return Err(AppError::Validation(
+                "duration_s must be finite and positive".into(),
+            ));
         }
         if self.dt_ns == 0 {
-            return Err("dt_ns must be positive".into());
+            return Err(AppError::Validation("dt_ns must be positive".into()));
         }
         if self.speed_loop_ns == 0 {
-            return Err("speed_loop_ns must be positive".into());
+            return Err(AppError::Validation(
+                "speed_loop_ns must be positive".into(),
+            ));
         }
         if !self.speed_ref.is_finite() || !self.load_torque.is_finite() {
-            return Err("scenario numeric inputs must be finite".into());
+            return Err(AppError::Validation(
+                "scenario numeric inputs must be finite".into(),
+            ));
         }
         let total_steps = (self.duration_s * 1.0e9 / self.dt_ns as f64).ceil() as u64;
         if total_steps > MAX_TOTAL_STEPS {
-            return Err(format!(
+            return Err(AppError::Validation(format!(
                 "total steps {total_steps} exceeds maximum {MAX_TOTAL_STEPS}"
-            ));
+            )));
         }
         for (name, value) in [
             ("rs", self.motor.rs),
@@ -203,14 +217,16 @@ impl SimulationConfig {
             ("v_bus", self.foc.v_bus),
         ] {
             if !value.is_finite() {
-                return Err(format!("{name} must be finite"));
+                return Err(AppError::Validation(format!("{name} must be finite")));
             }
         }
         if self.motor.ld <= 0.0 || self.motor.lq <= 0.0 || self.motor.j <= 0.0 {
-            return Err("motor inductance and inertia must be positive".into());
+            return Err(AppError::Validation(
+                "motor inductance and inertia must be positive".into(),
+            ));
         }
         if self.foc.v_bus <= 0.0 {
-            return Err("v_bus must be positive".into());
+            return Err(AppError::Validation("v_bus must be positive".into()));
         }
         Ok(())
     }
@@ -339,13 +355,13 @@ pub struct DataBus {
 }
 
 impl DataBus {
-    pub fn register_module(&mut self, module_id: &str) -> Result<(), String> {
+    pub fn register_module(&mut self, module_id: &str) -> AppResult<()> {
         validate_module_id(module_id)?;
         self.registered_modules.insert(module_id.into());
         Ok(())
     }
 
-    pub fn allow_topic(&mut self, topic: &str, module_id: &str) -> Result<(), String> {
+    pub fn allow_topic(&mut self, topic: &str, module_id: &str) -> AppResult<()> {
         validate_module_id(module_id)?;
         self.topic_acls
             .entry(topic.into())
@@ -354,7 +370,7 @@ impl DataBus {
         Ok(())
     }
 
-    pub fn publish(&mut self, topic: &str, module_id: &str, signal: Signal) -> Result<(), String> {
+    pub fn publish(&mut self, topic: &str, module_id: &str, signal: Signal) -> AppResult<()> {
         self.authorize(topic, module_id)?;
         self.latest.insert(topic.into(), signal);
         Ok(())
@@ -364,28 +380,36 @@ impl DataBus {
         self.latest.get(topic)
     }
 
-    fn authorize(&self, topic: &str, module_id: &str) -> Result<(), String> {
+    fn authorize(&self, topic: &str, module_id: &str) -> AppResult<()> {
         if !self.registered_modules.contains(module_id) {
-            return Err(format!("unregistered module {module_id}"));
+            return Err(AppError::Validation(format!(
+                "unregistered module {module_id}"
+            )));
         }
         if let Some(allowed) = self.topic_acls.get(topic) {
             if !allowed.contains(module_id) {
-                return Err(format!("module {module_id} is not authorized for {topic}"));
+                return Err(AppError::Validation(format!(
+                    "module {module_id} is not authorized for {topic}"
+                )));
             }
         }
         Ok(())
     }
 }
 
-fn validate_module_id(module_id: &str) -> Result<(), String> {
+fn validate_module_id(module_id: &str) -> AppResult<()> {
     if module_id.len() > 96 || !module_id.contains("://") {
-        return Err("module id must use scheme://name and stay under 96 bytes".into());
+        return Err(AppError::Validation(
+            "module id must use scheme://name and stay under 96 bytes".into(),
+        ));
     }
     if !module_id
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, ':' | '/' | '_' | '-' | '.'))
     {
-        return Err(format!("invalid module id: {module_id}"));
+        return Err(AppError::Validation(format!(
+            "invalid module id: {module_id}"
+        )));
     }
     Ok(())
 }
@@ -443,10 +467,13 @@ impl ModelRegistry {
         }
     }
 
-    pub fn register(&mut self, model: &MotorModelConfig) -> Result<(), String> {
+    pub fn register(&mut self, model: &MotorModelConfig) -> AppResult<()> {
         model.validate()?;
         if !self.model_ids.insert(model.model_id.clone()) {
-            return Err(format!("duplicate model id {}", model.model_id));
+            return Err(AppError::Validation(format!(
+                "duplicate model id {}",
+                model.model_id
+            )));
         }
         Ok(())
     }
@@ -466,9 +493,11 @@ pub struct Orchestrator {
 }
 
 impl Orchestrator {
-    pub fn schedule_fault(&mut self, fault: FaultEvent) -> Result<(), String> {
+    pub fn schedule_fault(&mut self, fault: FaultEvent) -> AppResult<()> {
         if !fault.at_time_s.is_finite() || fault.at_time_s < 0.0 || !fault.magnitude.is_finite() {
-            return Err("fault time and magnitude must be finite".into());
+            return Err(AppError::Validation(
+                "fault time and magnitude must be finite".into(),
+            ));
         }
         let pos = self
             .faults
@@ -1153,7 +1182,7 @@ pub struct ScanPoint {
     pub settled: bool,
 }
 
-pub fn run_pmsm_foc(config: &SimulationConfig) -> Result<SimulationRunResult, String> {
+pub fn run_pmsm_foc(config: &SimulationConfig) -> AppResult<SimulationRunResult> {
     run_pmsm_foc_with_hooks(config, || false, |_| {})
 }
 
@@ -1161,7 +1190,7 @@ pub fn run_pmsm_foc_with_hooks<C, P>(
     config: &SimulationConfig,
     mut should_cancel: C,
     mut on_progress: P,
-) -> Result<SimulationRunResult, String>
+) -> AppResult<SimulationRunResult>
 where
     C: FnMut() -> bool,
     P: FnMut(f32),
@@ -1310,14 +1339,14 @@ pub fn run_parameter_scan(
     base: &SimulationConfig,
     param_name: &str,
     values: &[f64],
-) -> Result<Vec<ScanPoint>, String> {
+) -> AppResult<Vec<ScanPoint>> {
     if values.is_empty() {
-        return Err("scan values must not be empty".into());
+        return Err(AppError::Validation("scan values must not be empty".into()));
     }
     let mut points = Vec::with_capacity(values.len());
     for &value in values {
         if !value.is_finite() {
-            return Err("scan value must be finite".into());
+            return Err(AppError::Validation("scan value must be finite".into()));
         }
         let mut config = base.clone();
         match param_name {
@@ -1329,7 +1358,11 @@ pub fn run_parameter_scan(
             "ki_iq" => config.foc.ki_iq = value,
             "spd_kp" => config.foc.speed_kp = value,
             "spd_ki" => config.foc.speed_ki = value,
-            _ => return Err(format!("unsupported scan parameter: {param_name}")),
+            _ => {
+                return Err(AppError::Validation(format!(
+                    "unsupported scan parameter: {param_name}"
+                )))
+            }
         }
         let result = run_pmsm_foc(&config)?;
         points.push(ScanPoint {

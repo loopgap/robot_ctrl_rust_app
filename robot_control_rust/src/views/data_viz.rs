@@ -6,6 +6,8 @@ use egui::{self, Color32, RichText, Ui};
 use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints, Points};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
+    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_data_viz(lang), "viz");
 
@@ -117,7 +119,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             }
                         });
                 } else if packet_fields.is_empty() {
-                    ui.label(RichText::new("No parsed numeric fields").color(Color32::GRAY));
+                    ui.label(RichText::new(Tr::no_parsed_fields(lang)).color(Color32::GRAY));
                 } else {
                     if state.ui.viz_pkt_template_idx >= packet_fields.len() {
                         state.ui.viz_pkt_template_idx = 0;
@@ -222,7 +224,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         "Dropped points: {}",
                         state.viz.channel_overflow_events
                     ))
-                    .color(Color32::from_rgb(255, 180, 120)),
+                    .color(state.anim.animate_color(
+                        "data_viz_1".into(),
+                        theme.status_warn,
+                        theme.status_warn,
+                        0.3,
+                        crate::app::animation::Easing::EaseOut,
+                        current_time,
+                    )),
                 );
             }
             ui.separator();
@@ -241,13 +250,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     if state.control.state_history.is_empty()
         && state.viz.channel_buffers.iter().all(|b| b.data.is_empty())
     {
-        ui.add_space(24.0);
-        ui.label(
-            RichText::new(Tr::no_data_hint(lang))
-                .size(14.0)
-                .color(Color32::GRAY)
-                .italics(),
-        );
+        crate::views::ui_kit::empty_state(ui, "chart", "No Data", Tr::no_data_hint(lang), &theme);
         return;
     }
 
@@ -349,7 +352,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         match ch.viz_type {
                             VizType::Line => {
                                 plot_ui.line(
-                                    Line::new(plot_pts).name(&ch.name).color(color).width(1.5),
+                                    Line::new(plot_pts)
+                                        .name(&ch.name)
+                                        .color(color)
+                                        .width(1.5_f32),
                                 );
                             }
                             VizType::Scatter => {
@@ -357,7 +363,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                     Points::new(plot_pts)
                                         .name(&ch.name)
                                         .color(color)
-                                        .radius(2.0),
+                                        .radius(2.0_f32),
                                 );
                             }
                             _ => {}

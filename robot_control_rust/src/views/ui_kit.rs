@@ -1,5 +1,286 @@
 use egui::{self, Color32, RichText, Ui};
 
+/// Centralized color theme for consistent UI/UX across all views.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct AppTheme {
+    pub bg_dark: Color32,
+    pub bg_medium: Color32,
+    pub bg_card: Color32,
+    pub bg_input: Color32,
+    pub text_primary: Color32,
+    pub text_secondary: Color32,
+    pub text_muted: Color32,
+    pub text_label: Color32,
+    pub status_ok: Color32,
+    pub status_error: Color32,
+    pub status_warn: Color32,
+    pub status_info: Color32,
+    pub accent_blue: Color32,
+    pub accent_green: Color32,
+    pub accent_purple: Color32,
+    pub accent_orange: Color32,
+    pub border: Color32,
+    pub border_active: Color32,
+    pub tx_color: Color32,
+    pub rx_color: Color32,
+    pub info_color: Color32,
+    pub connected_color: Color32,
+    pub disconnected_color: Color32,
+}
+impl AppTheme {
+    pub fn dark() -> Self {
+        Self {
+            bg_dark: Color32::from_rgb(22, 28, 38),
+            bg_medium: Color32::from_rgb(30, 35, 42),
+            bg_card: Color32::from_rgba_premultiplied(50, 50, 60, 180),
+            bg_input: Color32::from_rgb(25, 50, 80),
+            text_primary: Color32::from_rgb(220, 220, 230),
+            text_secondary: Color32::from_rgb(200, 210, 220),
+            text_muted: Color32::from_rgb(140, 150, 160),
+            text_label: Color32::from_rgb(170, 180, 200),
+            status_ok: Color32::from_rgb(46, 160, 67),
+            status_error: Color32::from_rgb(255, 100, 100),
+            status_warn: Color32::from_rgb(255, 180, 120),
+            status_info: Color32::from_rgb(100, 200, 255),
+            accent_blue: Color32::from_rgb(88, 166, 255),
+            accent_green: Color32::from_rgb(0, 255, 160),
+            accent_purple: Color32::from_rgb(200, 150, 255),
+            accent_orange: Color32::from_rgb(255, 165, 0),
+            border: Color32::from_rgb(50, 60, 75),
+            border_active: Color32::from_rgb(88, 166, 255),
+            tx_color: Color32::from_rgb(120, 200, 255),
+            rx_color: Color32::from_rgb(130, 230, 160),
+            info_color: Color32::from_rgb(220, 220, 140),
+            connected_color: Color32::from_rgb(46, 160, 67),
+            disconnected_color: Color32::from_rgb(128, 128, 128),
+        }
+    }
+    pub fn light() -> Self {
+        Self {
+            bg_dark: Color32::from_rgb(240, 240, 245),
+            bg_medium: Color32::from_rgb(230, 230, 235),
+            bg_card: Color32::from_rgba_premultiplied(255, 255, 255, 230),
+            bg_input: Color32::from_rgb(245, 248, 255),
+            text_primary: Color32::from_rgb(30, 30, 40),
+            text_secondary: Color32::from_rgb(60, 60, 70),
+            text_muted: Color32::from_rgb(120, 120, 130),
+            text_label: Color32::from_rgb(80, 80, 90),
+            status_ok: Color32::from_rgb(40, 160, 60),
+            status_error: Color32::from_rgb(220, 60, 60),
+            status_warn: Color32::from_rgb(200, 140, 40),
+            status_info: Color32::from_rgb(50, 130, 220),
+            accent_blue: Color32::from_rgb(50, 120, 220),
+            accent_green: Color32::from_rgb(0, 180, 120),
+            accent_purple: Color32::from_rgb(150, 100, 220),
+            accent_orange: Color32::from_rgb(220, 130, 0),
+            border: Color32::from_rgb(200, 200, 210),
+            border_active: Color32::from_rgb(50, 120, 220),
+            tx_color: Color32::from_rgb(50, 120, 200),
+            rx_color: Color32::from_rgb(40, 150, 80),
+            info_color: Color32::from_rgb(180, 160, 50),
+            connected_color: Color32::from_rgb(40, 160, 60),
+            disconnected_color: Color32::from_rgb(160, 160, 160),
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Reusable UI Components (available for view integration)
+// ═══════════════════════════════════════════════════════════
+#[allow(dead_code, clippy::too_many_arguments)]
+/// Animated status badge with smooth color transition.
+pub fn status_badge(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    text: &str,
+    ok: bool,
+    theme: &AppTheme,
+) {
+    let target_color = if ok {
+        theme.status_ok
+    } else {
+        theme.status_error
+    };
+    let color = anim.animate_color(
+        format!("badge_{}", key),
+        target_color,
+        target_color,
+        0.3,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    ui.horizontal(|ui| {
+        ui.colored_label(color, "●");
+        ui.label(RichText::new(text).size(13.0));
+    });
+}
+
+/// Animated status dot (colored circle only).
+#[allow(dead_code)]
+pub fn status_dot(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    ok: bool,
+    theme: &AppTheme,
+) {
+    let target_color = if ok {
+        theme.status_ok
+    } else {
+        theme.disconnected_color
+    };
+    let color = anim.animate_color(
+        format!("dot_{}", key),
+        target_color,
+        target_color,
+        0.3,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    ui.colored_label(color, "●");
+}
+
+/// Toast notification with auto-dismiss. Returns true if still visible.
+#[allow(dead_code, clippy::too_many_arguments)]
+pub fn toast(
+    ui: &mut Ui,
+    _anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    message: &str,
+    is_error: bool,
+    start_time: f64,
+    duration_secs: f64,
+    theme: &AppTheme,
+) -> bool {
+    let elapsed = current_time - start_time;
+    if elapsed > duration_secs + 0.5 {
+        return false;
+    }
+    let alpha = if elapsed > duration_secs {
+        ((duration_secs + 0.5 - elapsed) / 0.5).clamp(0.0, 1.0) as u8
+    } else {
+        255
+    };
+    let bg_color = if is_error {
+        Color32::from_rgba_premultiplied(120, 30, 30, alpha)
+    } else {
+        Color32::from_rgba_premultiplied(30, 80, 40, alpha)
+    };
+    let text_color = if is_error {
+        theme.status_error
+    } else {
+        theme.status_ok
+    };
+    egui::Frame::new()
+        .fill(bg_color)
+        .corner_radius(8.0)
+        .inner_margin(egui::Margin::symmetric(16, 10))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                let icon = if is_error { "ERR" } else { "OK" };
+                ui.label(RichText::new(icon).color(text_color).size(14.0));
+                ui.label(RichText::new(message).color(Color32::WHITE).size(13.0));
+            });
+        });
+    true
+}
+
+/// Pulsing loading spinner with text.
+#[allow(dead_code)]
+pub fn loading_spinner(
+    ui: &mut Ui,
+    _anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    _key: &str,
+    message: &str,
+    theme: &AppTheme,
+) {
+    let pulse = ((current_time * 3.0).sin() * 0.3 + 0.7).clamp(0.4, 1.0) as f32;
+    let color = theme.accent_blue.linear_multiply(pulse);
+    ui.horizontal(|ui| {
+        ui.spinner();
+        ui.label(RichText::new(message).color(color).size(13.0));
+    });
+}
+
+/// Empty state placeholder when no data is available.
+#[allow(dead_code)]
+pub fn empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, theme: &AppTheme) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(20.0);
+        ui.label(RichText::new(icon).size(32.0).color(theme.text_muted));
+        ui.add_space(6.0);
+        ui.label(
+            RichText::new(title)
+                .size(15.0)
+                .strong()
+                .color(theme.text_secondary),
+        );
+        ui.add_space(4.0);
+        ui.label(RichText::new(subtitle).size(12.0).color(theme.text_muted));
+        ui.add_space(20.0);
+    });
+}
+
+/// Styled button variants.
+#[allow(dead_code)]
+pub enum ButtonVariant {
+    Primary,
+    Secondary,
+    Danger,
+}
+
+/// Styled button with color variant.
+#[allow(dead_code)]
+pub fn styled_button(
+    ui: &mut Ui,
+    label: &str,
+    variant: ButtonVariant,
+    theme: &AppTheme,
+) -> egui::Response {
+    let (text_color, bg_color) = match variant {
+        ButtonVariant::Primary => (Color32::WHITE, theme.accent_blue),
+        ButtonVariant::Secondary => (theme.text_primary, theme.bg_medium),
+        ButtonVariant::Danger => (Color32::WHITE, theme.status_error),
+    };
+    let btn = egui::Button::new(RichText::new(label).color(text_color).size(14.0))
+        .fill(bg_color)
+        .min_size(egui::vec2(80.0, 30.0));
+    ui.add(btn)
+}
+
+/// Animated value display — smoothly transitions between values.
+#[allow(dead_code)]
+pub fn animated_value_text(
+    ui: &mut Ui,
+    anim: &mut crate::app::animation::AnimationManager,
+    current_time: f64,
+    key: &str,
+    value: f64,
+    format_fn: impl FnOnce(f64) -> String,
+    theme: &AppTheme,
+) {
+    let smooth = anim.animate_float(
+        key.to_string(),
+        value as f32,
+        value as f32,
+        0.5,
+        crate::app::animation::Easing::EaseOutCubic,
+        current_time,
+    );
+    let text = format_fn(smooth as f64);
+    ui.label(
+        RichText::new(text)
+            .size(13.0)
+            .strong()
+            .color(theme.text_primary),
+    );
+}
+
 pub fn apply_page_style(ui: &mut Ui) {
     let spacing = ui.spacing_mut();
     spacing.item_spacing = egui::vec2(14.0, 12.0);
@@ -146,7 +427,7 @@ pub fn settings_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
 pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, color: Color32) {
     let c = rect.center();
     let s = rect.width().min(rect.height());
-    let stroke = egui::Stroke::new(1.5, color);
+    let stroke = egui::Stroke::new(1.5_f32, color);
     match icon {
         IconKind::Dashboard => draw_bars(painter, rect, color),
         IconKind::Connections => {
@@ -168,7 +449,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                     egui::pos2(r.left() + 2.0, c.y),
                     egui::pos2(r.right() - 2.0, c.y),
                 ],
-                egui::Stroke::new(1.0, color),
+                egui::Stroke::new(1.0_f32, color),
             );
         }
         IconKind::Packet => draw_panel(painter, c, s, stroke, true),
@@ -182,7 +463,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                     egui::pos2(c.x - s * 0.14, c.y + s * 0.10),
                     egui::pos2(c.x + s * 0.14, c.y + s * 0.10),
                 ],
-                egui::Stroke::new(1.1, color),
+                egui::Stroke::new(1.1_f32, color),
             );
         }
         IconKind::Pid => {
@@ -195,7 +476,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                         egui::pos2(x, r.top() + 2.0),
                         egui::pos2(x, r.bottom() - 2.0),
                     ],
-                    egui::Stroke::new(1.0, color),
+                    egui::Stroke::new(1.0_f32, color),
                 );
             }
         }
@@ -271,9 +552,9 @@ fn draw_neural(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) {
     let n2 = egui::pos2(c.x - s * 0.20, c.y + s * 0.18);
     let n3 = egui::pos2(c.x + s * 0.02, c.y - s * 0.20);
     let n4 = egui::pos2(c.x + s * 0.20, c.y + s * 0.02);
-    painter.line_segment([n1, n3], egui::Stroke::new(1.0, color));
-    painter.line_segment([n2, n3], egui::Stroke::new(1.0, color));
-    painter.line_segment([n3, n4], egui::Stroke::new(1.0, color));
+    painter.line_segment([n1, n3], egui::Stroke::new(1.0_f32, color));
+    painter.line_segment([n2, n3], egui::Stroke::new(1.0_f32, color));
+    painter.line_segment([n3, n4], egui::Stroke::new(1.0_f32, color));
     for p in [n1, n2, n3, n4] {
         painter.circle_filled(p, 1.7, color);
     }
@@ -291,13 +572,13 @@ fn draw_simulation(
     for i in 0..3 {
         let angle = i as f32 * std::f32::consts::TAU / 3.0;
         let end = egui::pos2(c.x + angle.cos() * s * 0.18, c.y + angle.sin() * s * 0.18);
-        painter.line_segment([c, end], egui::Stroke::new(1.0, color));
+        painter.line_segment([c, end], egui::Stroke::new(1.0_f32, color));
     }
     draw_line_chart(
         painter,
         egui::pos2(c.x, c.y + s * 0.04),
         s * 0.72,
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
 }
 
@@ -315,14 +596,14 @@ fn draw_modbus(
             egui::pos2(r.left(), r.center().y),
             egui::pos2(r.right(), r.center().y),
         ],
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
     painter.line_segment(
         [
             egui::pos2(r.left() + s * 0.22, r.top()),
             egui::pos2(r.left() + s * 0.22, r.bottom()),
         ],
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
 }
 
@@ -332,7 +613,7 @@ fn draw_canopen(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) 
     let p3 = egui::pos2(c.x + s * 0.20, c.y);
     let p4 = egui::pos2(c.x, c.y + s * 0.18);
     for pair in [[p1, p2], [p2, p3], [p3, p4], [p4, p1]] {
-        painter.line_segment(pair, egui::Stroke::new(1.1, color));
+        painter.line_segment(pair, egui::Stroke::new(1.1_f32, color));
     }
     for p in [p1, p2, p3, p4] {
         painter.circle_filled(p, 1.6, color);
@@ -358,7 +639,7 @@ fn draw_gauge(
             egui::pos2(c.x, c.y + s * 0.08),
             egui::pos2(c.x + s * 0.16, c.y - s * 0.08),
         ],
-        egui::Stroke::new(1.2, color),
+        egui::Stroke::new(1.2_f32, color),
     );
 }
 
@@ -406,7 +687,7 @@ fn draw_vehicle(
                 egui::pos2(x, y)
             };
             painter.circle_filled(p2, 1.8, color);
-            painter.line_segment([p1, p2], egui::Stroke::new(0.8, color));
+            painter.line_segment([p1, p2], egui::Stroke::new(0.8_f32, color));
         }
     }
 }
@@ -427,7 +708,7 @@ fn draw_mecanum(
                     egui::pos2(p.x - s * 0.04, p.y + s * 0.04),
                     egui::pos2(p.x + s * 0.04, p.y - s * 0.04),
                 ],
-                egui::Stroke::new(1.0, color),
+                egui::Stroke::new(1.0_f32, color),
             );
         }
     }
@@ -439,9 +720,9 @@ fn draw_omni(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32, cou
         let angle = i as f32 * std::f32::consts::TAU / count as f32;
         let p = egui::pos2(c.x + angle.cos() * radius, c.y + angle.sin() * radius);
         painter.circle_filled(p, 2.0, color);
-        painter.line_segment([c, p], egui::Stroke::new(1.0, color));
+        painter.line_segment([c, p], egui::Stroke::new(1.0_f32, color));
     }
-    painter.circle_stroke(c, s * 0.06, egui::Stroke::new(1.0, color));
+    painter.circle_stroke(c, s * 0.06, egui::Stroke::new(1.0_f32, color));
 }
 
 fn draw_tracked(
@@ -500,7 +781,7 @@ fn draw_delta(
     painter.circle_filled(c, 1.8, color);
     for p in [top, left, right] {
         painter.circle_filled(p, 1.6, color);
-        painter.line_segment([p, c], egui::Stroke::new(0.8, color));
+        painter.line_segment([p, c], egui::Stroke::new(0.8_f32, color));
     }
 }
 

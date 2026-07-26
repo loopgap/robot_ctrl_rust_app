@@ -5,10 +5,12 @@ use crate::file_ops::{open_text_file, save_text_file};
 use crate::i18n::Language;
 use crate::settings::{load_preferences, save_preferences, AppPreferences};
 use crate::theme::{apply_theme, ACCENT_COLOR};
+use crate::tools::at32_boot_entry::At32BootEntryTool;
 use crate::tools::base64_workshop::Base64Tool;
 use crate::tools::checksum::ChecksumTool;
 use crate::tools::csv_cleaner::CsvCleanerTool;
 use crate::tools::json_workshop::JsonTool;
+#[cfg(feature = "jwt")]
 use crate::tools::jwt_inspector::JwtInspectorTool;
 use crate::tools::log_inspector::LogTool;
 use crate::tools::regex_workbench::RegexWorkbenchTool;
@@ -108,6 +110,7 @@ fn resolve_docs_url() -> String {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ActiveTool {
+    At32BootEntry,
     Checksum,
     Json,
     Log,
@@ -116,13 +119,16 @@ enum ActiveTool {
     Base64,
     UuidBatch,
     CsvCleaner,
+    #[cfg(feature = "jwt")]
     JwtInspector,
     RegexWorkbench,
 }
 
 impl ActiveTool {
-    fn all() -> [Self; 10] {
-        [
+    fn all() -> Vec<Self> {
+        #[cfg_attr(not(feature = "jwt"), allow(unused_mut))]
+        let mut v = vec![
+            Self::At32BootEntry,
             Self::Checksum,
             Self::Json,
             Self::Log,
@@ -131,13 +137,16 @@ impl ActiveTool {
             Self::Base64,
             Self::UuidBatch,
             Self::CsvCleaner,
-            Self::JwtInspector,
             Self::RegexWorkbench,
-        ]
+        ];
+        #[cfg(feature = "jwt")]
+        v.push(Self::JwtInspector);
+        v
     }
 
     fn label(self, language: Language) -> String {
         match self {
+            Self::At32BootEntry => language.tr("AT32 Bootloader", "AT32 Bootloader"),
             Self::Checksum => language.tr("校验和", "Checksum"),
             Self::Json => language.tr("JSON 工坊", "JSON Workshop"),
             Self::Log => language.tr("日志巡检", "Log Inspector"),
@@ -146,6 +155,7 @@ impl ActiveTool {
             Self::Base64 => language.tr("Base64 工坊", "Base64 Workshop"),
             Self::UuidBatch => language.tr("UUID 批量生成", "UUID Batch Generator"),
             Self::CsvCleaner => language.tr("CSV 清洗", "CSV Cleaner"),
+            #[cfg(feature = "jwt")]
             Self::JwtInspector => language.tr("JWT 解析", "JWT Inspector"),
             Self::RegexWorkbench => language.tr("Regex 巡检", "Regex Workbench"),
         }
@@ -153,6 +163,7 @@ impl ActiveTool {
 
     fn storage_key(self) -> &'static str {
         match self {
+            Self::At32BootEntry => "at32_boot_entry",
             Self::Checksum => "checksum",
             Self::Json => "json",
             Self::Log => "log",
@@ -161,6 +172,7 @@ impl ActiveTool {
             Self::Base64 => "base64",
             Self::UuidBatch => "uuid_batch",
             Self::CsvCleaner => "csv_cleaner",
+            #[cfg(feature = "jwt")]
             Self::JwtInspector => "jwt_inspector",
             Self::RegexWorkbench => "regex_workbench",
         }
@@ -168,6 +180,7 @@ impl ActiveTool {
 
     fn from_storage_key(value: &str) -> Self {
         match value {
+            "at32_boot_entry" => Self::At32BootEntry,
             "json" => Self::Json,
             "log" => Self::Log,
             "url_codec" => Self::UrlCodec,
@@ -175,6 +188,7 @@ impl ActiveTool {
             "base64" => Self::Base64,
             "uuid_batch" => Self::UuidBatch,
             "csv_cleaner" => Self::CsvCleaner,
+            #[cfg(feature = "jwt")]
             "jwt_inspector" => Self::JwtInspector,
             "regex_workbench" => Self::RegexWorkbench,
             _ => Self::Checksum,
@@ -199,6 +213,7 @@ pub struct ToolSuiteApp {
     show_about: bool,
     show_shortcuts: bool,
     status_message: String,
+    at32_boot_entry: At32BootEntryTool,
     checksum: ChecksumTool,
     json: JsonTool,
     log: LogTool,
@@ -207,6 +222,7 @@ pub struct ToolSuiteApp {
     base64_tool: Base64Tool,
     uuid_batch: UuidBatchTool,
     csv_cleaner: CsvCleanerTool,
+    #[cfg(feature = "jwt")]
     jwt_inspector: JwtInspectorTool,
     regex_workbench: RegexWorkbenchTool,
 }
@@ -231,6 +247,7 @@ impl Default for ToolSuiteApp {
             show_about: false,
             show_shortcuts: false,
             status_message: String::new(),
+            at32_boot_entry: At32BootEntryTool::default(),
             checksum: ChecksumTool::default(),
             json: JsonTool::default(),
             log: LogTool::default(),
@@ -239,6 +256,7 @@ impl Default for ToolSuiteApp {
             base64_tool: Base64Tool::default(),
             uuid_batch: UuidBatchTool::default(),
             csv_cleaner: CsvCleanerTool::default(),
+            #[cfg(feature = "jwt")]
             jwt_inspector: JwtInspectorTool::default(),
             regex_workbench: RegexWorkbenchTool::default(),
         }
@@ -339,6 +357,7 @@ impl ToolSuiteApp {
 
     fn active_steps(&self) -> Vec<LoopStep> {
         match self.active {
+            ActiveTool::At32BootEntry => Vec::new(),
             ActiveTool::Checksum => self.checksum.loop_steps(self.language),
             ActiveTool::Json => self.json.loop_steps(self.language),
             ActiveTool::Log => self.log.loop_steps(self.language),
@@ -347,6 +366,7 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => self.base64_tool.loop_steps(self.language),
             ActiveTool::UuidBatch => self.uuid_batch.loop_steps(self.language),
             ActiveTool::CsvCleaner => self.csv_cleaner.loop_steps(self.language),
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => self.jwt_inspector.loop_steps(self.language),
             ActiveTool::RegexWorkbench => self.regex_workbench.loop_steps(self.language),
         }
@@ -354,6 +374,7 @@ impl ToolSuiteApp {
 
     fn active_output_text(&self) -> Option<String> {
         match self.active {
+            ActiveTool::At32BootEntry => self.at32_boot_entry.output_text().map(str::to_owned),
             ActiveTool::Checksum => self.checksum.output_text().map(str::to_owned),
             ActiveTool::Json => self.json.output_text().map(str::to_owned),
             ActiveTool::Log => self.log.output_text().map(str::to_owned),
@@ -362,6 +383,7 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => self.base64_tool.output_text().map(str::to_owned),
             ActiveTool::UuidBatch => self.uuid_batch.output_text().map(str::to_owned),
             ActiveTool::CsvCleaner => self.csv_cleaner.output_text().map(str::to_owned),
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => self.jwt_inspector.output_text(),
             ActiveTool::RegexWorkbench => self.regex_workbench.output_text().map(str::to_owned),
         }
@@ -369,6 +391,7 @@ impl ToolSuiteApp {
 
     fn clear_active_tool(&mut self) {
         match self.active {
+            ActiveTool::At32BootEntry => self.at32_boot_entry.clear(),
             ActiveTool::Checksum => self.checksum.clear(),
             ActiveTool::Json => self.json.clear(),
             ActiveTool::Log => self.log.clear(),
@@ -377,17 +400,22 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => self.base64_tool.clear(),
             ActiveTool::UuidBatch => self.uuid_batch.clear(),
             ActiveTool::CsvCleaner => self.csv_cleaner.clear(),
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => self.jwt_inspector.clear(),
             ActiveTool::RegexWorkbench => self.regex_workbench.clear(),
         }
     }
 
     fn active_tool_supports_input_file(&self) -> bool {
-        !matches!(self.active, ActiveTool::UuidBatch)
+        !matches!(
+            self.active,
+            ActiveTool::UuidBatch | ActiveTool::At32BootEntry
+        )
     }
 
     fn load_input_for_active(&mut self, text: String) {
         match self.active {
+            ActiveTool::At32BootEntry => {}
             ActiveTool::Checksum => self.checksum.load_input(text),
             ActiveTool::Json => self.json.load_input(text),
             ActiveTool::Log => self.log.load_input(text),
@@ -396,6 +424,7 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => self.base64_tool.load_input(text),
             ActiveTool::UuidBatch => {}
             ActiveTool::CsvCleaner => self.csv_cleaner.load_input(text),
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => self.jwt_inspector.load_input(text),
             ActiveTool::RegexWorkbench => self.regex_workbench.load_input(text),
         }
@@ -403,6 +432,7 @@ impl ToolSuiteApp {
 
     fn load_sample_for_active(&mut self) {
         let sample = match self.active {
+            ActiveTool::At32BootEntry => return,
             ActiveTool::Checksum => "sensor_id=gyro-7\nvalue=42.15\nstatus=ok\n".to_string(),
             ActiveTool::Json => {
                 r#"{"device":"arm-01","enabled":true,"limits":{"current":12,"speed":48}}"#
@@ -418,6 +448,7 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => "robot-control-suite".to_string(),
             ActiveTool::UuidBatch => return,
             ActiveTool::CsvCleaner => "id,name\n1,Alice\n1,Alice\n2,Bob\n".to_string(),
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vIiwic2NvcGUiOiJyZWFkOnN0YXR1cyJ9.c2ln".to_string(),
             ActiveTool::RegexWorkbench => "ERROR timeout\nINFO ready\nERROR invalid crc\n".to_string(),
         };
@@ -427,6 +458,7 @@ impl ToolSuiteApp {
 
     fn active_default_output_file_name(&self) -> &'static str {
         match self.active {
+            ActiveTool::At32BootEntry => "at32-boot-entry.txt",
             ActiveTool::Checksum => "checksum-result.txt",
             ActiveTool::Json => "formatted.json",
             ActiveTool::Log => "filtered.log",
@@ -435,6 +467,7 @@ impl ToolSuiteApp {
             ActiveTool::Base64 => "base64-output.txt",
             ActiveTool::UuidBatch => "uuid-output.txt",
             ActiveTool::CsvCleaner => "cleaned.csv",
+            #[cfg(feature = "jwt")]
             ActiveTool::JwtInspector => "jwt-output.txt",
             ActiveTool::RegexWorkbench => "regex-output.txt",
         }
@@ -458,7 +491,7 @@ impl ToolSuiteApp {
                 });
             }
             Ok(None) => {}
-            Err(err) => self.set_status(err),
+            Err(err) => self.set_status(err.to_string()),
         }
     }
 
@@ -479,7 +512,7 @@ impl ToolSuiteApp {
                 });
             }
             Ok(None) => {}
-            Err(err) => self.set_status(err),
+            Err(err) => self.set_status(err.to_string()),
         }
     }
 
@@ -499,6 +532,7 @@ impl ToolSuiteApp {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| match self.active {
+                ActiveTool::At32BootEntry => self.at32_boot_entry.ui(ui, ctx, self.language),
                 ActiveTool::Checksum => self.checksum.ui(ui, ctx, self.language),
                 ActiveTool::Json => self.json.ui(ui, ctx, self.language),
                 ActiveTool::Log => self.log.ui(ui, ctx, self.language),
@@ -507,6 +541,7 @@ impl ToolSuiteApp {
                 ActiveTool::Base64 => self.base64_tool.ui(ui, ctx, self.language),
                 ActiveTool::UuidBatch => self.uuid_batch.ui(ui, ctx, self.language),
                 ActiveTool::CsvCleaner => self.csv_cleaner.ui(ui, ctx, self.language),
+                #[cfg(feature = "jwt")]
                 ActiveTool::JwtInspector => self.jwt_inspector.ui(ui, ctx, self.language),
                 ActiveTool::RegexWorkbench => self.regex_workbench.ui(ui, ctx, self.language),
             });

@@ -64,7 +64,8 @@ impl UrlCodecTool {
         ui.label(lang.tr("输入内容", "Input"));
         ui.add_sized(
             [ui.available_width(), 180.0],
-            egui::TextEdit::multiline(&mut self.input).hint_text("输入 URL 或参数字符串"),
+            egui::TextEdit::multiline(&mut self.input)
+                .hint_text(lang.tr("输入 URL 或参数字符串", "Enter a URL or query string")),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -92,7 +93,8 @@ impl UrlCodecTool {
         ui.label(lang.tr("输出", "Output"));
         ui.add_sized(
             [ui.available_width(), 180.0],
-            egui::TextEdit::multiline(&mut self.output).hint_text("编码/解码结果"),
+            egui::TextEdit::multiline(&mut self.output)
+                .hint_text(lang.tr("编码/解码结果", "Encode/decode results")),
         );
 
         if ui.button(lang.tr("复制输出", "Copy Output")).clicked() {

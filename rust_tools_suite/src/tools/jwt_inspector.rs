@@ -190,7 +190,7 @@ impl JwtInspectorTool {
                     }
                     Ok(None) => {}
                     Err(err) => {
-                        self.status = err;
+                        self.status = err.to_string();
                         self.verified = false;
                     }
                 }

@@ -34,7 +34,7 @@ fn tr_results(lang: Language) -> &'static str {
 
 fn tr_no_results(lang: Language) -> &'static str {
     match lang {
-        Language::English => "No matching logs.",
+        Language::English => Tr::no_matching_logs(lang),
         Language::Chinese => "未匹配到日志。",
     }
 }
@@ -86,6 +86,7 @@ fn contains_query(state: &AppState, haystack: &str) -> bool {
 }
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let _theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_protocol_analysis(lang), "packet");
 

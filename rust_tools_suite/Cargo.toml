@@ -2,29 +2,46 @@
 name = "rust_tools_suite"
 version = "0.2.0"
 edition = "2021"
-description = "Rust Tools Suite with responsive desktop workflow"
+description = "Rust Tools Suite — Developer utilities with desktop GUI & CLI modes"
 license = "GPL-3.0-only"
+rust-version.workspace = true
+
+[features]
+# `jwt` stays in the default set so the shipped GUI keeps the JWT Inspector.
+# Lean build without the heavy aws-lc-rs stack:
+#   cargo build --no-default-features --features gui
+default = ["gui", "jwt"]
+gui = ["dep:eframe", "dep:egui", "dep:rfd", "dep:serialport"]
+cli = ["dep:clap", "dep:inquire", "dep:indicatif", "dep:colored", "dep:serialport"]
+full = ["gui", "cli", "jwt"]
+jwt = ["dep:jsonwebtoken", "dep:aws-lc-rs"]
 
 [dependencies]
-eframe = { workspace = true }
-egui = { workspace = true }
-serde_json = { workspace = true }
+# ── Core (always included) ──
+thiserror = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
 regex = "1"
 crc32fast = "1"
 sha2 = "0.10"
-chrono = { workspace = true }
+hmac = "0.12"
 urlencoding = "2"
 base64 = "0.22"
 uuid = { version = "1", features = ["v4"] }
 
-# GUI / TUI / Intelligent Interactive Additions
-inquire = "0.9.4"
-indicatif = "0.18.4"
-colored = "3.1.1"
-clap = { version = "4.5", features = ["derive"] }
-serialport = { workspace = true }
-rfd = "0.17.2"
-jsonwebtoken = { version = "10.3.0", features = ["aws_lc_rs"] }
-# Enables jsonwebtoken's aws-lc provider on Windows GNU without requiring a system NASM install.
-aws-lc-rs = { version = "1.16.3", features = ["prebuilt-nasm"] }
+# ── GUI (feature-gated) ──
+eframe = { workspace = true, optional = true }
+egui = { workspace = true, optional = true }
+rfd = { version = "0.17", optional = true }
+serialport = { workspace = true, optional = true }
+
+# ── CLI (feature-gated) ──
+clap = { version = "4.5", features = ["derive"], optional = true }
+inquire = { version = "0.9", optional = true }
+indicatif = { version = "0.18", optional = true }
+colored = { version = "3", optional = true }
+
+# ── JWT (feature-gated, heavy) ──
+jsonwebtoken = { version = "10", features = ["aws_lc_rs"], optional = true }
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"], optional = true }

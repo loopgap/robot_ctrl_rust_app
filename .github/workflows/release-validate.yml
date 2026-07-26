@@ -1,3 +1,10 @@
+# ─────────────────────────────────────────────────────────────
+# Release Validate — Reusable quality gate for release workflow
+#
+# Called by release.yml to verify tag format, branch ancestry,
+# and run the full quality gate (fmt + clippy + test + doc).
+# ─────────────────────────────────────────────────────────────
+
 name: Release Validate
 
 on:
@@ -11,6 +18,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release-validate-${{ inputs.tag_name }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -18,11 +29,13 @@ jobs:
   verify-tag:
     name: Verify Tag Policy
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag_name }}
           fetch-depth: 0
+
       - name: Validate tag format and branch ancestry
         shell: bash
         run: |
@@ -50,18 +63,24 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: verify-tag
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag_name }}
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Run quality gate
         shell: bash
         run: |

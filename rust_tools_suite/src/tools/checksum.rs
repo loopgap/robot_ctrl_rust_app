@@ -34,6 +34,9 @@ pub struct ChecksumTool {
     algo: ChecksumAlgo,
     output: String,
     verify_msg: String,
+    /// Result of the last expected-value comparison; decoupled from the
+    /// (localized) verify_msg text so logic never depends on UI wording.
+    verify_ok: Option<bool>,
     executed: bool,
     exported: bool,
 }
@@ -46,6 +49,7 @@ impl Default for ChecksumTool {
             algo: ChecksumAlgo::Crc32,
             output: String::new(),
             verify_msg: String::new(),
+            verify_ok: None,
             executed: false,
             exported: false,
         }
@@ -61,6 +65,7 @@ impl ChecksumTool {
         self.input = text;
         self.output.clear();
         self.verify_msg.clear();
+        self.verify_ok = None;
         self.executed = false;
         self.exported = false;
     }
@@ -99,7 +104,8 @@ impl ChecksumTool {
         ui.label(lang.tr("输入文本", "Input Text"));
         ui.add_sized(
             [ui.available_width(), 180.0],
-            egui::TextEdit::multiline(&mut self.input).hint_text("粘贴原始文本或报文内容"),
+            egui::TextEdit::multiline(&mut self.input)
+                .hint_text(lang.tr("粘贴原始文本或报文内容", "Paste raw text or packet payload")),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -127,7 +133,7 @@ impl ChecksumTool {
         ui.text_edit_singleline(&mut self.output);
 
         if !self.verify_msg.is_empty() {
-            let color = if self.verify_msg.contains("通过") {
+            let color = if self.verify_ok == Some(true) {
                 egui::Color32::LIGHT_GREEN
             } else {
                 egui::Color32::LIGHT_RED
@@ -145,7 +151,7 @@ impl ChecksumTool {
         let input_ok = !self.input.trim().is_empty();
         let verified = if self.expected.trim().is_empty() {
             LoopState::Pending
-        } else if self.verify_msg.contains("通过") {
+        } else if self.verify_ok == Some(true) {
             LoopState::Done
         } else if self.executed {
             LoopState::Warning
@@ -268,12 +274,15 @@ impl ChecksumTool {
         self.executed = true;
         self.exported = false;
         self.verify_msg.clear();
+        self.verify_ok = None;
 
         if !self.expected.trim().is_empty() {
             if self.output.eq_ignore_ascii_case(self.expected.trim()) {
+                self.verify_ok = Some(true);
                 self.verify_msg =
                     lang.tr("校验通过：结果与期望值一致", "Verified: matched expected");
             } else {
+                self.verify_ok = Some(false);
                 self.verify_msg =
                     lang.tr("校验失败：结果与期望值不一致", "Verify failed: mismatch");
             }

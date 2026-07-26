@@ -69,7 +69,8 @@ impl LogTool {
         ui.label(lang.tr("输入日志", "Input Logs"));
         ui.add_sized(
             [ui.available_width(), 180.0],
-            egui::TextEdit::multiline(&mut self.input).hint_text("粘贴应用日志"),
+            egui::TextEdit::multiline(&mut self.input)
+                .hint_text(lang.tr("粘贴应用日志", "Paste application logs")),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -104,7 +105,8 @@ impl LogTool {
         });
         ui.add_sized(
             [ui.available_width(), 220.0],
-            egui::TextEdit::multiline(&mut self.output).hint_text("筛选结果"),
+            egui::TextEdit::multiline(&mut self.output)
+                .hint_text(lang.tr("筛选结果", "Filtered results")),
         );
 
         if ui

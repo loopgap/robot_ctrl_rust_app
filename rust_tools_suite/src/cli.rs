@@ -1,8 +1,11 @@
+use crate::at32_boot_entry::{enter_bootloader, load_key_file};
 use clap::{Parser, Subcommand};
 use colored::*;
 use inquire::Select;
 use serialport::available_ports;
+use std::path::PathBuf;
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Parser)]
 #[command(name = "tools_suite_cli")]
@@ -12,8 +15,21 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Authenticate the running AT32 application and request a Bootloader reset.
+    EnterBootloader {
+        #[arg(short, long)]
+        port: String,
+        #[arg(short, long, default_value_t = 115200)]
+        baud: u32,
+        /// 32-byte product key file. It is read only for this invocation.
+        #[arg(long)]
+        boot_key_file: PathBuf,
+        /// Optional client nonce in hexadecimal; random by default.
+        #[arg(long)]
+        nonce: Option<String>,
+    },
     Connect {
         #[arg(short, long)]
         port: Option<String>,
@@ -25,6 +41,55 @@ pub enum Commands {
 
 pub fn run_cli(cli: Cli) {
     match cli.command {
+        Some(Commands::EnterBootloader {
+            port,
+            baud,
+            boot_key_file,
+            nonce,
+        }) => {
+            let key = match load_key_file(&boot_key_file) {
+                Ok(key) => key,
+                Err(error) => {
+                    eprintln!("{}", error.to_string().red());
+                    return;
+                }
+            };
+            let nonce = match nonce {
+                Some(value) => match u32::from_str_radix(value.trim_start_matches("0x"), 16) {
+                    Ok(value) if value != 0 => value,
+                    _ => {
+                        eprintln!(
+                            "{}",
+                            "--nonce must be a non-zero 32-bit hexadecimal value".red()
+                        );
+                        return;
+                    }
+                },
+                None => SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|d| d.subsec_nanos())
+                    .unwrap_or(1)
+                    .max(1),
+            };
+            let mut device = match serialport::new(&port, baud)
+                .timeout(Duration::from_millis(80))
+                .open()
+            {
+                Ok(device) => device,
+                Err(error) => {
+                    eprintln!("{}", format!("Cannot open {port}: {error}").red());
+                    return;
+                }
+            };
+            match enter_bootloader(&mut *device, &key, nonce) {
+                Ok(()) => println!(
+                    "{}",
+                    "Bootloader entry accepted; reconnect and query STATUS before flashing."
+                        .green()
+                ),
+                Err(error) => eprintln!("{}", format!("Bootloader entry failed: {error}").red()),
+            }
+        }
         Some(Commands::Connect { port, baud }) => {
             println!("{}", "Starting device discovery...".cyan().bold());
             let selected_port = match port {

@@ -6,6 +6,7 @@ use crate::views::ui_kit::{page_header, settings_card};
 use egui::{self, Color32, RichText, ScrollArea, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_packet_builder(lang), "packet");
 
@@ -25,7 +26,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     Color32::GRAY
                 }))
                 .fill(if selected {
-                    Color32::from_rgb(50, 60, 90)
+                    theme.bg_medium
                 } else {
                     Color32::TRANSPARENT
                 })
@@ -47,7 +48,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     match state.ui.packet_builder_tab {
         0 => show_builder(ui, state),
-        _ => show_parser(ui, state),
+        _ => show_parser(ui, state, &theme),
     }
 }
 
@@ -246,7 +247,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                                     .desired_width(110.0),
                                 );
 
-                                if ui.button("Remove").clicked() {
+                                if ui.button(Tr::remove_btn(lang)).clicked() {
                                     remove_idx = Some(fi);
                                 }
                             });
@@ -316,7 +317,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
 // Parser 标签页
 // ═══════════════════════════════════════════════════════════════
 
-fn show_parser(ui: &mut Ui, state: &mut AppState) {
+fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::AppTheme) {
     let lang = state.lang();
 
     // ─── 解析模板选择 ─────────────────────────────────────
@@ -411,15 +412,13 @@ fn show_parser(ui: &mut Ui, state: &mut AppState) {
 
     // ─── 解析结果展示 ─────────────────────────────────────
     if state.protocol.parsed_packets.is_empty() {
-        ui.vertical_centered(|ui| {
-            ui.add_space(40.0);
-            ui.label(
-                RichText::new(Tr::parser_empty(lang))
-                    .size(14.0)
-                    .color(Color32::GRAY),
-            );
-            ui.add_space(40.0);
-        });
+        crate::views::ui_kit::empty_state(
+            ui,
+            "packet",
+            "No Parsed Packets",
+            Tr::parser_empty(lang),
+            theme,
+        );
         return;
     }
 
