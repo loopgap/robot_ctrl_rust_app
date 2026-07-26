@@ -119,6 +119,45 @@ jobs:
           set -euo pipefail
           cargo clippy --workspace --all-targets -- -D warnings
 
+  # ── Feature-combination matrix ──────────────────────────
+  # Every declared feature combination must at least type-check;
+  # the library target must build under any subset of features.
+  feature-matrix:
+    name: Feature matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: workspace-governance
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libgtk-3-dev
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check feature combinations
+        shell: bash
+        run: |
+          set -euo pipefail
+          # robot_control_rust: library must compile under any feature subset
+          for features in "" "hardware" "llm" "mcp" "hardware,llm" "hardware,mcp"; do
+            echo "::group::robot_control_rust [${features:-none}]"
+            cargo check -p robot_control_rust --no-default-features ${features:+--features "$features"}
+            echo "::endgroup::"
+          done
+          # rust_tools_suite: every interface combination must compile
+          for features in "gui" "cli" "gui,cli" "gui,jwt" "full"; do
+            echo "::group::rust_tools_suite [$features]"
+            cargo check -p rust_tools_suite --no-default-features --features "$features"
+            echo "::endgroup::"
+          done
+
   # ── Tests (cross-platform matrix) ───────────────────────
   test:
     name: Test (${{ matrix.os }})
