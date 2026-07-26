@@ -114,7 +114,8 @@ impl TimeConverterTool {
         ui.label(lang.tr("输出", "Output"));
         ui.add_sized(
             [ui.available_width(), 180.0],
-            egui::TextEdit::multiline(&mut self.output).hint_text("转换结果"),
+            egui::TextEdit::multiline(&mut self.output)
+                .hint_text(lang.tr("转换结果", "Conversion results")),
         );
 
         if ui.button(lang.tr("复制输出", "Copy Output")).clicked() {
