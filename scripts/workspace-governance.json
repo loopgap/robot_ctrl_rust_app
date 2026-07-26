@@ -90,7 +90,7 @@
   },
   "release": {
     "requiredFiles": [
-      ".github/workflows/installer.nsi",
+      "scripts/nsis/installer.nsi",
       "Cargo.toml"
     ],
     "workspaceMembers": [

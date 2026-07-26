@@ -2209,7 +2209,7 @@ func runPackageWindowsInstaller(args []string) int {
 	mainExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/robot_control_rust.exe"))
 	suiteExe := filepath.Join(repoRoot, filepath.FromSlash("target/release/rust_tools_suite.exe"))
 	archDoc := filepath.Join(repoRoot, filepath.FromSlash("robot_control_rust/ARCHITECTURE_AND_USAGE.md"))
-	issTemplatePath := filepath.Join(repoRoot, filepath.FromSlash(".github/workflows/installer.nsi"))
+	issTemplatePath := filepath.Join(repoRoot, filepath.FromSlash("scripts/nsis/installer.nsi"))
 	stageDir := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64/stage"))
 	outputDir := filepath.Join(repoRoot, filepath.FromSlash("release_artifacts/windows-x64/installer"))
 	generatedNsiPath := filepath.Join(stageDir, "installer.generated.nsi")

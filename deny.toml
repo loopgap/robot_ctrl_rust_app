@@ -5,7 +5,15 @@ targets = []
 # cargo-deny >= 0.19 expects unmaintained scope values.
 unmaintained = "workspace"
 yanked = "deny"
-ignore = []
+ignore = [
+  # quick-xml 0.30 (zbus_xml, Linux a11y stack) and 0.39 (wayland-scanner
+  # proc-macro): DoS-class advisories, fix requires >=0.41 which the upstream
+  # egui 0.31 dependency trees pin below. Both parse trusted local desktop
+  # data (D-Bus introspection / Wayland protocol XML at build time) — no
+  # untrusted XML reaches these code paths. Re-evaluate on egui upgrade.
+  "RUSTSEC-2026-0194",
+  "RUSTSEC-2026-0195",
+]
 
 [licenses]
 version = 2

@@ -1,0 +1,12 @@
+# cargo-audit configuration — advisory exceptions with justification.
+[advisories]
+ignore = [
+    # quick-xml 0.30 (via zbus_xml — Linux accessibility stack) and 0.39
+    # (via wayland-scanner proc-macro). DoS-class advisories; the fix
+    # (>=0.41) is unreachable while eframe/egui 0.31 dependency trees pin
+    # lower ranges. Both instances only parse trusted local desktop data
+    # (D-Bus introspection, Wayland protocol XML at build time) — no
+    # untrusted XML reaches these paths. Re-evaluate on egui upgrade.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]
