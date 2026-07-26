@@ -2,53 +2,63 @@
 name = "robot_control_rust"
 version = "0.2.0"
 edition = "2021"
-description = "Robot Control System - Pure Rust Implementation"
+description = "Robot Control System — High-performance desktop workspace"
 license = "GPL-3.0-only"
+rust-version.workspace = true
 
 [lib]
 name = "robot_control_core"
 crate-type = ["cdylib", "rlib"]
 
+# The GUI workspace binary genuinely needs all runtime services; the library
+# target stays buildable under any feature combination for downstream tools.
+[[bin]]
+name = "robot_control_rust"
+path = "src/main.rs"
+required-features = ["hardware", "llm", "mcp"]
+
+[[bin]]
+name = "robot_control_mcp"
+path = "src/bin/robot_control_mcp.rs"
+required-features = ["mcp"]
+
+[features]
+default = ["hardware", "llm", "mcp"]
+hardware = ["dep:serialport"]
+llm = ["dep:ureq"]
+mcp = ["dep:rmcp", "dep:tokio", "dep:schemars"]
+
 [dependencies]
-# GUI framework
+# ── GUI ──
 eframe = { workspace = true }
 egui = { workspace = true }
-egui_plot = "0.31"
+egui_plot = { workspace = true }
 
-# Serial communication
-serialport = { workspace = true }
+# ── Serial (feature-gated) ──
+serialport = { workspace = true, optional = true }
 
-# Serialization
+# ── Serialization ──
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-# Time handling
+# ── Time ──
 chrono = { workspace = true }
 
-# Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt"] }
+# ── Error handling ──
+anyhow = { workspace = true }
+thiserror = { workspace = true }
 
-# Error handling
-anyhow = "1"
+# ── Logging ──
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
-# HTTP client for LLM API
-ureq = { version = "3", features = ["json"] }
+# ── LLM API (feature-gated) ──
+ureq = { version = "3", features = ["json"], optional = true }
 
-# MCP SDK
-rmcp = { version = "1.6.0", features = ["server", "macros", "transport-io"] }
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
-schemars = "1.0"
-
-# High Performance & Intelligence
+# ── MCP SDK (feature-gated) ──
+rmcp = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
 mockall = "0.14.0"
-
-
-
-
-
-
-
-

@@ -5,19 +5,32 @@
     windows_subsystem = "windows"
 )]
 
+#[cfg(not(any(feature = "gui", feature = "cli")))]
+compile_error!(
+    "rust_tools_suite requires at least one interface feature: \
+     enable `gui` and/or `cli` (e.g. --features gui)."
+);
+
 #[cfg(feature = "gui")]
 mod app;
+#[cfg(any(feature = "gui", feature = "cli"))]
 mod at32_boot_entry;
 #[cfg(feature = "cli")]
 mod cli;
 mod error;
+#[cfg(feature = "gui")]
 mod file_ops;
+#[cfg(feature = "gui")]
 mod guide;
+#[cfg(feature = "gui")]
 mod i18n;
+#[cfg(feature = "gui")]
 mod settings;
+#[cfg(feature = "gui")]
 mod theme;
 #[cfg(feature = "gui")]
 mod tools;
+#[cfg(feature = "gui")]
 mod workflow;
 
 #[cfg(feature = "gui")]

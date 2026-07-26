@@ -427,7 +427,7 @@ pub fn settings_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
 pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, color: Color32) {
     let c = rect.center();
     let s = rect.width().min(rect.height());
-    let stroke = egui::Stroke::new(1.5, color);
+    let stroke = egui::Stroke::new(1.5_f32, color);
     match icon {
         IconKind::Dashboard => draw_bars(painter, rect, color),
         IconKind::Connections => {
@@ -449,7 +449,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                     egui::pos2(r.left() + 2.0, c.y),
                     egui::pos2(r.right() - 2.0, c.y),
                 ],
-                egui::Stroke::new(1.0, color),
+                egui::Stroke::new(1.0_f32, color),
             );
         }
         IconKind::Packet => draw_panel(painter, c, s, stroke, true),
@@ -463,7 +463,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                     egui::pos2(c.x - s * 0.14, c.y + s * 0.10),
                     egui::pos2(c.x + s * 0.14, c.y + s * 0.10),
                 ],
-                egui::Stroke::new(1.1, color),
+                egui::Stroke::new(1.1_f32, color),
             );
         }
         IconKind::Pid => {
@@ -476,7 +476,7 @@ pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, colo
                         egui::pos2(x, r.top() + 2.0),
                         egui::pos2(x, r.bottom() - 2.0),
                     ],
-                    egui::Stroke::new(1.0, color),
+                    egui::Stroke::new(1.0_f32, color),
                 );
             }
         }
@@ -552,9 +552,9 @@ fn draw_neural(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) {
     let n2 = egui::pos2(c.x - s * 0.20, c.y + s * 0.18);
     let n3 = egui::pos2(c.x + s * 0.02, c.y - s * 0.20);
     let n4 = egui::pos2(c.x + s * 0.20, c.y + s * 0.02);
-    painter.line_segment([n1, n3], egui::Stroke::new(1.0, color));
-    painter.line_segment([n2, n3], egui::Stroke::new(1.0, color));
-    painter.line_segment([n3, n4], egui::Stroke::new(1.0, color));
+    painter.line_segment([n1, n3], egui::Stroke::new(1.0_f32, color));
+    painter.line_segment([n2, n3], egui::Stroke::new(1.0_f32, color));
+    painter.line_segment([n3, n4], egui::Stroke::new(1.0_f32, color));
     for p in [n1, n2, n3, n4] {
         painter.circle_filled(p, 1.7, color);
     }
@@ -572,13 +572,13 @@ fn draw_simulation(
     for i in 0..3 {
         let angle = i as f32 * std::f32::consts::TAU / 3.0;
         let end = egui::pos2(c.x + angle.cos() * s * 0.18, c.y + angle.sin() * s * 0.18);
-        painter.line_segment([c, end], egui::Stroke::new(1.0, color));
+        painter.line_segment([c, end], egui::Stroke::new(1.0_f32, color));
     }
     draw_line_chart(
         painter,
         egui::pos2(c.x, c.y + s * 0.04),
         s * 0.72,
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
 }
 
@@ -596,14 +596,14 @@ fn draw_modbus(
             egui::pos2(r.left(), r.center().y),
             egui::pos2(r.right(), r.center().y),
         ],
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
     painter.line_segment(
         [
             egui::pos2(r.left() + s * 0.22, r.top()),
             egui::pos2(r.left() + s * 0.22, r.bottom()),
         ],
-        egui::Stroke::new(1.0, color),
+        egui::Stroke::new(1.0_f32, color),
     );
 }
 
@@ -613,7 +613,7 @@ fn draw_canopen(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) 
     let p3 = egui::pos2(c.x + s * 0.20, c.y);
     let p4 = egui::pos2(c.x, c.y + s * 0.18);
     for pair in [[p1, p2], [p2, p3], [p3, p4], [p4, p1]] {
-        painter.line_segment(pair, egui::Stroke::new(1.1, color));
+        painter.line_segment(pair, egui::Stroke::new(1.1_f32, color));
     }
     for p in [p1, p2, p3, p4] {
         painter.circle_filled(p, 1.6, color);
@@ -639,7 +639,7 @@ fn draw_gauge(
             egui::pos2(c.x, c.y + s * 0.08),
             egui::pos2(c.x + s * 0.16, c.y - s * 0.08),
         ],
-        egui::Stroke::new(1.2, color),
+        egui::Stroke::new(1.2_f32, color),
     );
 }
 
@@ -687,7 +687,7 @@ fn draw_vehicle(
                 egui::pos2(x, y)
             };
             painter.circle_filled(p2, 1.8, color);
-            painter.line_segment([p1, p2], egui::Stroke::new(0.8, color));
+            painter.line_segment([p1, p2], egui::Stroke::new(0.8_f32, color));
         }
     }
 }
@@ -708,7 +708,7 @@ fn draw_mecanum(
                     egui::pos2(p.x - s * 0.04, p.y + s * 0.04),
                     egui::pos2(p.x + s * 0.04, p.y - s * 0.04),
                 ],
-                egui::Stroke::new(1.0, color),
+                egui::Stroke::new(1.0_f32, color),
             );
         }
     }
@@ -720,9 +720,9 @@ fn draw_omni(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32, cou
         let angle = i as f32 * std::f32::consts::TAU / count as f32;
         let p = egui::pos2(c.x + angle.cos() * radius, c.y + angle.sin() * radius);
         painter.circle_filled(p, 2.0, color);
-        painter.line_segment([c, p], egui::Stroke::new(1.0, color));
+        painter.line_segment([c, p], egui::Stroke::new(1.0_f32, color));
     }
-    painter.circle_stroke(c, s * 0.06, egui::Stroke::new(1.0, color));
+    painter.circle_stroke(c, s * 0.06, egui::Stroke::new(1.0_f32, color));
 }
 
 fn draw_tracked(
@@ -781,7 +781,7 @@ fn draw_delta(
     painter.circle_filled(c, 1.8, color);
     for p in [top, left, right] {
         painter.circle_filled(p, 1.6, color);
-        painter.line_segment([p, c], egui::Stroke::new(0.8, color));
+        painter.line_segment([p, c], egui::Stroke::new(0.8_f32, color));
     }
 }
 

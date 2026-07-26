@@ -126,7 +126,8 @@ enum ActiveTool {
 
 impl ActiveTool {
     fn all() -> Vec<Self> {
-        let v = vec![
+        #[cfg_attr(not(feature = "jwt"), allow(unused_mut))]
+        let mut v = vec![
             Self::At32BootEntry,
             Self::Checksum,
             Self::Json,
@@ -490,7 +491,7 @@ impl ToolSuiteApp {
                 });
             }
             Ok(None) => {}
-            Err(err) => self.set_status(err),
+            Err(err) => self.set_status(err.to_string()),
         }
     }
 
@@ -511,7 +512,7 @@ impl ToolSuiteApp {
                 });
             }
             Ok(None) => {}
-            Err(err) => self.set_status(err),
+            Err(err) => self.set_status(err.to_string()),
         }
     }
 

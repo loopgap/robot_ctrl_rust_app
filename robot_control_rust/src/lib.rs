@@ -3,6 +3,7 @@
 //! The full app currently uses the binary target. This library surface keeps
 //! workspace-level checks stable for tools that expect a valid lib target.
 
+pub mod error;
 pub mod models;
 pub mod services;
 pub mod simulation;

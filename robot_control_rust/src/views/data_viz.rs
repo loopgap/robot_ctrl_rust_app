@@ -352,7 +352,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         match ch.viz_type {
                             VizType::Line => {
                                 plot_ui.line(
-                                    Line::new(plot_pts).name(&ch.name).color(color).width(1.5),
+                                    Line::new(plot_pts)
+                                        .name(&ch.name)
+                                        .color(color)
+                                        .width(1.5_f32),
                                 );
                             }
                             VizType::Scatter => {
@@ -360,7 +363,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                     Points::new(plot_pts)
                                         .name(&ch.name)
                                         .color(color)
-                                        .radius(2.0),
+                                        .radius(2.0_f32),
                                 );
                             }
                             _ => {}
