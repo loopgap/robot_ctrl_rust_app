@@ -2483,13 +2483,15 @@ func runPackageWindowsAssets(args []string) int {
 			return exitExecution
 		}
 	}
-	if err := copyFile(filepath.Join(docsRoot, "help_index.html"), filepath.Join(bundleRoot, "help_index.html")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
-	}
-	if err := copyDir(filepath.Join(docsRoot, "docs"), filepath.Join(bundleRoot, "docs")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
+	if !*skipDocs {
+		if err := copyFile(filepath.Join(docsRoot, "help_index.html"), filepath.Join(bundleRoot, "help_index.html")); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
+		if err := copyDir(filepath.Join(docsRoot, "docs"), filepath.Join(bundleRoot, "docs")); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
 	}
 
 	if err := zipDirContents(bundleRoot, bundleZip); err != nil {
