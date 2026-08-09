@@ -76,7 +76,7 @@ jobs:
             exit 1
           }
           Push-Location scripts/go/rusktask
-          go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build
+          go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build --skip-docs
           Pop-Location
       - name: Upload Windows portable
         uses: actions/upload-artifact@v5
