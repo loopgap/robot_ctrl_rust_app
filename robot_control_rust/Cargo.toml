@@ -1,6 +1,6 @@
 [package]
 name = "robot_control_rust"
-version = "0.2.0"
+version.workspace = true
 edition = "2021"
 description = "Robot Control System — High-performance desktop workspace"
 license = "GPL-3.0-only"

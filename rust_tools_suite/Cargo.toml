@@ -1,6 +1,6 @@
 [package]
 name = "rust_tools_suite"
-version = "0.2.0"
+version.workspace = true
 edition = "2021"
 description = "Rust Tools Suite — Developer utilities with desktop GUI & CLI modes"
 license = "GPL-3.0-only"

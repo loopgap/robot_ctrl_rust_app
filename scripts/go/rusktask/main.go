@@ -899,6 +899,10 @@ func runSmartBump(args []string) int {
 			}
 
 			if err := updateManifestVersion(absPath, nextVersion); err != nil {
+				if errors.Is(err, errManifestInheritsVersion) {
+					fmt.Printf("Skipped %s (version.workspace = true)\n", relPath)
+					continue
+				}
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				return exitExecution
 			}
@@ -1387,6 +1391,10 @@ func nextSemverVersion(current string, part string) (string, error) {
 	return fmt.Sprintf("%d.%d.%d", major, minor, patch), nil
 }
 
+// errManifestInheritsVersion marks a crate manifest that inherits its version
+// from [workspace.package] and therefore must not be edited by version bumps.
+var errManifestInheritsVersion = errors.New("manifest inherits version from workspace")
+
 func updateManifestVersion(manifestPath string, newVersion string) error {
 	content, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -1396,6 +1404,9 @@ func updateManifestVersion(manifestPath string, newVersion string) error {
 	rx := regexp.MustCompile(`(?m)^version\s*=\s*"\d+\.\d+\.\d+"\s*$`)
 	loc := rx.FindIndex(content)
 	if loc == nil {
+		if regexp.MustCompile(`(?m)^version\.workspace\s*=\s*true`).Match(content) {
+			return errManifestInheritsVersion
+		}
 		return fmt.Errorf("manifest %s does not contain a semantic version line", manifestPath)
 	}
 
@@ -3074,12 +3085,28 @@ func resolveReleaseVersion(mainManifestPath string, explicitVersion string) (str
 		return "", fmt.Errorf("failed to read Cargo.toml: %w", err)
 	}
 
-	match := regexp.MustCompile(`(?m)^version\s*=\s*"([^"]+)"`).FindStringSubmatch(string(content))
-	if len(match) != 2 {
-		return "", errors.New("failed to read version from Cargo.toml")
+	versionPattern := regexp.MustCompile(`(?m)^version\s*=\s*"([^"]+)"`)
+	match := versionPattern.FindStringSubmatch(string(content))
+	if len(match) == 2 {
+		return strings.TrimSpace(match[1]), nil
 	}
 
-	return strings.TrimSpace(match[1]), nil
+	// Workspace inheritance: the crate manifest declares
+	// `version.workspace = true` and the concrete version lives in the
+	// workspace root manifest under [workspace.package].
+	if regexp.MustCompile(`(?m)^version\.workspace\s*=\s*true`).MatchString(string(content)) {
+		rootManifest := filepath.Join(filepath.Dir(filepath.Dir(mainManifestPath)), "Cargo.toml")
+		rootContent, rootErr := os.ReadFile(rootManifest)
+		if rootErr != nil {
+			return "", fmt.Errorf("failed to read workspace root Cargo.toml: %w", rootErr)
+		}
+		rootMatch := versionPattern.FindStringSubmatch(string(rootContent))
+		if len(rootMatch) == 2 {
+			return strings.TrimSpace(rootMatch[1]), nil
+		}
+	}
+
+	return "", errors.New("failed to read version from Cargo.toml")
 }
 
 func resolveOutputDir(repoRoot string, configuredOutputDir string, defaultRelative string) string {

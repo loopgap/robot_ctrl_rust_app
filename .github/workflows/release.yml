@@ -35,12 +35,13 @@ jobs:
     env:
       VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.VERSION_TAG }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: scripts/go/rusktask/go.mod
+          cache: false  # rusktask has no external deps (no go.sum)
       - uses: dtolnay/rust-toolchain@stable
       - name: Install NSIS
         shell: pwsh
@@ -61,7 +62,7 @@ jobs:
           go run . package-windows-installer --version $version --skip-build
           Pop-Location
       - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-installer
           path: release_artifacts/windows-x64/installer/robot_control_suite_*_windows_x64-setup.exe
@@ -78,7 +79,7 @@ jobs:
           go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build
           Pop-Location
       - name: Upload Windows portable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-portable
           path: release_artifacts/robot_control_suite_*_windows_x64_portable.zip
@@ -94,7 +95,7 @@ jobs:
     env:
       VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.VERSION_TAG }}
       - uses: dtolnay/rust-toolchain@stable
@@ -131,7 +132,7 @@ jobs:
             > "$pkg_dir/DEBIAN/control"
           dpkg-deb --build "$pkg_dir" "dist/robot_control_suite_${version}_amd64.deb"
       - name: Upload Linux package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-package
           path: dist/*_amd64.deb
@@ -147,7 +148,7 @@ jobs:
     env:
       VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.VERSION_TAG }}
       - uses: dtolnay/rust-toolchain@stable
@@ -170,7 +171,7 @@ jobs:
           cd staging
           tar czf "../robot_control_suite_${version}_macos_universal.tar.gz" -C macos .
       - name: Upload macOS package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-package
           path: staging/*.tar.gz
@@ -189,12 +190,13 @@ jobs:
     env:
       VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.VERSION_TAG }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: scripts/go/rusktask/go.mod
+          cache: false  # rusktask has no external deps (no go.sum)
       - name: Validate release notes policy
         shell: bash
         run: |
@@ -207,7 +209,7 @@ jobs:
           ./scripts/ubuntu/task.sh release-notes-validate \
             RELEASE_NOTES_FILE="$notes_file" \
             RELEASE_NOTES_MODE="release"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
       - name: Validate artifacts and create checksums
@@ -232,7 +234,7 @@ jobs:
           sha256sum ./* > checksums-sha256.txt
           echo "[OK] All artifacts validated, checksums created"
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION_TAG }}
           draft: false
@@ -258,7 +260,7 @@ jobs:
     env:
       VERSION_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.VERSION_TAG }}
       - name: Create failure summary
@@ -273,7 +275,7 @@ jobs:
           3. Delete this draft release after a successful re-run.
           EOF
       - name: Create Draft GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION_TAG }}
           draft: true
