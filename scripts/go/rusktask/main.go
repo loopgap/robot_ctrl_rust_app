@@ -2207,6 +2207,7 @@ func runPackageWindowsInstaller(args []string) int {
 	buildTag := fs.String("build-tag", "", "Build tag for iExpress fallback artifact name")
 	preferIExpress := fs.Bool("prefer-iexpress", false, "Prefer iExpress packaging even when NSIS is available")
 	skipBuild := fs.Bool("skip-build", false, "Skip cargo build in installer packaging")
+	skipDocs := fs.Bool("skip-docs", false, "Skip mdbook docs bundle packaging")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
@@ -2272,9 +2273,11 @@ func runPackageWindowsInstaller(args []string) int {
 			return exitExecution
 		}
 	}
-	if err := packageDocsBundle(repoRoot, stageDir, false); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
+	if !*skipDocs {
+		if err := packageDocsBundle(repoRoot, stageDir, false); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
 	}
 
 	makensisPath := ""
@@ -2385,6 +2388,7 @@ func runPackageWindowsAssets(args []string) int {
 	version := fs.String("version", "", "Release version (without v prefix)")
 	outputDir := fs.String("output-dir", "", "Output directory for packaged assets")
 	skipBuild := fs.Bool("skip-build", false, "Skip cargo build in assets packaging")
+	skipDocs := fs.Bool("skip-docs", false, "Skip mdbook docs bundle packaging")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
@@ -2442,9 +2446,11 @@ func runPackageWindowsAssets(args []string) int {
 		return exitExecution
 	}
 
-	if err := packageDocsBundle(repoRoot, docsRoot, false); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
+	if !*skipDocs {
+		if err := packageDocsBundle(repoRoot, docsRoot, false); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
 	}
 
 	bundleZip := filepath.Join(resolvedOutputDir, fmt.Sprintf("robot_control_suite_%s_windows_x64_portable.zip", resolvedVersion))
@@ -2477,13 +2483,15 @@ func runPackageWindowsAssets(args []string) int {
 			return exitExecution
 		}
 	}
-	if err := copyFile(filepath.Join(docsRoot, "help_index.html"), filepath.Join(bundleRoot, "help_index.html")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
-	}
-	if err := copyDir(filepath.Join(docsRoot, "docs"), filepath.Join(bundleRoot, "docs")); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
+	if !*skipDocs {
+		if err := copyFile(filepath.Join(docsRoot, "help_index.html"), filepath.Join(bundleRoot, "help_index.html")); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
+		if err := copyDir(filepath.Join(docsRoot, "docs"), filepath.Join(bundleRoot, "docs")); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
 	}
 
 	if err := zipDirContents(bundleRoot, bundleZip); err != nil {

@@ -59,7 +59,7 @@ jobs:
             exit 1
           }
           Push-Location scripts/go/rusktask
-          go run . package-windows-installer --version $version --skip-build
+          go run . package-windows-installer --version $version --skip-build --skip-docs
           Pop-Location
       - name: Upload Windows installer
         uses: actions/upload-artifact@v5
@@ -76,7 +76,7 @@ jobs:
             exit 1
           }
           Push-Location scripts/go/rusktask
-          go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build
+          go run . package-windows-assets --version $version --output-dir release_artifacts --skip-build --skip-docs
           Pop-Location
       - name: Upload Windows portable
         uses: actions/upload-artifact@v5
@@ -169,7 +169,7 @@ jobs:
           cp target/release/robot_control_rust "$staging/"
           cp target/release/rust_tools_suite "$staging/"
           cd staging
-          tar czf "../robot_control_suite_${version}_macos_universal.tar.gz" -C macos .
+          tar czf "robot_control_suite_${version}_macos_universal.tar.gz" -C macos .
       - name: Upload macOS package
         uses: actions/upload-artifact@v5
         with:
