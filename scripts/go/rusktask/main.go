@@ -2207,6 +2207,7 @@ func runPackageWindowsInstaller(args []string) int {
 	buildTag := fs.String("build-tag", "", "Build tag for iExpress fallback artifact name")
 	preferIExpress := fs.Bool("prefer-iexpress", false, "Prefer iExpress packaging even when NSIS is available")
 	skipBuild := fs.Bool("skip-build", false, "Skip cargo build in installer packaging")
+	skipDocs := fs.Bool("skip-docs", false, "Skip mdbook docs bundle packaging")
 
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
@@ -2272,9 +2273,11 @@ func runPackageWindowsInstaller(args []string) int {
 			return exitExecution
 		}
 	}
-	if err := packageDocsBundle(repoRoot, stageDir, false); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return exitExecution
+	if !*skipDocs {
+		if err := packageDocsBundle(repoRoot, stageDir, false); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return exitExecution
+		}
 	}
 
 	makensisPath := ""
