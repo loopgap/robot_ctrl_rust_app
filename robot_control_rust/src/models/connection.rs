@@ -58,6 +58,10 @@ pub enum ConnectionStatus {
     Connecting,
     Connected,
     Error,
+    /// Hardware-level fault: device physically lost (USB unplug, cable break,
+    /// CAN bus-off, serial port vanished). Distinguished from software-level
+    /// `Error` to allow UI to show a different recovery path (re-plug vs retry).
+    HardwareFault,
 }
 
 impl ConnectionStatus {
@@ -65,11 +69,16 @@ impl ConnectionStatus {
         matches!(self, Self::Connected)
     }
 
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error | Self::HardwareFault)
+    }
+
     pub fn color_rgb(&self) -> (u8, u8, u8) {
         match self {
             Self::Connected => (46, 160, 67),
             Self::Connecting => (255, 165, 0),
             Self::Error => (218, 54, 51),
+            Self::HardwareFault => (180, 0, 0),
             Self::Disconnected => (128, 128, 128),
         }
     }
@@ -82,6 +91,7 @@ impl fmt::Display for ConnectionStatus {
             Self::Connecting => write!(f, "Connecting..."),
             Self::Connected => write!(f, "Connected"),
             Self::Error => write!(f, "Error"),
+            Self::HardwareFault => write!(f, "HW Fault"),
         }
     }
 }

@@ -127,6 +127,7 @@ impl ConnectionManager {
             }
             ConnectionStatus::Connecting => "Connecting".into(),
             ConnectionStatus::Error => "Error".into(),
+            ConnectionStatus::HardwareFault => "HW Fault".into(),
             ConnectionStatus::Disconnected => {
                 if self.reconnect_paused_by_user {
                     "Offline (manual)".into()

@@ -3,6 +3,57 @@ use serde::{Deserialize, Serialize};
 
 const MAX_CAN_FRAMES: usize = 10_000;
 
+/// CAN bus error state per ISO 11898-1 §10.
+///
+/// A CAN controller transitions between these three states based on
+/// the Transmit Error Counter (TEC) and Receive Error Counter (REC):
+///
+/// - **Error Active**: TEC ≤ 127 AND REC ≤ 127 → normal operation,
+///   can transmit active error flags (6 dominant bits).
+/// - **Error Passive**: TEC > 127 OR REC > 127 → still participates
+///   but transmits passive error flags (6 recessive bits).
+/// - **Bus Off**: TEC > 255 → node disconnected from bus, must
+///   observe 128 × 11 recessive bits before recovery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum CanBusState {
+    /// Normal operation. TEC ≤ 127 AND REC ≤ 127.
+    #[default]
+    ErrorActive,
+    /// Degraded mode. TEC > 127 OR REC > 127.
+    /// Transmits passive error frames only.
+    ErrorPassive,
+    /// Disconnected from bus. TEC > 255.
+    /// Requires 128 × 11 recessive bits to recover.
+    BusOff,
+}
+
+impl CanBusState {
+    /// Determine bus state from error counter values.
+    pub fn from_counters(tec: u16, rec: u16) -> Self {
+        if tec > 255 {
+            Self::BusOff
+        } else if tec > 127 || rec > 127 {
+            Self::ErrorPassive
+        } else {
+            Self::ErrorActive
+        }
+    }
+
+    pub fn is_bus_off(&self) -> bool {
+        matches!(self, Self::BusOff)
+    }
+}
+
+impl std::fmt::Display for CanBusState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ErrorActive => write!(f, "Error Active"),
+            Self::ErrorPassive => write!(f, "Error Passive"),
+            Self::BusOff => write!(f, "Bus Off"),
+        }
+    }
+}
+
 /// CAN 帧（软件模拟 - PC端无物理CAN接口，用于帧构建/解析/仿真）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanFrame {
@@ -103,7 +154,7 @@ impl CanFrame {
     }
 }
 
-/// CAN 服务（帧记录器 + 仿真）
+/// CAN 服务（帧记录器 + 仿真 + 错误状态追踪）
 pub struct CanService {
     pub frames: Vec<CanFrame>,
     pub dropped_frames: u64,
@@ -121,6 +172,15 @@ pub struct CanService {
     pub config_loopback: bool,
     pub config_auto_retransmit: bool,
     pub config_error_reporting: bool,
+    // ISO 11898-1 错误状态追踪
+    /// Transmit Error Counter (TEC). Incremented on TX errors per §10.11.
+    pub tx_error_count: u16,
+    /// Receive Error Counter (REC). Incremented on RX errors per §10.11.
+    pub rx_error_count: u16,
+    /// Current bus state derived from TEC/REC per §10.
+    pub bus_state: CanBusState,
+    /// Total bus error events observed (not per-frame, per anomaly).
+    pub bus_error_events: u64,
 }
 
 impl Default for CanService {
@@ -147,6 +207,10 @@ impl CanService {
             config_loopback: false,
             config_auto_retransmit: true,
             config_error_reporting: true,
+            tx_error_count: 0,
+            rx_error_count: 0,
+            bus_state: CanBusState::ErrorActive,
+            bus_error_events: 0,
         }
     }
 
@@ -188,6 +252,40 @@ impl CanService {
         self.dropped_frames = 0;
         self.frame_count_tx = 0;
         self.frame_count_rx = 0;
+        self.tx_error_count = 0;
+        self.rx_error_count = 0;
+        self.bus_state = CanBusState::ErrorActive;
+        self.bus_error_events = 0;
+    }
+
+    /// Record a TX error event and update TEC/bus state per ISO 11898-1 §10.11.
+    ///
+    /// TEC increments: +8 on each TX error, reset to 0 on successful TX.
+    /// TEC > 255 → Bus Off.
+    pub fn record_tx_error(&mut self) {
+        self.tx_error_count = self.tx_error_count.saturating_add(8);
+        self.bus_error_events += 1;
+        self.update_bus_state();
+    }
+
+    /// Record a successful TX frame. TEC decremented by 1 (min 0) per §10.11.
+    pub fn record_tx_success(&mut self) {
+        self.tx_error_count = self.tx_error_count.saturating_sub(1);
+        self.update_bus_state();
+    }
+
+    /// Record an RX error event and update REC/bus state per ISO 11898-1 §10.11.
+    ///
+    /// REC increments: +1 on each RX error (or +8 on dominant-bit-after-error).
+    pub fn record_rx_error(&mut self) {
+        self.rx_error_count = self.rx_error_count.saturating_add(1);
+        self.bus_error_events += 1;
+        self.update_bus_state();
+    }
+
+    /// Recompute bus state from TEC/REC.
+    fn update_bus_state(&mut self) {
+        self.bus_state = CanBusState::from_counters(self.tx_error_count, self.rx_error_count);
     }
 
     /// 模拟发送帧（记录到日志）

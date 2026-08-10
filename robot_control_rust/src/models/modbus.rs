@@ -268,6 +268,93 @@ impl ModbusResponse {
             })
             .collect()
     }
+
+    /// Decode Modbus exception code into a human-readable description.
+    ///
+    /// Per Modbus Application Protocol V1.1b3 §7, Table "Modbus Exception Codes":
+    /// 0x01 ILLEGAL FUNCTION — function code not recognized
+    /// 0x02 ILLEGAL DATA ADDRESS — address超出范围
+    /// 0x03 ILLEGAL DATA VALUE — data value not within valid range
+    /// 0x04 SERVER DEVICE FAILURE — unrecoverable internal error
+    /// 0x05 ACKNOWLEDGE — long processing (programmed)
+    /// 0x06 SERVER DEVICE BUSY — engaged in long-duration program
+    /// 0x08 MEMORY PARITY ERROR — extended file memory parity error
+    /// 0x0A GATEWAY PATH UNAVAILABLE — gateway misconfigured
+    /// 0x0B GATEWAY TARGET DEVICE FAILED TO RESPOND — slave failed
+    pub fn error_description(&self) -> Option<&'static str> {
+        self.error_code.map(ModbusException::describe)
+    }
+}
+
+/// Modbus exception codes per Modbus Application Protocol V1.1b3 §7.
+///
+/// Encapsulates the standard 11 exception codes (0x01–0x0B) plus
+/// vendor-specific range (0x80–0xFF mapped to `Unknown`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModbusException {
+    IllegalFunction,
+    IllegalDataAddress,
+    IllegalDataValue,
+    ServerDeviceFailure,
+    Acknowledge,
+    ServerDeviceBusy,
+    MemoryParityError,
+    GatewayPathUnavailable,
+    GatewayTargetDeviceFailedToRespond,
+    Unknown(u8),
+}
+
+impl ModbusException {
+    /// Parse raw exception code byte into structured enum.
+    pub fn from_code(code: u8) -> Self {
+        match code {
+            0x01 => Self::IllegalFunction,
+            0x02 => Self::IllegalDataAddress,
+            0x03 => Self::IllegalDataValue,
+            0x04 => Self::ServerDeviceFailure,
+            0x05 => Self::Acknowledge,
+            0x06 => Self::ServerDeviceBusy,
+            0x08 => Self::MemoryParityError,
+            0x0A => Self::GatewayPathUnavailable,
+            0x0B => Self::GatewayTargetDeviceFailedToRespond,
+            other => Self::Unknown(other),
+        }
+    }
+
+    /// Human-readable description (English + Chinese) per spec §7.
+    pub fn describe(code: u8) -> &'static str {
+        match code {
+            0x01 => "Illegal Function: function code not recognized by server",
+            0x02 => "Illegal Data Address: start address or quantity exceeds allowed range",
+            0x03 => "Illegal Data Value: data value field contains a value not allowed",
+            0x04 => "Server Device Failure: unrecoverable internal error on server device",
+            0x05 => "Acknowledge: server has accepted the request but needs a long time to process",
+            0x06 => "Server Device Busy: server is engaged in a long-duration program",
+            0x08 => "Memory Parity Error: server detected a parity error in extended memory",
+            0x0A => "Gateway Path Unavailable: gateway misconfigured or inactive",
+            0x0B => "Gateway Target Device Failed to Respond: slave not responding behind gateway",
+            _ => "Unknown Modbus exception code",
+        }
+    }
+}
+
+impl std::fmt::Display for ModbusException {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IllegalFunction => write!(f, "0x01 Illegal Function"),
+            Self::IllegalDataAddress => write!(f, "0x02 Illegal Data Address"),
+            Self::IllegalDataValue => write!(f, "0x03 Illegal Data Value"),
+            Self::ServerDeviceFailure => write!(f, "0x04 Server Device Failure"),
+            Self::Acknowledge => write!(f, "0x05 Acknowledge"),
+            Self::ServerDeviceBusy => write!(f, "0x06 Server Device Busy"),
+            Self::MemoryParityError => write!(f, "0x08 Memory Parity Error"),
+            Self::GatewayPathUnavailable => write!(f, "0x0A Gateway Path Unavailable"),
+            Self::GatewayTargetDeviceFailedToRespond => {
+                write!(f, "0x0B Gateway Target Device Failed to Respond")
+            }
+            Self::Unknown(code) => write!(f, "0x{:02X} Unknown", code),
+        }
+    }
 }
 
 #[cfg(test)]

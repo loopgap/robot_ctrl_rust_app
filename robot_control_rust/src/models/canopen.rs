@@ -1,5 +1,210 @@
 use serde::{Deserialize, Serialize};
 
+/// CANopen NMT state per CiA 301 §7.2.1.
+///
+/// A node transitions through these states after power-up or reset:
+/// - **Initializing**: self-configuration phase (vendor-specific).
+/// - **PreOperational**: NMT slave, PDOs not active, SDOs active.
+/// - **Operational**: full communication (PDOs + SDOs active).
+/// - **Stopped**: only NMT and Boot-Up frames processed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum NmtState {
+    #[default]
+    Initializing,
+    PreOperational,
+    Operational,
+    Stopped,
+}
+
+impl NmtState {
+    /// Decode NMT heartbeat protocol byte (per CiA 301 §7.2.8).
+    pub fn from_heartbeat_code(code: u8) -> Option<Self> {
+        match code {
+            0x00 => Some(Self::Initializing),
+            0x04 => Some(Self::Stopped),
+            0x05 => Some(Self::Operational),
+            0x7F => Some(Self::PreOperational),
+            _ => None,
+        }
+    }
+
+    pub fn heartbeat_code(self) -> u8 {
+        match self {
+            Self::Initializing => 0x00,
+            Self::Stopped => 0x04,
+            Self::Operational => 0x05,
+            Self::PreOperational => 0x7F,
+        }
+    }
+}
+
+impl std::fmt::Display for NmtState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Initializing => write!(f, "Initializing"),
+            Self::PreOperational => write!(f, "Pre-Operational"),
+            Self::Operational => write!(f, "Operational"),
+            Self::Stopped => write!(f, "Stopped"),
+        }
+    }
+}
+
+/// CANopen Error Register bit field per CiA 301 §7.5.1.
+///
+/// Bit 0 = generic error, Bit 1 = current, Bit 2 = voltage,
+/// Bit 3 = temperature, Bit 4 = communication error, etc.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct EmcyErrorRegister {
+    pub bits: u8,
+}
+
+impl EmcyErrorRegister {
+    pub fn generic_error(&self) -> bool {
+        self.bits & 0x01 != 0
+    }
+    pub fn current_error(&self) -> bool {
+        self.bits & 0x02 != 0
+    }
+    pub fn voltage_error(&self) -> bool {
+        self.bits & 0x04 != 0
+    }
+    pub fn temperature_error(&self) -> bool {
+        self.bits & 0x08 != 0
+    }
+    pub fn communication_error(&self) -> bool {
+        self.bits & 0x10 != 0
+    }
+    pub fn device_profile_error(&self) -> bool {
+        self.bits & 0x20 != 0
+    }
+    pub fn manufacturer_error(&self) -> bool {
+        self.bits & 0x80 != 0
+    }
+
+    pub fn describe(&self) -> Vec<&'static str> {
+        let mut v = Vec::new();
+        if self.generic_error() {
+            v.push("Generic Error");
+        }
+        if self.current_error() {
+            v.push("Current Error");
+        }
+        if self.voltage_error() {
+            v.push("Voltage Error");
+        }
+        if self.temperature_error() {
+            v.push("Temperature Error");
+        }
+        if self.communication_error() {
+            v.push("Communication Error");
+        }
+        if self.device_profile_error() {
+            v.push("Device Profile Error");
+        }
+        if self.manufacturer_error() {
+            v.push("Manufacturer Error");
+        }
+        if v.is_empty() {
+            v.push("No Error");
+        }
+        v
+    }
+}
+
+/// CANopen EMCY (Emergency) error code classification per CiA 301 §7.5.1.
+///
+/// Error codes 0x1000–0xFFFF are grouped into classes:
+/// 0x1000 Generic, 0x2000 Current, 0x3000 Voltage,
+/// 0x4000 Temperature, 0x5000 Device HW, 0x6000 Device SW,
+/// 0x7000 Monitoring, 0x8000 External, 0xF000 Additional HW,
+/// 0xFF00 Device-specific.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmcyErrorClass {
+    GenericError,
+    Current,
+    Voltage,
+    Temperature,
+    DeviceHardware,
+    DeviceSoftware,
+    Monitoring,
+    External,
+    AdditionalHardware,
+    DeviceSpecific,
+    Unknown(u16),
+}
+
+impl EmcyErrorClass {
+    pub fn from_code(code: u16) -> Self {
+        match code {
+            0x1000..=0x1FFF => Self::GenericError,
+            0x2000..=0x2FFF => Self::Current,
+            0x3000..=0x3FFF => Self::Voltage,
+            0x4000..=0x4FFF => Self::Temperature,
+            0x5000..=0x5FFF => Self::DeviceHardware,
+            0x6000..=0x6FFF => Self::DeviceSoftware,
+            0x7000..=0x7FFF => Self::Monitoring,
+            0x8000..=0x8FFF => Self::External,
+            0xF000..=0xF0FF => Self::AdditionalHardware,
+            0xFF00..=0xFFFF => Self::DeviceSpecific,
+            other => Self::Unknown(other),
+        }
+    }
+
+    /// Decode known EMCY error codes to human-readable description.
+    pub fn describe_code(code: u16) -> &'static str {
+        match code {
+            0x1000 => "Error Reset / No Error",
+            0x1001 => "Generic Error",
+            0x1002 => "Current (at output) cannot be eliminated",
+            0x1003 => "Voltage cannot be eliminated",
+            0x1004 => "Temperature error",
+            0x1005 => "Device hardware error",
+            0x1006 => "Device software error",
+            0x1007 => "Monitoring error (watchdog)",
+            0x2110 => "CAN overrun (objects lost)",
+            0x2130 => "PDO not processed due to length error",
+            0x2200 => "RxPDO length exceeded",
+            0x3100 => "Input voltage too high",
+            0x3110 => "Input voltage too low",
+            0x3200 => "Output voltage too high",
+            0x3210 => "Output voltage too low",
+            0x4210 => "Ambient temperature too high",
+            0x4310 => "Device temperature too high",
+            0x5100 => "Power supply fault",
+            0x6100 => "Software reset (watchdog)",
+            0x6110 => "Internal software error",
+            0x6200 => "User parameter error",
+            0x7100 => "Sensor fault",
+            0x7200 => "Speed/position limit exceeded",
+            0x8100 => "CAN bus off",
+            0x8110 => "CRC error on CAN message",
+            0x8120 => "Protocol error (FTM/ATM)",
+            0x8130 => "PDO not served (length mismatch)",
+            0x8200 => "Sync error (too many devices or bus disturbance)",
+            0xFF01 => "Manufacturer-specific: motor stall detected",
+            _ => "Unknown EMCY error code",
+        }
+    }
+}
+
+impl std::fmt::Display for EmcyErrorClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::GenericError => write!(f, "Generic Error"),
+            Self::Current => write!(f, "Current"),
+            Self::Voltage => write!(f, "Voltage"),
+            Self::Temperature => write!(f, "Temperature"),
+            Self::DeviceHardware => write!(f, "Device Hardware"),
+            Self::DeviceSoftware => write!(f, "Device Software"),
+            Self::Monitoring => write!(f, "Monitoring"),
+            Self::External => write!(f, "External"),
+            Self::AdditionalHardware => write!(f, "Additional Hardware"),
+            Self::DeviceSpecific => write!(f, "Device-Specific"),
+            Self::Unknown(c) => write!(f, "Unknown(0x{:04X})", c),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NmtCommand {
     StartRemoteNode = 0x01,

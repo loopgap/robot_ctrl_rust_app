@@ -215,8 +215,12 @@ impl SerialService {
         if let Some(handle) = self.worker_handle.take() {
             let _ = handle.join();
         }
+        // Drain residual messages from the channel to prevent memory leak
+        // if the worker accumulated data before shutdown.
+        if let Some(rx) = self.rx.take() {
+            while rx.try_recv().is_ok() {}
+        }
         self.tx = None;
-        self.rx = None;
         self.status = ConnectionStatus::Disconnected;
         self.rx_buffer.clear();
     }
