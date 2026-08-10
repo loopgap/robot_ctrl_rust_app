@@ -139,7 +139,10 @@ impl ControlEngine {
         self.state_history.push(state);
         const MAX_HISTORY: usize = 10000;
         if self.state_history.len() > MAX_HISTORY {
-            self.state_history.remove(0);
+            // Use drain(..1) instead of remove(0) — both are O(n) for Vec, but
+            // drain avoids the return-value overhead and is idiomatic for
+            // "discard oldest N elements".
+            self.state_history.drain(..1);
         }
     }
 

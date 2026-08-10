@@ -605,7 +605,7 @@ fn do_parse(state: &mut AppState) {
         state.protocol.parsed_packets.push(parsed);
         // Keep at most 200 parsed packets
         if state.protocol.parsed_packets.len() > 200 {
-            state.protocol.parsed_packets.remove(0);
+            state.protocol.parsed_packets.drain(..1);
         }
     } else {
         let lang = state.lang();
