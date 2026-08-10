@@ -150,6 +150,9 @@ impl SmithPredictorController {
     /// PID 输入 = setpoint - feedback - (model_no_delay - model_delayed)
     /// 等效于 PID 看到的是无时滞过程的响应
     pub fn compute(&mut self, feedback: f64) -> f64 {
+        if !feedback.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),

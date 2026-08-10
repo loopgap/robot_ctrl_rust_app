@@ -46,6 +46,9 @@ impl PidLoop {
     }
 
     fn compute(&mut self, setpoint: f64, feedback: f64, dt: f64) -> f64 {
+        if !setpoint.is_finite() || !feedback.is_finite() || !dt.is_finite() {
+            return self.output;
+        }
         let error = setpoint - feedback;
 
         // P
@@ -203,6 +206,9 @@ impl CascadePidController {
     /// - `position_feedback`: 位置反馈（外环）
     /// - `velocity_feedback`: 速度反馈（内环）
     pub fn compute(&mut self, position_feedback: f64, velocity_feedback: f64) -> f64 {
+        if !position_feedback.is_finite() || !velocity_feedback.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),
@@ -231,6 +237,9 @@ impl CascadePidController {
 
     /// 单反馈简化版（用位置反馈数值差分估计速度）
     pub fn compute_single_feedback(&mut self, position_feedback: f64) -> f64 {
+        if !position_feedback.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),

@@ -1844,10 +1844,30 @@ impl AppState {
             return;
         }
 
+        // Exponential backoff: base interval × 2^attempts, capped at 60 seconds.
+        // After 10 consecutive failures, enter idle-pause to save CPU.
+        const MAX_RECONNECT_ATTEMPTS: u32 = 10;
+        const BACKOFF_CAP_MS: u64 = 60_000;
+
+        if self.conn.reconnect_attempts >= MAX_RECONNECT_ATTEMPTS {
+            self.add_info_log(
+                "Auto-reconnect paused after {MAX_RECONNECT_ATTEMPTS} consecutive failures. \
+                 Disarm and re-arm to retry.",
+            );
+            self.clear_reconnect_schedule();
+            self.status_message = "Reconnect exhausted. Toggle auto-reconnect to retry.".into();
+            return;
+        }
+
         let mut interval_ms = (self.ui.auto_reconnect_interval_ms as u64).clamp(500, 30_000);
         interval_ms = interval_ms.max(profile.reconnect_backoff_base_ms.max(500));
+        // Exponential backoff multiplier
+        interval_ms = interval_ms
+            .saturating_mul(1u64 << self.conn.reconnect_attempts.min(10))
+            .min(BACKOFF_CAP_MS);
+
         if self.error_burst_count >= profile.error_burst_threshold {
-            interval_ms = interval_ms.saturating_mul(2);
+            interval_ms = interval_ms.saturating_mul(2).min(BACKOFF_CAP_MS);
             if profile.auto_downgrade_allowed && self.ui.motion_level_idx == 0 {
                 self.ui.motion_level_idx = 1;
                 self.apply_performance_profile();
@@ -1857,6 +1877,7 @@ impl AppState {
             }
         }
 
+        self.conn.reconnect_attempts += 1;
         self.conn.next_reconnect_at = Some(now + Duration::from_millis(interval_ms));
         if let Err(e) = self.connect_active() {
             self.add_info_log(&format!("Auto-reconnect failed: {e}"));

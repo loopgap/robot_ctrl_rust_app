@@ -123,6 +123,9 @@ impl LqrController {
     }
 
     pub fn compute(&mut self, feedback: f64) -> f64 {
+        if !feedback.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),
@@ -171,6 +174,9 @@ impl LqrController {
 
     /// 使用外部提供的速度反馈
     pub fn compute_with_velocity(&mut self, position: f64, velocity: f64) -> f64 {
+        if !position.is_finite() || !velocity.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),

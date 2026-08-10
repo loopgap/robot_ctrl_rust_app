@@ -29,6 +29,8 @@ pub struct ConnectionManager {
     pub last_log_flush_instant: Instant,
     pub last_port_scan_request_at: Option<Instant>,
     pub pending_log_lines: Vec<String>,
+    /// Number of consecutive reconnect attempts since last successful connection.
+    pub reconnect_attempts: u32,
 }
 
 impl ConnectionManager {
@@ -55,6 +57,7 @@ impl ConnectionManager {
             last_log_flush_instant: Instant::now(),
             last_port_scan_request_at: None,
             pending_log_lines: Vec::new(),
+            reconnect_attempts: 0,
         }
     }
 
@@ -199,6 +202,7 @@ impl ConnectionManager {
     pub fn clear_reconnect_schedule(&mut self) {
         self.reconnect_armed = false;
         self.next_reconnect_at = None;
+        self.reconnect_attempts = 0;
     }
 
     pub fn reconnect_countdown_text(&self) -> String {

@@ -132,7 +132,7 @@ impl Default for CanService {
 impl CanService {
     pub fn new() -> Self {
         Self {
-            frames: Vec::new(),
+            frames: Vec::with_capacity(1024),
             dropped_frames: 0,
             is_running: false,
             bitrate: 500_000,

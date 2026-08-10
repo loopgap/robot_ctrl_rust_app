@@ -81,6 +81,12 @@ impl PidController {
     }
 
     pub fn compute(&mut self, feedback: f64) -> f64 {
+        // Industrial safety: reject non-finite inputs to prevent NaN/Inf
+        // propagation into actuators.
+        if !feedback.is_finite() {
+            return self.output;
+        }
+
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),
@@ -296,8 +302,9 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(10));
         let output = pid.compute(f64::NAN);
         assert!(
-            output.is_nan() || output.is_finite(),
-            "PID should handle NaN gracefully"
+            output.is_finite(),
+            "PID should reject NaN and return previous output, got {}",
+            output
         );
     }
 
@@ -307,8 +314,9 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(10));
         let output = pid.compute(f64::INFINITY);
         assert!(
-            output.is_finite() || output.is_infinite(),
-            "PID should handle Infinity gracefully"
+            output.is_finite(),
+            "PID should reject Infinity and return previous output, got {}",
+            output
         );
     }
 
@@ -318,8 +326,9 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(10));
         let output = pid.compute(f64::NEG_INFINITY);
         assert!(
-            output.is_finite() || output.is_infinite(),
-            "PID should handle -Infinity gracefully"
+            output.is_finite(),
+            "PID should reject -Infinity and return previous output, got {}",
+            output
         );
     }
 }

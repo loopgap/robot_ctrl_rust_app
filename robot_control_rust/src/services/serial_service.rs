@@ -14,6 +14,14 @@ use super::connection_provider::ConnectionProvider;
 const PACKET_HEADER: u8 = 0xAA;
 const PACKET_TAIL: u8 = 0x55;
 
+/// Maximum rx_buffer capacity before oldest data is discarded.
+/// Protects against unbounded memory growth from noise / baud-rate mismatch.
+const RX_BUFFER_MAX: usize = 64 * 1024; // 64 KiB
+
+/// Maximum allowed payload length in a single packet.
+/// Frames with `length` field above this are discarded immediately.
+const PACKET_PAYLOAD_MAX: usize = 200;
+
 /// 串口通信服务，管理串口连接的生命周期
 ///
 /// 使用后台线程进行串口读写，通过 mpsc channel 与主线程通信。
@@ -31,6 +39,9 @@ pub struct SerialService {
     tx: Option<mpsc::Sender<Vec<u8>>>,
     rx: Option<mpsc::Receiver<Vec<u8>>>,
     stop_flag: Arc<AtomicBool>,
+    /// Set to true by the worker thread when it exits due to an I/O error.
+    /// The main thread can check this to detect unexpected disconnects.
+    worker_errored: Arc<AtomicBool>,
     worker_handle: Option<thread::JoinHandle<()>>,
 }
 
@@ -53,6 +64,7 @@ impl SerialService {
             tx: None,
             rx: None,
             stop_flag: Arc::new(AtomicBool::new(false)),
+            worker_errored: Arc::new(AtomicBool::new(false)),
             worker_handle: None,
         }
     }
@@ -120,7 +132,9 @@ impl SerialService {
             .flow_control(flow);
 
         let mut port_result = Err(anyhow::anyhow!("Init error"));
-        let retries = if cfg!(target_os = "windows") { 3 } else { 1 };
+        // Retry on all platforms — embedded Linux (Raspberry Pi, etc.) may also
+        // need a second attempt after udev settles.
+        let retries = 2;
 
         for attempt in 1..=retries {
             port_result = port_builder
@@ -151,18 +165,21 @@ impl SerialService {
         self.tx = Some(tx_to_thread);
         self.rx = Some(rx_from_thread);
         self.stop_flag = Arc::new(AtomicBool::new(false));
+        self.worker_errored = Arc::new(AtomicBool::new(false));
         let stop_flag = self.stop_flag.clone();
+        let worker_errored = self.worker_errored.clone();
 
         let port_name = self.config.port_name.clone();
 
         let handle = thread::spawn(move || {
             let mut buf = [0u8; 1024];
-            while !stop_flag.load(Ordering::Acquire) {
-                // Read from main thread to send to serial port
-                if let Ok(data) = rx_from_main.try_recv() {
+            'worker: while !stop_flag.load(Ordering::Acquire) {
+                // Drain ALL pending write requests from the main thread
+                while let Ok(data) = rx_from_main.try_recv() {
                     if let Err(e) = port.write_all(&data) {
                         error!("Serial write error on {}: {}", port_name, e);
-                        break;
+                        worker_errored.store(true, Ordering::Release);
+                        break 'worker;
                     }
                     let _ = port.flush();
                 }
@@ -177,7 +194,8 @@ impl SerialService {
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                     Err(e) => {
                         error!("Serial read error on {}: {}", port_name, e);
-                        break;
+                        worker_errored.store(true, Ordering::Release);
+                        break 'worker;
                     }
                 }
 
@@ -204,9 +222,16 @@ impl SerialService {
     }
 
     pub fn push_rx_data(&mut self, data: &[u8]) {
-        if !data.is_empty() {
-            self.rx_buffer.extend_from_slice(data);
+        if data.is_empty() {
+            return;
         }
+        // Guard against unbounded growth: if buffer would exceed max,
+        // discard oldest bytes first (preserving partial packet search).
+        if self.rx_buffer.len() + data.len() > RX_BUFFER_MAX {
+            let excess = self.rx_buffer.len() + data.len() - RX_BUFFER_MAX;
+            self.rx_buffer.drain(..excess.min(self.rx_buffer.len()));
+        }
+        self.rx_buffer.extend_from_slice(data);
     }
 
     pub fn try_parse_state_from_buffer(&mut self) -> Option<RobotState> {
@@ -232,6 +257,11 @@ impl SerialService {
         }
 
         let length = self.rx_buffer[2] as usize;
+        // Reject impossibly large payloads early to avoid holding garbage data.
+        if length > PACKET_PAYLOAD_MAX {
+            self.rx_buffer.drain(..1);
+            return None;
+        }
         let total = 3 + length + 2;
         if self.rx_buffer.len() < total {
             return None;
@@ -338,6 +368,10 @@ impl SerialService {
 
 impl ConnectionProvider for SerialService {
     fn is_connected(&self) -> bool {
+        // Detect unexpected worker thread exit (I/O error)
+        if self.worker_errored.load(Ordering::Acquire) {
+            return false;
+        }
         self.tx.is_some() && self.status.is_connected()
     }
 

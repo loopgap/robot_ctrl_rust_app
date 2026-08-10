@@ -184,6 +184,9 @@ impl MpcController {
     }
 
     pub fn compute(&mut self, feedback: f64) -> f64 {
+        if !feedback.is_finite() {
+            return self.output;
+        }
         let now = Instant::now();
         let dt = match self.last_update {
             Some(last) => now.duration_since(last).as_secs_f64(),
