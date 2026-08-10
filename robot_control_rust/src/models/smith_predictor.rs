@@ -137,6 +137,10 @@ impl SmithPredictorController {
 
         // 取出延迟后的模型输出
         if self.delay_buffer.len() > buffer_len {
+            // Cap buffer to prevent unbounded growth if dt fluctuates wildly.
+            while self.delay_buffer.len() > buffer_len + 64 {
+                self.delay_buffer.pop_front();
+            }
             self.model_delayed_output = self.delay_buffer.pop_front().unwrap_or(0.0);
         } else if !self.delay_buffer.is_empty() {
             self.model_delayed_output = self.delay_buffer[0];
