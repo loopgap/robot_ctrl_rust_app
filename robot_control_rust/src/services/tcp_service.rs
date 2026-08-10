@@ -4,7 +4,7 @@ use chrono::Local;
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::time::Duration;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::connection_provider::ConnectionProvider;
 
@@ -100,8 +100,17 @@ impl TcpService {
                 stream.set_nonblocking(true).ok();
                 stream.set_read_timeout(Some(Duration::from_millis(1))).ok();
                 let addr_str = addr.to_string();
+                // Close previous client connection if any (industrial: prevent
+                // stale stream leak when new client connects).
+                if let Some(ref old) = self.stream {
+                    old.shutdown(Shutdown::Both).ok();
+                }
                 self.connected_clients.push(addr_str.clone());
-                self.stream = Some(stream); // 简化：只保留最新连接
+                self.stream = Some(stream);
+                warn!(
+                    "TCP server: new client {} replaced previous connection",
+                    addr_str
+                );
                 info!("TCP client connected: {}", addr_str);
             }
         }

@@ -1960,6 +1960,7 @@ impl AppState {
             }
             Ok(_) => {
                 self.arm_auto_reconnect();
+                self.conn.reconnect_attempts = 0; // Reset backoff on success
                 info!(target: "connection", connection = %self.conn.active_conn, "connect_success");
                 self.add_info_log(&format!("Connected: {}", self.conn.active_conn));
             }
