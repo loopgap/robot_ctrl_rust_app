@@ -3,6 +3,9 @@
 > **Single source of truth** for all contributors and automated tooling.
 > Every rule below is enforced by a machine-executable check (pre-commit hook, CI job, or clippy lint).
 > If a rule cannot be enforced automatically, it is marked **\[manual\]**.
+>
+> This document complements [`route.md`](route.md) (architecture & workflow) and
+> [`ARCHITECTURE_AND_USAGE.md`](robot_control_rust/ARCHITECTURE_AND_USAGE.md) (robot app internals).
 
 ---
 
