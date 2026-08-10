@@ -8,6 +8,10 @@ use tracing::{error, info, warn};
 
 use super::connection_provider::ConnectionProvider;
 
+/// Write timeout for TCP send operations (industrial: prevents UI freeze
+/// if the peer stops ACKing during a network partition).
+const TCP_WRITE_TIMEOUT: Duration = Duration::from_secs(3);
+
 pub struct TcpService {
     stream: Option<TcpStream>,
     listener: Option<TcpListener>,
@@ -58,6 +62,10 @@ impl TcpService {
             Ok(stream) => {
                 stream.set_nonblocking(true).ok();
                 stream.set_read_timeout(Some(Duration::from_millis(1))).ok();
+                // Industrial: write timeout prevents UI freeze on network partition.
+                stream.set_write_timeout(Some(TCP_WRITE_TIMEOUT)).ok();
+                // Industrial: disable Nagle for low-latency Modbus TCP / CANopen.
+                stream.set_nodelay(true).ok();
                 self.stream = Some(stream);
                 self.status = ConnectionStatus::Connected;
                 self.is_server = false;
@@ -99,6 +107,10 @@ impl TcpService {
             if let Ok((stream, addr)) = listener.accept() {
                 stream.set_nonblocking(true).ok();
                 stream.set_read_timeout(Some(Duration::from_millis(1))).ok();
+                // Industrial: write timeout prevents UI freeze on network partition.
+                stream.set_write_timeout(Some(TCP_WRITE_TIMEOUT)).ok();
+                // Industrial: disable Nagle for low-latency protocol responses.
+                stream.set_nodelay(true).ok();
                 let addr_str = addr.to_string();
                 // Close previous client connection if any (industrial: prevent
                 // stale stream leak when new client connects).
@@ -164,11 +176,38 @@ impl ConnectionProvider for TcpService {
 
     fn send_data(&mut self, data: &[u8]) -> Result<()> {
         if let Some(ref mut stream) = self.stream {
-            stream.write_all(data)?;
-            stream.flush()?;
-            self.bytes_sent += data.len() as u64;
-            self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
-            Ok(())
+            match stream.write_all(data) {
+                Ok(()) => {
+                    stream.flush().ok(); // best-effort after successful write_all
+                    self.bytes_sent += data.len() as u64;
+                    self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
+                    Ok(())
+                }
+                Err(e) => {
+                    // Industrial: BrokenPipe/ConnectionReset → mark Disconnected
+                    // so reconnect logic can trigger, rather than leaving stale
+                    // Connected status that prevents recovery.
+                    use std::io::ErrorKind;
+                    match e.kind() {
+                        ErrorKind::BrokenPipe
+                        | ErrorKind::ConnectionReset
+                        | ErrorKind::ConnectionAborted => {
+                            warn!("TCP send: peer gone ({}), marking disconnected", e);
+                            self.status = ConnectionStatus::Disconnected;
+                        }
+                        ErrorKind::TimedOut | ErrorKind::WouldBlock => {
+                            // Write timeout under non-blocking / SO_SNDTIMEO
+                            warn!("TCP send timeout: {}", e);
+                            self.status = ConnectionStatus::Error;
+                        }
+                        _ => {
+                            self.status = ConnectionStatus::Error;
+                        }
+                    }
+                    self.error_count += 1;
+                    Err(anyhow::anyhow!("TCP send failed: {}", e))
+                }
+            }
         } else {
             Err(anyhow::anyhow!("TCP not connected"))
         }

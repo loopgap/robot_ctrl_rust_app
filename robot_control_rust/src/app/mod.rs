@@ -1850,10 +1850,11 @@ impl AppState {
         const BACKOFF_CAP_MS: u64 = 60_000;
 
         if self.conn.reconnect_attempts >= MAX_RECONNECT_ATTEMPTS {
-            self.add_info_log(
-                "Auto-reconnect paused after {MAX_RECONNECT_ATTEMPTS} consecutive failures. \
+            self.add_info_log(&format!(
+                "Auto-reconnect paused after {} consecutive failures. \
                  Disarm and re-arm to retry.",
-            );
+                MAX_RECONNECT_ATTEMPTS,
+            ));
             self.clear_reconnect_schedule();
             self.status_message = "Reconnect exhausted. Toggle auto-reconnect to retry.".into();
             return;

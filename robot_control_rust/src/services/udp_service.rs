@@ -69,10 +69,18 @@ impl UdpService {
 
     pub fn send_to(&mut self, data: &[u8], addr: &str) -> Result<()> {
         if let Some(ref socket) = self.socket {
-            let n = socket.send_to(data, addr)?;
-            self.bytes_sent += n as u64;
-            self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
-            Ok(())
+            match socket.send_to(data, addr) {
+                Ok(n) => {
+                    self.bytes_sent += n as u64;
+                    self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
+                    Ok(())
+                }
+                Err(e) => {
+                    // Industrial: track UDP send errors (ICMP unreachable, etc.)
+                    self.error_count += 1;
+                    Err(anyhow::anyhow!("UDP send_to failed: {}", e))
+                }
+            }
         } else {
             Err(anyhow::anyhow!("UDP socket not bound"))
         }

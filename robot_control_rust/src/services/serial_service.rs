@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
 use super::connection_provider::ConnectionProvider;
@@ -160,7 +160,11 @@ impl SerialService {
         };
 
         let (tx_to_thread, rx_from_main) = mpsc::channel::<Vec<u8>>();
-        let (tx_to_main, rx_from_thread) = mpsc::channel::<Vec<u8>>();
+        // Bounded channel (64 slots) for worker→main data transfer.
+        // Prevents unbounded memory growth if the UI thread falls behind
+        // (industrial: protects against data burst under high baud rate).
+        const WORKER_TO_MAIN_BOUND: usize = 64;
+        let (tx_to_main, rx_from_thread) = mpsc::sync_channel::<Vec<u8>>(WORKER_TO_MAIN_BOUND);
 
         self.tx = Some(tx_to_thread);
         self.rx = Some(rx_from_thread);
@@ -187,7 +191,11 @@ impl SerialService {
                 // Read from serial port to send to main thread
                 match port.read(&mut buf) {
                     Ok(n) if n > 0 => {
-                        let _ = tx_to_main.send(buf[..n].to_vec());
+                        // try_send: drop data rather than block if main thread is slow.
+                        // Industrial: prevents worker thread stall under burst traffic.
+                        if tx_to_main.try_send(buf[..n].to_vec()).is_err() {
+                            // Channel full or disconnected — drop this chunk silently.
+                        }
                     }
                     Ok(_) => {}
                     Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}
@@ -211,9 +219,40 @@ impl SerialService {
     }
 
     pub fn disconnect(&mut self) {
+        let had_error = self.worker_errored.load(Ordering::Acquire);
         self.stop_flag.store(true, Ordering::Release);
         if let Some(handle) = self.worker_handle.take() {
-            let _ = handle.join();
+            // Bounded join: wait up to 2 seconds for the worker thread to exit.
+            // Industrial: prevents UI freeze if the serial port driver hangs
+            // (e.g., USB unplug during an in-flight read on some OS/driver combos).
+            //
+            // std::thread::JoinHandle has no join_timeout; we use a helper thread
+            // to implement a bounded wait.
+            let join_start = Instant::now();
+            let join_timeout = Duration::from_secs(2);
+            let (done_tx, done_rx) = mpsc::channel();
+            thread::spawn(move || {
+                let _ = handle.join();
+                let _ = done_tx.send(());
+            });
+            match done_rx.recv_timeout(join_timeout) {
+                Ok(()) => { /* thread exited cleanly */ }
+                Err(_) => {
+                    warn!(
+                        "Serial worker thread did not exit within {:?}; \
+                         detaching (port may be hung)",
+                        join_timeout
+                    );
+                }
+            }
+            let elapsed = join_start.elapsed();
+            if elapsed > Duration::from_millis(100) {
+                info!(
+                    "Serial worker join took {:.1}s (timeout={:?})",
+                    elapsed.as_secs_f32(),
+                    join_timeout
+                );
+            }
         }
         // Drain residual messages from the channel to prevent memory leak
         // if the worker accumulated data before shutdown.
@@ -221,7 +260,14 @@ impl SerialService {
             while rx.try_recv().is_ok() {}
         }
         self.tx = None;
-        self.status = ConnectionStatus::Disconnected;
+        // Distinguish I/O-failure disconnect from clean user-initiated disconnect.
+        // IEC 61784: HardwareFault represents device-level failures
+        // (USB unplug, cable break, serial port vanished).
+        self.status = if had_error {
+            ConnectionStatus::HardwareFault
+        } else {
+            ConnectionStatus::Disconnected
+        };
         self.rx_buffer.clear();
     }
 
@@ -302,6 +348,14 @@ impl SerialService {
     }
 
     pub fn try_read_raw(&mut self) -> Vec<u8> {
+        // Detect worker thread I/O failure early so callers see the right status.
+        if self.worker_errored.load(Ordering::Acquire)
+            && self.status != ConnectionStatus::HardwareFault
+        {
+            self.status = ConnectionStatus::HardwareFault;
+            self.error_count += 1;
+        }
+
         let mut all_data = Vec::new();
         if let Some(rx) = &self.rx {
             while let Ok(data) = rx.try_recv() {
@@ -318,6 +372,15 @@ impl SerialService {
     }
 
     pub fn send_data(&mut self, data: &[u8]) -> Result<()> {
+        // Fast-fail if the worker thread already exited due to I/O error.
+        // Prevents spurious SendError log spam after a device-level failure.
+        if self.worker_errored.load(Ordering::Acquire) {
+            self.status = ConnectionStatus::HardwareFault;
+            self.error_count += 1;
+            return Err(anyhow::anyhow!(
+                "Serial worker exited due to I/O error (device fault)"
+            ));
+        }
         if let Some(tx) = &self.tx {
             match tx.send(data.to_vec()) {
                 Ok(_) => {
@@ -326,6 +389,7 @@ impl SerialService {
                     Ok(())
                 }
                 Err(_) => {
+                    // Channel disconnected means the worker thread exited.
                     self.status = ConnectionStatus::Error;
                     self.error_count += 1;
                     Err(anyhow::anyhow!("Background thread disconnected"))
@@ -456,5 +520,42 @@ mod tests {
         assert_eq!(pkt[3], 0x02);
         assert_eq!(pkt[4], 0x03);
         assert_eq!(pkt[6], 0x55);
+    }
+
+    #[test]
+    fn test_send_data_fails_fast_when_worker_errored() {
+        let mut service = SerialService::default();
+        service.worker_errored.store(true, Ordering::Release);
+        // Even though tx is None, the worker_errored check should fire first.
+        let result = service.send_data(b"data");
+        assert!(result.is_err());
+        assert_eq!(service.status, ConnectionStatus::HardwareFault);
+    }
+
+    #[test]
+    fn test_try_read_raw_sets_hardware_fault_on_worker_error() {
+        let mut service = SerialService::default();
+        service.worker_errored.store(true, Ordering::Release);
+        service.status = ConnectionStatus::Connected; // pretend we were connected
+        let data = service.try_read_raw();
+        assert!(data.is_empty()); // no rx channel in default
+        assert_eq!(service.status, ConnectionStatus::HardwareFault);
+        assert_eq!(service.error_count, 1);
+    }
+
+    #[test]
+    fn test_disconnect_sets_hardware_fault_when_worker_errored() {
+        let mut service = SerialService::default();
+        service.worker_errored.store(true, Ordering::Release);
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::HardwareFault);
+    }
+
+    #[test]
+    fn test_disconnect_sets_disconnected_when_no_error() {
+        let mut service = SerialService::default();
+        // worker_errored is false by default
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
 }
