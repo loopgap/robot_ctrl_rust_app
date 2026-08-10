@@ -16,4 +16,4 @@
 ## Verification
 - [x] ./scripts/windows/task.ps1 preflight
 - [x] Local release artifact smoke checks completed
-- [ ] GitHub release workflow verifies uploaded artifacts and checksums
+- [x] GitHub release workflow verifies uploaded artifacts and checksums

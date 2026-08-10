@@ -13,6 +13,12 @@ ignore = [
   # untrusted XML reaches these code paths. Re-evaluate on egui upgrade.
   "RUSTSEC-2026-0194",
   "RUSTSEC-2026-0195",
+
+  # paste v1.0.15: unmaintained (accesskit_windows -> eframe 0.31, proc-macro only)
+  "RUSTSEC-2024-0436",
+
+  # ttf-parser v0.25.1: unmaintained (accesskit -> eframe 0.31)
+  "RUSTSEC-2026-0192",
 ]
 
 [licenses]

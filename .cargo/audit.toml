@@ -9,4 +9,12 @@ ignore = [
     # untrusted XML reaches these paths. Re-evaluate on egui upgrade.
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
+
+    # paste v1.0.15: unmaintained — transitive via accesskit_windows -> egui-winit
+    # -> eframe 0.31. proc-macro only, no runtime risk. Re-evaluate on egui upgrade.
+    "RUSTSEC-2024-0436",
+
+    # ttf-parser v0.25.1: unmaintained — transitive via accesskit -> eframe 0.31.
+    # Re-evaluate on egui upgrade.
+    "RUSTSEC-2026-0192",
 ]
