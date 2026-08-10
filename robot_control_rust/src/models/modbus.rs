@@ -227,8 +227,10 @@ impl ModbusFrame {
         }
 
         let byte_count = data[2] as usize;
-        if data.len() < 3 + byte_count + 2 {
-            return None; // 数据不完整
+        // Industrial safety: Modbus RTU max payload is 253 bytes (per spec).
+        // Reject obviously invalid byte_count to prevent excessive allocation.
+        if byte_count > 253 || data.len() < 3 + byte_count + 2 {
+            return None; // 数据不完整或非法
         }
         let response_data = data[3..3 + byte_count].to_vec();
 
