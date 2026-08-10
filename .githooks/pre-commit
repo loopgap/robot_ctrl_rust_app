@@ -1,5 +1,6 @@
 #!/bin/sh
 # rust_serial local workspace pre-commit hook.
+# Enforces: format, clippy, tests, advisory exceptions, workspace structure.
 
 set -eu
 
@@ -9,17 +10,56 @@ echo "  Rust workspace pre-commit check"
 echo "========================================"
 echo ""
 
-echo ">>> [1/3] cargo fmt --all -- --check"
+# ── 1. Formatting ──
+echo ">>> [1/6] cargo fmt --all -- --check"
 cargo fmt --all -- --check
 echo "  OK: formatting passed"
 
-echo ">>> [2/3] cargo clippy --workspace --all-targets -- -D warnings"
+# ── 2. Clippy (with workspace lints from Cargo.toml) ──
+echo ">>> [2/6] cargo clippy --workspace --all-targets -- -D warnings"
 cargo clippy --workspace --all-targets -- -D warnings
 echo "  OK: clippy passed"
 
-echo ">>> [3/3] cargo test --workspace"
+# ── 3. Tests ──
+echo ">>> [3/6] cargo test --workspace"
 cargo test --workspace
 echo "  OK: tests passed"
+
+# ── 4. Workspace governance guard ──
+if [ -f scripts/workspace-governance.json ]; then
+  echo ">>> [4/6] workspace structure guard"
+  if command -v go >/dev/null 2>&1 && [ -f scripts/go/rusktask/main.go ]; then
+    cd scripts/go/rusktask && go run . workspace-guard --mode audit --strict && cd ../..
+    echo "  OK: workspace structure validated"
+  else
+    echo "  SKIP: Go not available for workspace guard"
+  fi
+else
+  echo ">>> [4/6] SKIP: no workspace-governance.json"
+fi
+
+# ── 5. Advisory config consistency ──
+echo ">>> [5/6] advisory config sync check"
+if [ -f .cargo/audit.toml ] && [ -f deny.toml ]; then
+  audit_ignores=$(grep '"RUSTSEC-' .cargo/audit.toml | sort)
+  deny_ignores=$(grep '"RUSTSEC-' deny.toml | sort)
+  if [ "$audit_ignores" != "$deny_ignores" ]; then
+    echo "  ERROR: .cargo/audit.toml and deny.toml advisory ignore lists differ!"
+    echo "  audit.toml: $audit_ignores"
+    echo "  deny.toml:  $deny_ignores"
+    exit 1
+  fi
+  echo "  OK: advisory configs in sync"
+else
+  echo "  SKIP: missing audit config files"
+fi
+
+# ── 6. Feature matrix spot-check (fast: just check compilation) ──
+echo ">>> [6/6] feature matrix spot-check"
+cargo check -q -p robot_control_rust --no-default-features 2>/dev/null && \
+cargo check -q -p rust_tools_suite --no-default-features --features gui 2>/dev/null && \
+echo "  OK: feature matrix spot-check passed" || \
+echo "  WARN: feature matrix check failed (non-blocking)"
 
 echo ""
 echo "========================================"

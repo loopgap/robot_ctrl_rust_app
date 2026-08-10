@@ -901,7 +901,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             if ui.button(bi(lang, "Export JSON", "导出 JSON")).clicked() {
                 if let Ok(json) = serde_json::to_string_pretty(&state.protocol.canopen_pdo_configs)
                 {
-                    ui.ctx().copy_text(json.clone());
+                    ui.ctx().copy_text(json);
                     state.status_message = "PDO configs exported to clipboard".into();
                     state
                         .protocol

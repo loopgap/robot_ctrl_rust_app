@@ -69,3 +69,82 @@ incremental = false
 [workspace.metadata.release]
 TagPrefix = "v"
 TagSuffix = ""
+
+# ── Workspace lint policy ──────────────────────────────────────────
+# These lints are inherited by all workspace members via
+# [lints] workspace = true in each crate's Cargo.toml.
+# "warn" here means CI (-D warnings) will block the commit.
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Suppress noisy pedantic/nursery lints that conflict with existing patterns:
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# Noisy sub-lints (800+ hits in existing code, style preference not bugs):
+missing_const_for_fn = "allow"   # nursery: 481 hits, const fn rules still evolving
+float_cmp = "allow"              # f32/f64 strict comparison in UI/numeric code
+uninlined_format_args = "allow"  # format!("x={}", x) vs format!("x={x}")
+suboptimal_flops = "allow"       # mul_add readability in math-heavy code
+doc_markdown = "allow"           # false positives on technical terms (CAN, PID, etc.)
+cast_precision_loss = "allow"    # usize->f64 unavoidable in numeric code
+similar_names = "allow"          # false positives on domain variable names
+single_match = "allow"           # match on single variant is clearer for some cases
+single_match_else = "allow"      # same family as single_match
+inconsistent_digit_grouping = "allow"  # hex/decimal literals use different conventions
+struct_field_names = "allow"     # domain model field names (name, port_name, etc.)
+cast_possible_truncation = "allow"   # intentional narrowing casts in numeric code
+cast_lossless = "allow"          # i32->f64 From suggestions noisy in domain code
+cast_sign_loss = "allow"         # unsigned->signed casts in numeric code
+use_self = "allow"               # Self vs type name is style preference
+unreadable_literal = "allow"     # hex/decimal conventions differ
+needless_raw_string_hashes = "allow"  # raw string hash style preference
+trivially_copy_pass_by_ref = "allow"  # &Point vs Point in function signatures
+map_unwrap_or = "allow"          # .map().unwrap_or() vs .map_or() style
+# (struct_excessive_bools covered below)
+# Additional nursery noise (34 hits in existing code):
+match_same_arms = "allow"        # match arms with identical bodies (sometimes intentional)
+significant_drop_in_scrutinee = "allow"  # temporary Drop in match scrutinee
+manual_string_new = "allow"      # String::new() vs String::from("")
+redundant_closure_for_method_calls = "allow"  # .map(|x| x.method()) style
+needless_pass_by_value = "allow" # function arg passing style
+single_char_pattern = "allow"    # single-char string pattern style
+manual_let_else = "allow"        # match vs let...else style
+needless_borrowed_reference = "allow"
+# (semicolon_if_nothing_returned covered below)
+items_after_statements = "allow"
+large_stack_arrays = "allow"     # domain code allocates fixed buffers
+wildcard_imports = "allow"       # glob imports in module re-exports
+# (bool_to_int_with_if covered below)
+assigning_clones = "allow"
+get_first = "allow"
+bool_to_int_with_if = "allow"
+# Additional nursery/pedantic noise:
+too_many_lines = "allow"
+option_if_let_else = "allow"
+struct_excessive_bools = "allow"
+cast_possible_wrap = "allow"
+unused_self = "allow"
+semicolon_if_nothing_returned = "allow"
+ignored_unit_patterns = "allow"
+significant_drop_tightening = "allow"
+if_not_else = "allow"
+format_push_string = "allow"
+unnecessary_wraps = "allow"
+redundant_pub_crate = "allow"
+needless_pass_by_ref_mut = "allow"
+many_single_char_names = "allow"
+cloned_instead_of_copied = "allow"
+match_wildcard_for_single_variants = "allow"
+imprecise_flops = "allow"
+format_collect = "allow"
+branches_sharing_code = "allow"
+explicit_iter_loop = "allow"
+implicit_clone = "allow"
+or_fun_call = "allow"
+unnested_or_patterns = "allow"
+# Quality lints — kept as warnings:
+unused_async = "warn"
+redundant_clone = "warn"
+manual_is_multiple_of = "warn"

@@ -62,3 +62,6 @@ schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
 mockall = "0.14.0"
+
+[lints]
+workspace = true

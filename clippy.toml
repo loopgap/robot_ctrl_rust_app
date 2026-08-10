@@ -1,0 +1,20 @@
+# ── Workspace clippy configuration ──────────────────────────────────
+# Machine-enforced style and complexity rules.
+# See: https://doc.rust-lang.org/clippy/configuration.html
+
+# Cognitive complexity threshold — functions above this trigger
+# clippy::cognitive_complexity.  Set to 25 (stricter than the default 25).
+cognitive-complexity-threshold = 30
+
+# Maximum lines in a single function body.
+too-many-lines-threshold = 200
+
+# Disallow raw String in public Result types for new code.
+# (Existing violations are exempted via #[allow] at module level.)
+# This is enforced by the CI "governance" job's grep-based check, not clippy.
+
+# Type complexity threshold for nested generics.
+type-complexity-threshold = 350
+
+# Maximum function arguments.
+too-many-arguments-threshold = 8

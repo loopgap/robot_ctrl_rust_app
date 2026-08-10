@@ -25,7 +25,11 @@
       "scripts",
       ".cargo-advisory-db",
       ".vscode",
-      ".idea"
+      ".idea",
+      "CONTRIBUTING.md",
+      "clippy.toml",
+      "rustfmt.toml",
+      ".clippy.toml"
     ],
     "allowedRootRegex": [
       "^.+\\.code-workspace$"

@@ -92,3 +92,4 @@ coverage/
 
 # Profiling data
 *.profraw
+scripts/go/rusktask/*.exe

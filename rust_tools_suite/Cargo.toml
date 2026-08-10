@@ -45,3 +45,6 @@ colored = { version = "3", optional = true }
 # ── JWT (feature-gated, heavy) ──
 jsonwebtoken = { version = "10", features = ["aws_lc_rs"], optional = true }
 aws-lc-rs = { version = "1", features = ["prebuilt-nasm"], optional = true }
+
+[lints]
+workspace = true
