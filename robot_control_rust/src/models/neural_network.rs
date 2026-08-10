@@ -125,8 +125,10 @@ impl NeuralNetwork {
 
         self.training_epochs += 1;
         self.loss_history.push(loss);
-        if self.loss_history.len() > 1000 {
-            self.loss_history.drain(..self.loss_history.len() - 1000);
+        const MAX_LOSS_HISTORY: usize = 1000;
+        if self.loss_history.len() > MAX_LOSS_HISTORY {
+            self.loss_history
+                .drain(..self.loss_history.len() - MAX_LOSS_HISTORY);
         }
 
         loss
