@@ -41,15 +41,14 @@ fi
 # ── 5. Advisory config consistency ──
 echo ">>> [5/6] advisory config sync check"
 if [ -f .cargo/audit.toml ] && [ -f deny.toml ]; then
-  audit_ignores=$(grep '"RUSTSEC-' .cargo/audit.toml | sort)
-  deny_ignores=$(grep '"RUSTSEC-' deny.toml | sort)
+  audit_ignores=$(grep '"RUSTSEC-' .cargo/audit.toml | tr -d ' ' | sort)
+  deny_ignores=$(grep '"RUSTSEC-' deny.toml | tr -d ' ' | sort)
   if [ "$audit_ignores" != "$deny_ignores" ]; then
     echo "  ERROR: .cargo/audit.toml and deny.toml advisory ignore lists differ!"
-    echo "  audit.toml: $audit_ignores"
-    echo "  deny.toml:  $deny_ignores"
+    diff <(echo "$audit_ignores") <(echo "$deny_ignores") || true
     exit 1
   fi
-  echo "  OK: advisory configs in sync"
+  echo "  OK: advisory configs in sync ($(echo "$audit_ignores" | wc -l) entries)"
 else
   echo "  SKIP: missing audit config files"
 fi
