@@ -161,7 +161,7 @@ impl LogEntry {
 // ──────────────────────────────────────────────────────────────────────
 
 pub struct UiState {
-    // PID 鏂囨湰妗?
+    // PID 文本框
     pub kp_text: String,
     pub ki_text: String,
     pub kd_text: String,
@@ -171,7 +171,7 @@ pub struct UiState {
     pub preset_name: String,
     pub preset_desc: String,
 
-    // 缁堢
+    // 终端
     pub send_text: String,
     pub send_hex: bool,
     pub auto_scroll: bool,
