@@ -3375,7 +3375,7 @@ dependencies = [
 
 [[package]]
 name = "robot_control_rust"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3397,7 +3397,7 @@ dependencies = [
 
 [[package]]
 name = "rust_tools_suite"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "aws-lc-rs",
  "base64",
