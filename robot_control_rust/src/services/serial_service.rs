@@ -34,6 +34,9 @@ pub struct SerialService {
     pub error_count: u64,
     pub last_comm: String,
     rx_buffer: Vec<u8>,
+    /// Read cursor into rx_buffer — bytes before this index have been consumed.
+    /// Avoids O(n) drain() on every parse attempt.
+    rx_read_pos: usize,
 
     // Communication with the background thread
     tx: Option<mpsc::Sender<Vec<u8>>>,
@@ -61,6 +64,7 @@ impl SerialService {
             error_count: 0,
             last_comm: "N/A".into(),
             rx_buffer: Vec::with_capacity(4096),
+            rx_read_pos: 0,
             tx: None,
             rx: None,
             stop_flag: Arc::new(AtomicBool::new(false)),
@@ -176,7 +180,7 @@ impl SerialService {
         let port_name = self.config.port_name.clone();
 
         let handle = thread::spawn(move || {
-            let mut buf = [0u8; 1024];
+            let mut buf = [0u8; 8192];
             'worker: while !stop_flag.load(Ordering::Acquire) {
                 // Drain ALL pending write requests from the main thread
                 while let Ok(data) = rx_from_main.try_recv() {
@@ -269,19 +273,43 @@ impl SerialService {
             ConnectionStatus::Disconnected
         };
         self.rx_buffer.clear();
+        self.rx_read_pos = 0;
     }
 
     pub fn push_rx_data(&mut self, data: &[u8]) {
         if data.is_empty() {
             return;
         }
-        // Guard against unbounded growth: if buffer would exceed max,
-        // discard oldest bytes first (preserving partial packet search).
-        if self.rx_buffer.len() + data.len() > RX_BUFFER_MAX {
-            let excess = self.rx_buffer.len() + data.len() - RX_BUFFER_MAX;
-            self.rx_buffer.drain(..excess.min(self.rx_buffer.len()));
+        // Compact: if the read cursor has consumed more than half the max,
+        // copy the unread remainder to the front to reclaim space without
+        // reallocating.
+        if self.rx_read_pos > RX_BUFFER_MAX / 2 {
+            self.compact_rx_buffer();
+        }
+        // Guard against unbounded growth: if appending would exceed max,
+        // discard oldest unread bytes first.
+        let unread = self.rx_buffer.len() - self.rx_read_pos;
+        if unread + data.len() > RX_BUFFER_MAX {
+            let excess = unread + data.len() - RX_BUFFER_MAX;
+            self.rx_read_pos += excess.min(unread);
         }
         self.rx_buffer.extend_from_slice(data);
+    }
+
+    /// Compact rx_buffer by moving unread bytes to the front.
+    /// Resets rx_read_pos to 0.
+    fn compact_rx_buffer(&mut self) {
+        if self.rx_read_pos == 0 {
+            return;
+        }
+        let unread = self.rx_buffer.len() - self.rx_read_pos;
+        if unread == 0 {
+            self.rx_buffer.clear();
+        } else {
+            self.rx_buffer.copy_within(self.rx_read_pos.., 0);
+            self.rx_buffer.truncate(unread);
+        }
+        self.rx_read_pos = 0;
     }
 
     pub fn try_parse_state_from_buffer(&mut self) -> Option<RobotState> {
@@ -289,45 +317,48 @@ impl SerialService {
     }
 
     pub fn try_read_state(&mut self) -> Option<RobotState> {
-        let data = self.try_read_raw();
-        if data.is_empty() {
+        // Hot path: drain channel directly into rx_buffer, avoiding intermediate Vec.
+        let n = self.drain_rx_to_buffer();
+        if n == 0 && self.rx_read_pos >= self.rx_buffer.len() {
             return None;
         }
-        self.push_rx_data(&data);
         self.try_parse_packet()
     }
 
     fn try_parse_packet(&mut self) -> Option<RobotState> {
-        let header_pos = self.rx_buffer.iter().position(|&b| b == PACKET_HEADER)?;
-        if header_pos > 0 {
-            self.rx_buffer.drain(..header_pos);
-        }
-        if self.rx_buffer.len() < 5 {
+        // Find PACKET_HEADER starting from rx_read_pos
+        let header_pos = self.rx_buffer[self.rx_read_pos..]
+            .iter()
+            .position(|&b| b == PACKET_HEADER)?;
+        self.rx_read_pos += header_pos;
+
+        let unread = self.rx_buffer.len() - self.rx_read_pos;
+        if unread < 5 {
             return None;
         }
 
-        let length = self.rx_buffer[2] as usize;
+        let length = self.rx_buffer[self.rx_read_pos + 2] as usize;
         // Reject impossibly large payloads early to avoid holding garbage data.
         if length > PACKET_PAYLOAD_MAX {
-            self.rx_buffer.drain(..1);
+            self.rx_read_pos += 1;
             return None;
         }
         let total = 3 + length + 2;
-        if self.rx_buffer.len() < total {
+        if unread < total {
             return None;
         }
-        if self.rx_buffer[total - 1] != PACKET_TAIL {
-            self.rx_buffer.drain(..1);
+        if self.rx_buffer[self.rx_read_pos + total - 1] != PACKET_TAIL {
+            self.rx_read_pos += 1;
             return None;
         }
 
-        let payload = &self.rx_buffer[3..3 + length];
-        let checksum = self.rx_buffer[total - 2];
-        let calc: u8 = self.rx_buffer[1..3 + length]
+        let payload = &self.rx_buffer[self.rx_read_pos + 3..self.rx_read_pos + 3 + length];
+        let checksum = self.rx_buffer[self.rx_read_pos + total - 2];
+        let calc: u8 = self.rx_buffer[self.rx_read_pos + 1..self.rx_read_pos + 3 + length]
             .iter()
             .fold(0u8, |a, &b| a.wrapping_add(b));
         if checksum != calc {
-            self.rx_buffer.drain(..1);
+            self.rx_read_pos += 1;
             self.error_count += 1;
             return None;
         }
@@ -343,8 +374,39 @@ impl SerialService {
             None
         };
 
-        self.rx_buffer.drain(..total);
+        self.rx_read_pos += total;
         state
+    }
+
+    /// Drain all pending data from the worker→main channel directly into `rx_buffer`,
+    /// avoiding an intermediate Vec allocation on the hot path.
+    fn drain_rx_to_buffer(&mut self) -> usize {
+        if self.worker_errored.load(Ordering::Acquire)
+            && self.status != ConnectionStatus::HardwareFault
+        {
+            self.status = ConnectionStatus::HardwareFault;
+            self.error_count += 1;
+        }
+
+        // Temporarily take rx out of self so we can call push_rx_data (&mut self)
+        // while iterating the channel.
+        let rx = match self.rx.take() {
+            Some(rx) => rx,
+            None => return 0,
+        };
+
+        let mut total = 0usize;
+        while let Ok(data) = rx.try_recv() {
+            total += data.len();
+            self.push_rx_data(&data);
+        }
+        self.rx = Some(rx);
+
+        if total > 0 {
+            self.bytes_received += total as u64;
+            self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
+        }
+        total
     }
 
     pub fn try_read_raw(&mut self) -> Vec<u8> {

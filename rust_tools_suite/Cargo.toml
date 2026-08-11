@@ -1,9 +1,9 @@
 [package]
 name = "rust_tools_suite"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 description = "Rust Tools Suite — Developer utilities with desktop GUI & CLI modes"
-license = "GPL-3.0-only"
+license.workspace = true
 rust-version.workspace = true
 
 [features]
@@ -22,29 +22,29 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
-regex = "1"
-crc32fast = "1"
-sha2 = "0.10"
-hmac = "0.12"
-urlencoding = "2"
-base64 = "0.22"
-uuid = { version = "1", features = ["v4"] }
+regex = { workspace = true }
+crc32fast = { workspace = true }
+sha2 = { workspace = true }
+hmac = { workspace = true }
+urlencoding = { workspace = true }
+base64 = { workspace = true }
+uuid = { workspace = true }
 
 # ── GUI (feature-gated) ──
 eframe = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }
-rfd = { version = "0.17", optional = true }
+rfd = { workspace = true, optional = true }
 serialport = { workspace = true, optional = true }
 
 # ── CLI (feature-gated) ──
-clap = { version = "4.5", features = ["derive"], optional = true }
-inquire = { version = "0.9", optional = true }
-indicatif = { version = "0.18", optional = true }
-colored = { version = "3", optional = true }
+clap = { workspace = true, optional = true }
+inquire = { workspace = true, optional = true }
+indicatif = { workspace = true, optional = true }
+colored = { workspace = true, optional = true }
 
 # ── JWT (feature-gated, heavy) ──
-jsonwebtoken = { version = "10", features = ["aws_lc_rs"], optional = true }
-aws-lc-rs = { version = "1", features = ["prebuilt-nasm"], optional = true }
+jsonwebtoken = { workspace = true, optional = true }
+aws-lc-rs = { workspace = true, optional = true }
 
 [lints]
 workspace = true

@@ -47,7 +47,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(10.0);
 
     match state.ui.packet_builder_tab {
-        0 => show_builder(ui, state),
+        0 => show_builder(ui, state, &theme),
         _ => show_parser(ui, state, &theme),
     }
 }
@@ -56,7 +56,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 // Builder 标签页
 // ═══════════════════════════════════════════════════════════════
 
-fn show_builder(ui: &mut Ui, state: &mut AppState) {
+fn show_builder(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::AppTheme) {
     let lang = state.lang();
 
     // ─── 模板选择 ────────────────────────────────────────
@@ -186,7 +186,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                 let fields_len = state.protocol.packet_templates[idx].fields.len();
                 for fi in 0..fields_len {
                     egui::Frame::new()
-                        .fill(Color32::from_rgba_premultiplied(40, 40, 55, 200))
+                        .fill(theme.bg_card)
                         .corner_radius(6.0)
                         .inner_margin(10.0)
                         .outer_margin(egui::Margin::symmetric(0, 3))
@@ -274,7 +274,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
             RichText::new(&hex_str)
                 .size(14.0)
                 .monospace()
-                .color(Color32::from_rgb(0, 255, 160)),
+                .color(theme.accent_green),
         );
         ui.add_space(4.0);
         ui.label(
@@ -298,7 +298,7 @@ fn show_builder(ui: &mut Ui, state: &mut AppState) {
                 let data = state.protocol.packet_templates[state.ui.packet_template_idx].build();
                 match state.send_data(&data) {
                     Ok(()) => state.status_message = Tr::sent_bytes(data.len(), lang),
-                    Err(e) => state.status_message = Tr::send_error(&e, lang),
+                    Err(e) => state.status_message = Tr::send_error(&e.to_string(), lang),
                 }
             }
 
@@ -354,7 +354,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
         ui.add_space(4.0);
 
         egui::Frame::new()
-            .fill(Color32::from_rgb(22, 28, 38))
+            .fill(theme.bg_dark)
             .corner_radius(6.0)
             .inner_margin(10.0)
             .show(ui, |ui| {
@@ -440,9 +440,9 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
 
                 egui::CollapsingHeader::new(RichText::new(&header_text).size(13.0).color(
                     if pkt.checksum_ok {
-                        Color32::from_rgb(120, 220, 120)
+                        theme.data_positive
                     } else {
-                        Color32::from_rgb(220, 100, 100)
+                        theme.data_negative
                     },
                 ))
                 .id_salt(format!("parsed_pkt_{}", pi))
@@ -461,7 +461,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
                             RichText::new(&raw_hex)
                                 .size(11.0)
                                 .monospace()
-                                .color(Color32::from_rgb(0, 200, 160)),
+                                .color(theme.accent_cyan),
                         );
                     });
                     ui.add_space(4.0);
@@ -478,31 +478,31 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
                                     RichText::new(Tr::name(lang))
                                         .size(11.5)
                                         .strong()
-                                        .color(Color32::from_rgb(180, 180, 255)),
+                                        .color(theme.data_label),
                                 );
                                 ui.label(
                                     RichText::new(Tr::field_type_label(lang))
                                         .size(11.5)
                                         .strong()
-                                        .color(Color32::from_rgb(180, 180, 255)),
+                                        .color(theme.data_label),
                                 );
                                 ui.label(
                                     RichText::new(Tr::field_value_label(lang))
                                         .size(11.5)
                                         .strong()
-                                        .color(Color32::from_rgb(180, 180, 255)),
+                                        .color(theme.data_label),
                                 );
                                 ui.label(
                                     RichText::new(Tr::field_numeric(lang))
                                         .size(11.5)
                                         .strong()
-                                        .color(Color32::from_rgb(180, 180, 255)),
+                                        .color(theme.data_label),
                                 );
                                 ui.label(
                                     RichText::new("HEX")
                                         .size(11.5)
                                         .strong()
-                                        .color(Color32::from_rgb(180, 180, 255)),
+                                        .color(theme.data_label),
                                 );
                                 ui.end_row();
 
@@ -511,7 +511,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
                                     ui.label(
                                         RichText::new(format!("{}", field.field_type))
                                             .size(12.0)
-                                            .color(Color32::from_rgb(150, 180, 220)),
+                                            .color(theme.text_secondary),
                                     );
                                     ui.label(
                                         RichText::new(&field.value_str).size(12.0).monospace(),
@@ -525,7 +525,7 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
                                         )
                                         .size(12.0)
                                         .monospace()
-                                        .color(Color32::from_rgb(255, 200, 100)),
+                                        .color(theme.data_value),
                                     );
                                     let field_hex: String = field
                                         .raw_bytes

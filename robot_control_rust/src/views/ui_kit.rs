@@ -1,34 +1,293 @@
-use egui::{self, Color32, RichText, Ui};
+use egui::{self, Color32, FontFamily, FontId, RichText, TextStyle, Ui};
 
-/// Centralized color theme for consistent UI/UX across all views.
+// ═══════════════════════════════════════════════════════════
+// Design Token System
+// ═══════════════════════════════════════════════════════════
+
+/// Spacing tokens based on 4px/8px grid system.
+/// Provides 9 levels of consistent spacing across the UI.
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub struct SpacingTokens {
+    /// 4px — tight inline spacing, icon gaps
+    pub xs: f32,
+    /// 8px — base unit, small gaps
+    pub sm: f32,
+    /// 12px — medium gaps, card internal padding
+    pub md: f32,
+    /// 16px — standard item spacing, section gaps
+    pub lg: f32,
+    /// 20px — comfortable gaps
+    pub xl: f32,
+    /// 24px — heading margins, card outer spacing
+    pub xxl: f32,
+    /// 32px — section dividers
+    pub xxxl: f32,
+    /// 40px — page section spacing
+    pub xxxxl: f32,
+    /// 48px — major section breaks
+    pub xxxxxl: f32,
+}
+
+impl SpacingTokens {
+    /// Default spacing for standard density.
+    pub fn standard() -> Self {
+        Self {
+            xs: 4.0,
+            sm: 8.0,
+            md: 12.0,
+            lg: 16.0,
+            xl: 20.0,
+            xxl: 24.0,
+            xxxl: 32.0,
+            xxxxl: 40.0,
+            xxxxxl: 48.0,
+        }
+    }
+
+    /// Compact spacing for dense layouts (small screens).
+    pub fn compact() -> Self {
+        Self {
+            xs: 2.0,
+            sm: 4.0,
+            md: 8.0,
+            lg: 12.0,
+            xl: 16.0,
+            xxl: 20.0,
+            xxxl: 24.0,
+            xxxxl: 32.0,
+            xxxxxl: 40.0,
+        }
+    }
+
+    /// Relaxed spacing for wide layouts.
+    pub fn relaxed() -> Self {
+        Self {
+            xs: 6.0,
+            sm: 10.0,
+            md: 16.0,
+            lg: 20.0,
+            xl: 28.0,
+            xxl: 32.0,
+            xxxl: 40.0,
+            xxxxl: 52.0,
+            xxxxxl: 64.0,
+        }
+    }
+}
+
+/// Responsive breakpoints for adaptive layout decisions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum ResponsiveBreakpoint {
+    /// < 640px — compact panels, stacked layout
+    Compact,
+    /// 640–1024px — standard desktop, side-by-side where possible
+    Medium,
+    /// > 1024px — wide layout, full feature display
+    Wide,
+}
+
+impl ResponsiveBreakpoint {
+    /// Determine breakpoint from available width.
+    pub fn from_width(width: f32) -> Self {
+        if width < 640.0 {
+            Self::Compact
+        } else if width < 1024.0 {
+            Self::Medium
+        } else {
+            Self::Wide
+        }
+    }
+
+    /// Get the matching spacing tokens for this breakpoint.
+    pub fn spacing(self) -> SpacingTokens {
+        match self {
+            Self::Compact => SpacingTokens::compact(),
+            Self::Medium => SpacingTokens::standard(),
+            Self::Wide => SpacingTokens::relaxed(),
+        }
+    }
+
+    /// Get the recommended interact size for this breakpoint.
+    pub fn interact_size_y(self) -> f32 {
+        match self {
+            Self::Compact => 32.0,
+            Self::Medium => 36.0,
+            Self::Wide => 38.0,
+        }
+    }
+
+    /// Whether to use a two-column layout for settings cards.
+    #[allow(dead_code)]
+    pub fn use_two_column(self) -> bool {
+        matches!(self, Self::Wide)
+    }
+}
+
+/// Animation duration tokens (in seconds).
+/// Provides 5 levels of timing for consistent animation feel.
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub struct DurationTokens {
+    /// 100ms — instant micro-interactions (opacity, subtle shifts)
+    pub instant: f32,
+    /// 150ms — fast transitions (button states, toggles)
+    pub fast: f32,
+    /// 200ms — normal transitions (hover effects, color changes)
+    pub normal: f32,
+    /// 300ms — slow transitions (panels, modals entering)
+    pub slow: f32,
+    /// 500ms — emphasis transitions (page-level, loading states)
+    pub slower: f32,
+}
+
+impl DurationTokens {
+    pub fn standard() -> Self {
+        Self {
+            instant: 0.10,
+            fast: 0.15,
+            normal: 0.20,
+            slow: 0.30,
+            slower: 0.50,
+        }
+    }
+}
+
+/// Unified easing curves for the design system.
+#[allow(dead_code)]
+pub struct EasingTokens;
+
+impl EasingTokens {
+    /// Standard ease-out for most UI transitions.
+    pub fn standard() -> crate::app::animation::Easing {
+        crate::app::animation::Easing::EaseOutCubic
+    }
+
+    /// Emphasized ease-out for entrances and expansions.
+    #[allow(dead_code)]
+    pub fn emphasized() -> crate::app::animation::Easing {
+        crate::app::animation::Easing::Bezier(0.05, 0.7, 0.1, 1.0)
+    }
+
+    /// Smooth ease-in-out for continuous animations.
+    #[allow(dead_code)]
+    pub fn smooth() -> crate::app::animation::Easing {
+        crate::app::animation::Easing::EaseInOutCubic
+    }
+}
+
+/// Font tokens — unified typography scale across all views.
+///
+/// All sizes are logical pixels at 100% scale. The `apply_to_style` method
+/// installs them as egui `TextStyle` entries so built-in widgets pick them up.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct FontTokens {
+    /// Large display / page titles (dashboard hero).
+    pub display: FontId,
+    /// Section headings inside cards.
+    pub heading: FontId,
+    /// Sub-section titles (collapsible headers, card titles).
+    pub subheading: FontId,
+    /// Default body / paragraph text.
+    pub body: FontId,
+    /// Button labels and interactive controls.
+    pub button: FontId,
+    /// Small helper text, captions, timestamps.
+    pub caption: FontId,
+    /// Inline code, hex dumps, register tables.
+    pub mono: FontId,
+    /// Extra-large values (data-viz hero numbers).
+    pub hero_value: FontId,
+}
+
+#[allow(dead_code)]
+impl FontTokens {
+    /// Default token set — tuned for a 15 px body baseline.
+    pub fn default_tokens() -> Self {
+        Self {
+            display: FontId::new(26.0, FontFamily::Proportional),
+            heading: FontId::new(22.0, FontFamily::Proportional),
+            subheading: FontId::new(16.0, FontFamily::Proportional),
+            body: FontId::new(15.0, FontFamily::Proportional),
+            button: FontId::new(14.5, FontFamily::Proportional),
+            caption: FontId::new(12.0, FontFamily::Proportional),
+            mono: FontId::new(13.5, FontFamily::Monospace),
+            hero_value: FontId::new(28.0, FontFamily::Proportional),
+        }
+    }
+
+    /// Apply font tokens as egui `TextStyle` entries.
+    pub fn apply_to_style(&self, style: &mut egui::Style) {
+        style
+            .text_styles
+            .insert(TextStyle::Small, self.caption.clone());
+        style.text_styles.insert(TextStyle::Body, self.body.clone());
+        style
+            .text_styles
+            .insert(TextStyle::Button, self.button.clone());
+        style
+            .text_styles
+            .insert(TextStyle::Monospace, self.mono.clone());
+        style
+            .text_styles
+            .insert(TextStyle::Heading, self.heading.clone());
+    }
+}
+
+/// Semantic color tokens for consistent UI/UX across all views.
+///
+/// 33 tokens organized by role: backgrounds, text hierarchy, status,
+/// accents, borders, direction, and semantic data colors.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct AppTheme {
+    // ── Backgrounds ──────────────────────────────────────
     pub bg_dark: Color32,
     pub bg_medium: Color32,
     pub bg_card: Color32,
     pub bg_input: Color32,
+    // ── Text hierarchy ───────────────────────────────────
     pub text_primary: Color32,
     pub text_secondary: Color32,
     pub text_muted: Color32,
     pub text_label: Color32,
+    // ── Status ───────────────────────────────────────────
     pub status_ok: Color32,
     pub status_error: Color32,
     pub status_warn: Color32,
     pub status_info: Color32,
+    // ── Accents ──────────────────────────────────────────
     pub accent_blue: Color32,
     pub accent_green: Color32,
     pub accent_purple: Color32,
     pub accent_orange: Color32,
+    pub accent_cyan: Color32,
+    pub accent_gold: Color32,
+    // ── Borders ──────────────────────────────────────────
     pub border: Color32,
     pub border_active: Color32,
+    // ── Direction (TX/RX/Info) ───────────────────────────
     pub tx_color: Color32,
     pub rx_color: Color32,
     pub info_color: Color32,
+    // ── Connection status ────────────────────────────────
     pub connected_color: Color32,
     pub disconnected_color: Color32,
+    // ── Semantic data colors ─────────────────────────────
+    /// Labels for structured data fields (table headers, type annotations)
+    pub data_label: Color32,
+    /// Numeric or value display for structured data
+    pub data_value: Color32,
+    /// Positive delta, pass, OK state
+    pub data_positive: Color32,
+    /// Negative delta, fail, error state
+    pub data_negative: Color32,
 }
+
 impl AppTheme {
+    /// Dark theme — deep navy palette, WCAG AA compliant text.
     pub fn dark() -> Self {
         Self {
             bg_dark: Color32::from_rgb(22, 28, 38),
@@ -37,7 +296,7 @@ impl AppTheme {
             bg_input: Color32::from_rgb(25, 50, 80),
             text_primary: Color32::from_rgb(220, 220, 230),
             text_secondary: Color32::from_rgb(200, 210, 220),
-            text_muted: Color32::from_rgb(140, 150, 160),
+            text_muted: Color32::from_rgb(152, 162, 172),
             text_label: Color32::from_rgb(170, 180, 200),
             status_ok: Color32::from_rgb(46, 160, 67),
             status_error: Color32::from_rgb(255, 100, 100),
@@ -47,6 +306,8 @@ impl AppTheme {
             accent_green: Color32::from_rgb(0, 255, 160),
             accent_purple: Color32::from_rgb(200, 150, 255),
             accent_orange: Color32::from_rgb(255, 165, 0),
+            accent_cyan: Color32::from_rgb(0, 200, 180),
+            accent_gold: Color32::from_rgb(255, 200, 100),
             border: Color32::from_rgb(50, 60, 75),
             border_active: Color32::from_rgb(88, 166, 255),
             tx_color: Color32::from_rgb(120, 200, 255),
@@ -54,8 +315,14 @@ impl AppTheme {
             info_color: Color32::from_rgb(220, 220, 140),
             connected_color: Color32::from_rgb(46, 160, 67),
             disconnected_color: Color32::from_rgb(128, 128, 128),
+            data_label: Color32::from_rgb(180, 180, 255),
+            data_value: Color32::from_rgb(255, 200, 100),
+            data_positive: Color32::from_rgb(120, 220, 120),
+            data_negative: Color32::from_rgb(220, 100, 100),
         }
     }
+
+    /// Light theme — soft warm palette, WCAG AA compliant text.
     pub fn light() -> Self {
         Self {
             bg_dark: Color32::from_rgb(240, 240, 245),
@@ -64,7 +331,7 @@ impl AppTheme {
             bg_input: Color32::from_rgb(245, 248, 255),
             text_primary: Color32::from_rgb(30, 30, 40),
             text_secondary: Color32::from_rgb(60, 60, 70),
-            text_muted: Color32::from_rgb(120, 120, 130),
+            text_muted: Color32::from_rgb(96, 96, 106),
             text_label: Color32::from_rgb(80, 80, 90),
             status_ok: Color32::from_rgb(40, 160, 60),
             status_error: Color32::from_rgb(220, 60, 60),
@@ -74,6 +341,8 @@ impl AppTheme {
             accent_green: Color32::from_rgb(0, 180, 120),
             accent_purple: Color32::from_rgb(150, 100, 220),
             accent_orange: Color32::from_rgb(220, 130, 0),
+            accent_cyan: Color32::from_rgb(0, 150, 136),
+            accent_gold: Color32::from_rgb(180, 130, 0),
             border: Color32::from_rgb(200, 200, 210),
             border_active: Color32::from_rgb(50, 120, 220),
             tx_color: Color32::from_rgb(50, 120, 200),
@@ -81,8 +350,65 @@ impl AppTheme {
             info_color: Color32::from_rgb(180, 160, 50),
             connected_color: Color32::from_rgb(40, 160, 60),
             disconnected_color: Color32::from_rgb(160, 160, 160),
+            data_label: Color32::from_rgb(100, 100, 180),
+            data_value: Color32::from_rgb(180, 120, 0),
+            data_positive: Color32::from_rgb(30, 140, 50),
+            data_negative: Color32::from_rgb(200, 50, 50),
         }
     }
+
+    /// High-contrast variant of the current theme.
+    ///
+    /// Boosts text to near-white/near-black and strengthens borders
+    /// for WCAG AAA-level readability.
+    #[allow(dead_code)]
+    pub fn high_contrast(&self) -> Self {
+        let is_dark = luminance(self.bg_dark) < 0.5;
+        let mut t = self.clone();
+        if is_dark {
+            t.text_primary = Color32::from_rgb(255, 255, 255);
+            t.text_secondary = Color32::from_rgb(230, 235, 240);
+            t.text_muted = Color32::from_rgb(190, 200, 210);
+            t.text_label = Color32::from_rgb(210, 220, 235);
+            t.border = Color32::from_rgb(80, 95, 115);
+            t.status_info = Color32::from_rgb(130, 220, 255);
+            t.accent_blue = Color32::from_rgb(110, 185, 255);
+            t.data_label = Color32::from_rgb(200, 200, 255);
+        } else {
+            t.text_primary = Color32::from_rgb(0, 0, 0);
+            t.text_secondary = Color32::from_rgb(30, 30, 40);
+            t.text_muted = Color32::from_rgb(60, 60, 70);
+            t.text_label = Color32::from_rgb(40, 40, 50);
+            t.border = Color32::from_rgb(160, 160, 170);
+            t.status_info = Color32::from_rgb(30, 100, 190);
+            t.accent_blue = Color32::from_rgb(30, 90, 190);
+            t.data_label = Color32::from_rgb(70, 70, 150);
+        }
+        t
+    }
+}
+
+/// Relative luminance (0.0–1.0) per WCAG definition.
+fn luminance(c: Color32) -> f32 {
+    fn lin(v: u8) -> f32 {
+        let s = v as f32 / 255.0;
+        if s <= 0.04045 {
+            s / 12.92
+        } else {
+            ((s + 0.055) / 1.055).powf(2.4)
+        }
+    }
+    0.2126 * lin(c.r()) + 0.7152 * lin(c.g()) + 0.0722 * lin(c.b())
+}
+
+/// WCAG contrast ratio between two colors (1.0–21.0).
+#[allow(dead_code)]
+pub fn contrast_ratio(c1: Color32, c2: Color32) -> f32 {
+    let l1 = luminance(c1);
+    let l2 = luminance(c2);
+    let lighter = l1.max(l2);
+    let darker = l1.min(l2);
+    (lighter + 0.05) / (darker + 0.05)
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -104,17 +430,19 @@ pub fn status_badge(
     } else {
         theme.status_error
     };
+    let durations = DurationTokens::standard();
     let color = anim.animate_color(
         format!("badge_{}", key),
         target_color,
         target_color,
-        0.3,
-        crate::app::animation::Easing::EaseOutCubic,
+        durations.normal,
+        EasingTokens::standard(),
         current_time,
     );
+    let tokens = FontTokens::default_tokens();
     ui.horizontal(|ui| {
         ui.colored_label(color, "●");
-        ui.label(RichText::new(text).size(13.0));
+        ui.label(RichText::new(text).size(tokens.caption.size));
     });
 }
 
@@ -133,12 +461,13 @@ pub fn status_dot(
     } else {
         theme.disconnected_color
     };
+    let durations = DurationTokens::standard();
     let color = anim.animate_color(
         format!("dot_{}", key),
         target_color,
         target_color,
-        0.3,
-        crate::app::animation::Easing::EaseOutCubic,
+        durations.normal,
+        EasingTokens::standard(),
         current_time,
     );
     ui.colored_label(color, "●");
@@ -180,10 +509,19 @@ pub fn toast(
         .corner_radius(8.0)
         .inner_margin(egui::Margin::symmetric(16, 10))
         .show(ui, |ui| {
+            let tokens = FontTokens::default_tokens();
             ui.horizontal(|ui| {
                 let icon = if is_error { "ERR" } else { "OK" };
-                ui.label(RichText::new(icon).color(text_color).size(14.0));
-                ui.label(RichText::new(message).color(Color32::WHITE).size(13.0));
+                ui.label(
+                    RichText::new(icon)
+                        .color(text_color)
+                        .size(tokens.button.size),
+                );
+                ui.label(
+                    RichText::new(message)
+                        .color(Color32::WHITE)
+                        .size(tokens.caption.size),
+                );
             });
         });
     true
@@ -199,30 +537,45 @@ pub fn loading_spinner(
     message: &str,
     theme: &AppTheme,
 ) {
+    let tokens = FontTokens::default_tokens();
     let pulse = ((current_time * 3.0).sin() * 0.3 + 0.7).clamp(0.4, 1.0) as f32;
     let color = theme.accent_blue.linear_multiply(pulse);
     ui.horizontal(|ui| {
         ui.spinner();
-        ui.label(RichText::new(message).color(color).size(13.0));
+        ui.label(
+            RichText::new(message)
+                .color(color)
+                .size(tokens.caption.size),
+        );
     });
 }
 
 /// Empty state placeholder when no data is available.
 #[allow(dead_code)]
 pub fn empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, theme: &AppTheme) {
+    let sp = SpacingTokens::standard();
+    let tokens = FontTokens::default_tokens();
     ui.vertical_centered(|ui| {
-        ui.add_space(20.0);
-        ui.label(RichText::new(icon).size(32.0).color(theme.text_muted));
-        ui.add_space(6.0);
+        ui.add_space(sp.xxl);
+        ui.label(
+            RichText::new(icon)
+                .size(tokens.hero_value.size)
+                .color(theme.text_muted),
+        );
+        ui.add_space(sp.sm);
         ui.label(
             RichText::new(title)
-                .size(15.0)
+                .size(tokens.body.size)
                 .strong()
                 .color(theme.text_secondary),
         );
-        ui.add_space(4.0);
-        ui.label(RichText::new(subtitle).size(12.0).color(theme.text_muted));
-        ui.add_space(20.0);
+        ui.add_space(sp.xs);
+        ui.label(
+            RichText::new(subtitle)
+                .size(tokens.caption.size)
+                .color(theme.text_muted),
+        );
+        ui.add_space(sp.xxl);
     });
 }
 
@@ -234,7 +587,7 @@ pub enum ButtonVariant {
     Danger,
 }
 
-/// Styled button with color variant.
+/// Styled button with color variant and hover/press feedback.
 #[allow(dead_code)]
 pub fn styled_button(
     ui: &mut Ui,
@@ -242,15 +595,37 @@ pub fn styled_button(
     variant: ButtonVariant,
     theme: &AppTheme,
 ) -> egui::Response {
+    let tokens = FontTokens::default_tokens();
     let (text_color, bg_color) = match variant {
         ButtonVariant::Primary => (Color32::WHITE, theme.accent_blue),
         ButtonVariant::Secondary => (theme.text_primary, theme.bg_medium),
         ButtonVariant::Danger => (Color32::WHITE, theme.status_error),
     };
-    let btn = egui::Button::new(RichText::new(label).color(text_color).size(14.0))
-        .fill(bg_color)
-        .min_size(egui::vec2(80.0, 30.0));
-    ui.add(btn)
+    let btn = egui::Button::new(
+        RichText::new(label)
+            .color(text_color)
+            .size(tokens.button.size),
+    )
+    .fill(bg_color)
+    .min_size(egui::vec2(80.0, 30.0));
+    let resp = ui.add(btn);
+    // Apply subtle hover/press color shift feedback
+    if resp.hovered() && !resp.is_pointer_button_down_on() {
+        let painter = ui.painter();
+        painter.rect_filled(
+            resp.rect,
+            4.0,
+            Color32::from_rgba_premultiplied(255, 255, 255, 12),
+        );
+    } else if resp.is_pointer_button_down_on() {
+        let painter = ui.painter();
+        painter.rect_filled(
+            resp.rect,
+            4.0,
+            Color32::from_rgba_premultiplied(0, 0, 0, 24),
+        );
+    }
+    resp
 }
 
 /// Animated value display — smoothly transitions between values.
@@ -264,28 +639,32 @@ pub fn animated_value_text(
     format_fn: impl FnOnce(f64) -> String,
     theme: &AppTheme,
 ) {
+    let durations = DurationTokens::standard();
     let smooth = anim.animate_float(
         key.to_string(),
         value as f32,
         value as f32,
-        0.5,
-        crate::app::animation::Easing::EaseOutCubic,
+        durations.slow,
+        EasingTokens::standard(),
         current_time,
     );
+    let tokens = FontTokens::default_tokens();
     let text = format_fn(smooth as f64);
     ui.label(
         RichText::new(text)
-            .size(13.0)
+            .size(tokens.caption.size)
             .strong()
             .color(theme.text_primary),
     );
 }
 
 pub fn apply_page_style(ui: &mut Ui) {
+    let bp = ResponsiveBreakpoint::from_width(ui.available_width());
+    let sp = bp.spacing();
     let spacing = ui.spacing_mut();
-    spacing.item_spacing = egui::vec2(14.0, 12.0);
-    spacing.button_padding = egui::vec2(12.0, 8.0);
-    spacing.interact_size.y = 34.0;
+    spacing.item_spacing = egui::vec2(sp.lg, sp.md);
+    spacing.button_padding = egui::vec2(sp.md, sp.sm);
+    spacing.interact_size.y = bp.interact_size_y();
     spacing.text_edit_width = 260.0;
     spacing.combo_width = 240.0;
     spacing.slider_width = 300.0;
@@ -397,27 +776,32 @@ pub fn page_header(ui: &mut Ui, title: &str, icon: &str) {
 }
 
 pub fn page_header_icon(ui: &mut Ui, title: &str, icon: IconKind) {
+    let sp = SpacingTokens::standard();
+    let tokens = FontTokens::default_tokens();
     apply_page_style(ui);
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(egui::vec2(22.0, 22.0), egui::Sense::hover());
         draw_icon(ui.painter(), rect, icon, ui.visuals().text_color());
-        ui.add_space(8.0);
-        ui.heading(RichText::new(title).size(24.0));
+        ui.add_space(sp.sm);
+        ui.heading(RichText::new(title).size(tokens.display.size));
     });
-    ui.add_space(12.0);
+    ui.add_space(sp.md);
 }
 
 pub fn section_title(ui: &mut Ui, text: &str) {
-    ui.label(RichText::new(text).size(17.0).strong());
-    ui.add_space(8.0);
+    let sp = SpacingTokens::standard();
+    let tokens = FontTokens::default_tokens();
+    ui.label(RichText::new(text).size(tokens.subheading.size).strong());
+    ui.add_space(sp.sm);
 }
 
 pub fn settings_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
+    let sp = SpacingTokens::standard();
     egui::Frame::group(ui.style())
         .fill(ui.visuals().faint_bg_color)
         .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
-        .corner_radius(12.0)
-        .inner_margin(egui::Margin::symmetric(18, 16))
+        .corner_radius(sp.md)
+        .inner_margin(egui::Margin::symmetric(sp.lg as i8 + 2, sp.lg as i8))
         .show(ui, |ui| {
             ui.set_min_width(ui.available_width());
             add_contents(ui);

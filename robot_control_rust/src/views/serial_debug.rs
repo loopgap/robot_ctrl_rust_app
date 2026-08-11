@@ -248,38 +248,44 @@ fn send_payload_internal(state: &mut AppState, text: &str, lang: crate::i18n::La
             state.status_message = Tr::sent_bytes(data.len(), lang);
         }
         Err(e) => {
-            state.status_message = Tr::send_error(&e, lang);
+            state.status_message = Tr::send_error(&e.to_string(), lang);
         }
     }
 }
 
 fn format_data_with_mode(data: &[u8], mode: DisplayMode) -> String {
+    use std::fmt::Write;
+    let mut buf = String::with_capacity(data.len() * 3);
     match mode {
-        DisplayMode::Hex => data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" "),
-        DisplayMode::Ascii => String::from_utf8_lossy(data).to_string(),
+        DisplayMode::Hex => {
+            for (i, b) in data.iter().enumerate() {
+                if i > 0 {
+                    buf.push(' ');
+                }
+                let _ = write!(buf, "{:02X}", b);
+            }
+        }
+        DisplayMode::Ascii => {
+            buf.push_str(&String::from_utf8_lossy(data));
+        }
         DisplayMode::Mixed => {
-            let hex = data
-                .iter()
-                .map(|b| format!("{:02X}", b))
-                .collect::<Vec<_>>()
-                .join(" ");
-            let ascii: String = data
-                .iter()
-                .map(|&b| {
-                    if b.is_ascii_graphic() || b == b' ' {
-                        b as char
-                    } else {
-                        '.'
-                    }
-                })
-                .collect();
-            format!("{} | {}", hex, ascii)
+            for (i, b) in data.iter().enumerate() {
+                if i > 0 {
+                    buf.push(' ');
+                }
+                let _ = write!(buf, "{:02X}", b);
+            }
+            buf.push_str(" | ");
+            for &b in data {
+                if b.is_ascii_graphic() || b == b' ' {
+                    buf.push(b as char);
+                } else {
+                    buf.push('.');
+                }
+            }
         }
     }
+    buf
 }
 
 fn format_bytes_short(bytes: u64) -> String {

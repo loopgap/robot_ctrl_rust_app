@@ -174,7 +174,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             .push(format!("[TX RTU] {}", bytes_to_hex(&data)));
                         state.status_message = Tr::sent_bytes(data.len(), lang);
                     }
-                    Err(e) => state.status_message = Tr::send_error(&e, lang),
+                    Err(e) => state.status_message = Tr::send_error(&e.to_string(), lang),
                 }
             }
 
@@ -191,7 +191,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                             .push(format!("[TX TCP] {}", bytes_to_hex(&data)));
                         state.status_message = Tr::sent_bytes(data.len(), lang);
                     }
-                    Err(e) => state.status_message = Tr::send_error(&e, lang),
+                    Err(e) => state.status_message = Tr::send_error(&e.to_string(), lang),
                 }
             }
 

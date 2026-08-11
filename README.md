@@ -16,7 +16,7 @@
 - **无阻塞的并发通信基架 (Non-blocking I/O)**：通过 `ConnectionProvider` 统一收拢协议层，利用 `std::sync::mpsc` 与 `thread::spawn` 将计算与通信从 UI 渲染帧中完全剥离，界面响应刷新再创新高。
 - **智能 Git 工作流**：`rusktask smart-bump` 支持 SemVer 升号、annotated tag 和发布说明草稿生成。
 - **极致性能 UI**：使用纯原生的 `egui` (即时模式渲染硬件加速) 提供流畅的实时桌面体验，减少内存占用。
-- **统一桌面工具套件**：`rust_tools_suite` 聚合 10 款高频工具，提供双语界面、响应式布局、文件导入导出与闭环流程面板。
+- **统一桌面工具套件**：`rust_tools_suite` 聚合 11 款高频工具，提供双语界面、响应式布局、文件导入导出与闭环流程面板。
 - **跨平台融合体验 (C-FFI)**：控制引擎协议解析导出为 C 动态库 (`.dll`/`.so`)，可被 Python/C++ 直接调用。
 - **零拷贝协议解包 (Zero-copy Pipeline)**：基于 `nom` 的高效封包解析，结合 `crossbeam` 构建低开销通信骨干。
 

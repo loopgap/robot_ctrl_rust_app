@@ -147,7 +147,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ScrollArea::vertical().max_height(280.0).show(ui, |ui| {
             for mi in 0..state.control.topology.motors.len() {
                 egui::Frame::new()
-                    .fill(Color32::from_rgba_premultiplied(35, 40, 55, 200))
+                    .fill(theme.bg_card)
                     .corner_radius(6.0)
                     .inner_margin(10.0)
                     .outer_margin(egui::Margin::symmetric(0, 3))

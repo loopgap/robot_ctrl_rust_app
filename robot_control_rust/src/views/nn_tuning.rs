@@ -1,7 +1,7 @@
 use crate::app::AppState;
 use crate::i18n::Tr;
 use crate::views::ui_kit::{page_header, settings_card};
-use egui::{self, Color32, RichText, Ui};
+use egui::{self, RichText, Ui};
 use egui_plot::{Line, Plot, PlotPoints};
 
 const NN_LABEL_WIDTH: f32 = 120.0;
@@ -242,18 +242,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     "Kp",
                     state.control.pid().kp,
                     state.control.nn_suggested_kp,
+                    &theme,
                 );
                 param_row(
                     ui,
                     "Ki",
                     state.control.pid().ki,
                     state.control.nn_suggested_ki,
+                    &theme,
                 );
                 param_row(
                     ui,
                     "Kd",
                     state.control.pid().kd,
                     state.control.nn_suggested_kd,
+                    &theme,
                 );
             });
     });
@@ -373,14 +376,20 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     }
 }
 
-fn param_row(ui: &mut Ui, name: &str, current: f64, suggested: f64) {
+fn param_row(
+    ui: &mut Ui,
+    name: &str,
+    current: f64,
+    suggested: f64,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     let delta = suggested - current;
     let delta_color = if delta.abs() < 0.001 {
-        Color32::GRAY
+        theme.text_muted
     } else if delta > 0.0 {
-        Color32::from_rgb(100, 255, 100)
+        theme.data_positive
     } else {
-        Color32::from_rgb(255, 100, 100)
+        theme.data_negative
     };
 
     ui.label(name);
@@ -388,7 +397,7 @@ fn param_row(ui: &mut Ui, name: &str, current: f64, suggested: f64) {
     ui.label(
         RichText::new(format!("{:.4}", suggested))
             .monospace()
-            .color(Color32::from_rgb(100, 200, 255)),
+            .color(theme.status_info),
     );
     ui.label(
         RichText::new(format!("{:+.4}", delta))

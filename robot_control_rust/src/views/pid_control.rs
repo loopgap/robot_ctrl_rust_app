@@ -592,6 +592,7 @@ fn show_incremental_pid(ui: &mut Ui, state: &mut AppState) {
 
 fn show_bang_bang(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
+    let theme = state.theme.clone();
     ui.label(RichText::new(Tr::bang_bang_label(lang)).size(16.0).strong());
     ui.add_space(8.0);
 
@@ -640,9 +641,9 @@ fn show_bang_bang(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label(format!("{}:", Tr::switch_state(lang)));
         let color = match state.control.bang_bang_mut().last_state {
-            crate::models::bang_bang::BangBangState::Off => Color32::GRAY,
-            crate::models::bang_bang::BangBangState::High => Color32::from_rgb(46, 160, 67),
-            crate::models::bang_bang::BangBangState::Low => Color32::from_rgb(255, 100, 100),
+            crate::models::bang_bang::BangBangState::Off => theme.text_muted,
+            crate::models::bang_bang::BangBangState::High => theme.status_ok,
+            crate::models::bang_bang::BangBangState::Low => theme.status_error,
         };
         ui.label(RichText::new(state_str).strong().color(color).monospace());
         ui.label(Tr::output_label(lang));

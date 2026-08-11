@@ -132,11 +132,20 @@ impl CanFrame {
     }
 
     pub fn data_hex(&self) -> String {
-        self.data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ")
+        let mut buf = String::with_capacity(self.data.len() * 3);
+        self.data_hex_to(&mut buf);
+        buf
+    }
+
+    /// Write hex representation into an existing buffer, avoiding per-call allocation.
+    pub fn data_hex_to(&self, buf: &mut String) {
+        use std::fmt::Write;
+        for (i, b) in self.data.iter().enumerate() {
+            if i > 0 {
+                buf.push(' ');
+            }
+            let _ = write!(buf, "{:02X}", b);
+        }
     }
 
     /// 序列化帧为字节（简化协议）

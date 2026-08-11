@@ -2,6 +2,7 @@ use crate::app::{AppState, LogDirection};
 use crate::i18n::{Language, Tr};
 use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{Color32, RichText, Ui};
+use robot_control_core::error::AppResult;
 use std::path::PathBuf;
 
 fn tr_filters(lang: Language) -> &'static str {
@@ -61,11 +62,11 @@ fn direction_label(direction: LogDirection) -> &'static str {
     }
 }
 
-fn direction_color(direction: LogDirection) -> Color32 {
+fn direction_color(direction: LogDirection, theme: &crate::views::ui_kit::AppTheme) -> Color32 {
     match direction {
-        LogDirection::Tx => Color32::from_rgb(120, 200, 255),
-        LogDirection::Rx => Color32::from_rgb(130, 230, 160),
-        LogDirection::Info => Color32::from_rgb(220, 220, 140),
+        LogDirection::Tx => theme.tx_color,
+        LogDirection::Rx => theme.rx_color,
+        LogDirection::Info => theme.info_color,
     }
 }
 
@@ -86,7 +87,7 @@ fn contains_query(state: &AppState, haystack: &str) -> bool {
 }
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
-    let _theme = state.theme.clone();
+    let theme = state.theme.clone();
     let lang = state.lang();
     page_header(ui, Tr::tab_protocol_analysis(lang), "packet");
 
@@ -107,7 +108,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         if ui.button(Tr::menu_export_log(lang)).clicked() {
             match export_analysis_csv(state) {
                 Ok(path) => state.status_message = tr_export_success(&path, lang),
-                Err(e) => state.status_message = tr_export_failed(&e, lang),
+                Err(e) => state.status_message = tr_export_failed(&e.to_string(), lang),
             }
         }
     });
@@ -154,7 +155,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     ui.label(
                         RichText::new(line)
                             .monospace()
-                            .color(direction_color(entry.direction)),
+                            .color(direction_color(entry.direction, &theme)),
                     );
                 }
             });
@@ -166,7 +167,7 @@ fn csv_escape(value: &str) -> String {
     format!("\"{}\"", escaped)
 }
 
-pub fn export_analysis_csv(state: &AppState) -> Result<PathBuf, String> {
+pub fn export_analysis_csv(state: &AppState) -> AppResult<PathBuf> {
     let mut export_dir = AppState::user_prefs_path();
     export_dir.pop();
     export_dir.push("exports");

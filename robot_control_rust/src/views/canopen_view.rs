@@ -78,6 +78,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 // ═══════════════════════════════════════════════════════════════
 fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
+    let theme = state.theme.clone();
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_fd_builder(state.lang()))
@@ -96,6 +97,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
                 id_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
             ui.checkbox(
                 &mut state.ui.can_extended,
@@ -113,6 +115,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
                 fd_ok,
                 "00 01 02 ... up to 64 bytes",
                 hex_warn(lang),
+                &theme,
             );
         });
 
@@ -147,7 +150,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
                 frame.brs
             ))
             .monospace()
-            .color(Color32::from_rgb(120, 230, 160)),
+            .color(theme.rx_color),
         );
 
         // FD DLC 映射表
@@ -167,9 +170,9 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
                             let len = crate::models::canopen::fd_dlc_to_len(dlc);
                             let current = dlc_code == dlc;
                             let color = if current {
-                                Color32::from_rgb(100, 220, 160)
+                                theme.data_positive
                             } else {
-                                Color32::from_rgb(180, 185, 195)
+                                theme.text_secondary
                             };
                             ui.label(RichText::new(format!("{}", dlc)).monospace().color(color));
                             ui.label(
@@ -232,6 +235,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
 // ═══════════════════════════════════════════════════════════════
 fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
+    let theme = state.theme.clone();
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_ecat_sdo_tool(state.lang()))
@@ -250,6 +254,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 addr_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
             ui.label("OD Index:");
             let idx_ok = parse_u16_text(&state.ui.canopen_index_text).is_some();
@@ -260,6 +265,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 idx_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
             ui.label("Sub:");
             let sub_ok = parse_u8_text(&state.ui.canopen_subidx_text).is_some();
@@ -270,6 +276,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 sub_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
         });
 
@@ -283,6 +290,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 payload_ok,
                 "06 00",
                 hex_warn(lang),
+                &theme,
             );
             ui.checkbox(&mut state.ui.canopen_ecat_write, "Write (Download)");
         });
@@ -319,7 +327,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
         ui.label(
             RichText::new(&coe_frame.summary)
                 .monospace()
-                .color(Color32::from_rgb(120, 230, 160)),
+                .color(theme.rx_color),
         );
         ui.label(
             RichText::new(format!(
@@ -328,7 +336,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 idx,
                 sub
             ))
-            .color(Color32::from_rgb(130, 190, 255)),
+            .color(theme.status_info),
         );
 
         // 帧内容预览
@@ -341,7 +349,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
             ))
             .monospace()
             .size(10.5)
-            .color(Color32::from_rgb(180, 190, 200)),
+            .color(theme.text_secondary),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -406,16 +414,16 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                 RichText::new(&analysis.summary)
                     .monospace()
                     .size(11.5)
-                    .color(Color32::from_rgb(180, 220, 255)),
+                    .color(theme.status_info),
             );
 
             if !analysis.fields.is_empty() {
                 let field_colors = [
-                    Color32::from_rgb(100, 200, 255),
-                    Color32::from_rgb(120, 230, 150),
-                    Color32::from_rgb(255, 190, 100),
-                    Color32::from_rgb(200, 150, 255),
-                    Color32::from_rgb(255, 150, 150),
+                    theme.tx_color,
+                    theme.rx_color,
+                    theme.accent_gold,
+                    theme.accent_purple,
+                    theme.data_negative,
                 ];
                 egui::Grid::new("ecat_coe_fields")
                     .num_columns(4)
@@ -435,7 +443,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
                             ui.label(
                                 RichText::new(&f.decoded)
                                     .size(10.5)
-                                    .color(Color32::from_rgb(200, 210, 220)),
+                                    .color(theme.text_secondary),
                             );
                             ui.end_row();
                         }
@@ -498,6 +506,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
 // ═══════════════════════════════════════════════════════════════
 fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
+    let theme = state.theme.clone();
     let node_id = parse_u8_text(&state.ui.canopen_node_id_text)
         .unwrap_or(1)
         .clamp(1, 127);
@@ -557,7 +566,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         );
 
         ui.add_space(6.0);
-        draw_id_map(ui, node_id, lang);
+        draw_id_map(ui, node_id, lang, &theme);
     });
 
     ui.add_space(8.0);
@@ -580,6 +589,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 node_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
 
             let cmds = NmtCommand::all();
@@ -658,6 +668,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 idx_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
             ui.label("Sub:");
             let sub_ok = parse_u8_text(&state.ui.canopen_subidx_text).is_some();
@@ -668,6 +679,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 sub_ok,
                 "",
                 num_warn(lang),
+                &theme,
             );
             ui.label("Payload:");
             let payload_ok = hex_text_ok(&state.ui.canopen_payload_text);
@@ -678,6 +690,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 payload_ok,
                 "11 22 33 44",
                 hex_warn(lang),
+                &theme,
             );
         });
 
@@ -692,7 +705,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         let frame = req.build();
 
         ui.add_space(6.0);
-        draw_sdo_bits(ui, frame.data[0], lang);
+        draw_sdo_bits(ui, frame.data[0], lang, &theme);
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(
@@ -703,7 +716,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     bytes_to_hex(&frame.data)
                 ))
                 .monospace()
-                .color(Color32::from_rgb(120, 230, 160)),
+                .color(theme.rx_color),
             );
         });
         ui.label(
@@ -713,7 +726,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 sdo_index,
                 sdo_subidx
             ))
-            .color(Color32::from_rgb(130, 190, 255)),
+            .color(theme.status_info),
         );
 
         ui.horizontal_wrapped(|ui| {
@@ -753,6 +766,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     cobid_ok,
                     "",
                     num_warn(lang),
+                    &theme,
                 );
                 ui.end_row();
 
@@ -765,6 +779,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     data_ok,
                     "01 02 03 04 05 06 07 08",
                     hex_warn(lang),
+                    &theme,
                 );
                 ui.end_row();
 
@@ -782,6 +797,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     hb_ok,
                     "",
                     num_warn(lang),
+                    &theme,
                 );
                 ui.end_row();
             });
@@ -943,9 +959,9 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             let total_bits = pdo.total_bits();
             let total_bytes = pdo.total_bytes();
             let dir_color = if pdo.direction == PdoDirection::Transmit {
-                Color32::from_rgb(100, 200, 255)
+                theme.tx_color
             } else {
-                Color32::from_rgb(120, 230, 150)
+                theme.rx_color
             };
             let pdo_name = pdo.name.clone();
             let pdo_cob_id = pdo.cob_id;
@@ -955,8 +971,8 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
             let mappings_count = pdo.mappings.len();
 
             egui::Frame::NONE
-                .fill(Color32::from_rgb(22, 28, 38))
-                .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(50, 60, 75)))
+                .fill(theme.bg_dark)
+                .stroke(egui::Stroke::new(1.0_f32, theme.border))
                 .corner_radius(6.0)
                 .inner_margin(egui::Margin::symmetric(10, 6))
                 .show(ui, |ui| {
@@ -974,7 +990,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                         ui.label(
                             RichText::new(format!("COB-ID: 0x{:03X}", pdo_cob_id))
                                 .monospace()
-                                .color(Color32::from_rgb(200, 210, 220)),
+                                .color(theme.text_secondary),
                         );
                         ui.label(RichText::new(format!("Node: {}", pdo_node_id)).monospace());
                         ui.label(
@@ -1007,9 +1023,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                 let mut bit_off = 0u32;
                                 for m in &state.protocol.canopen_pdo_configs[pdo_idx].mappings {
                                     ui.label(
-                                        RichText::new(&m.name)
-                                            .size(10.5)
-                                            .color(Color32::from_rgb(180, 220, 255)),
+                                        RichText::new(&m.name).size(10.5).color(theme.status_info),
                                     );
                                     ui.label(
                                         RichText::new(format!(
@@ -1029,7 +1043,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                         RichText::new(format!("{}", bit_off))
                                             .monospace()
                                             .size(10.5)
-                                            .color(Color32::from_rgb(140, 150, 160)),
+                                            .color(theme.text_muted),
                                     );
                                     ui.end_row();
                                     bit_off += m.bit_length as u32;
@@ -1089,7 +1103,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 let desired = egui::vec2(ui.available_width().max(200.0), 12.0);
                 let (rect, _) = ui.allocate_exact_size(desired, egui::Sense::hover());
                 let painter = ui.painter();
-                painter.rect_filled(rect, 2.0, Color32::from_rgb(30, 35, 42));
+                painter.rect_filled(rect, 2.0, theme.bg_medium);
                 let colors = [
                     Color32::from_rgb(80, 170, 230),
                     Color32::from_rgb(100, 210, 140),
@@ -1160,8 +1174,8 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                     }
 
                     egui::Frame::NONE
-                        .fill(Color32::from_rgb(22, 30, 40))
-                        .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(45, 55, 70)))
+                        .fill(theme.bg_dark)
+                        .stroke(egui::Stroke::new(1.0_f32, theme.border))
                         .corner_radius(4.0)
                         .inner_margin(egui::Margin::symmetric(8, 4))
                         .show(ui, |ui| {
@@ -1176,15 +1190,13 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                                 .show(ui, |ui| {
                                     for (name, display, _raw) in &values {
                                         ui.label(
-                                            RichText::new(name)
-                                                .size(10.5)
-                                                .color(Color32::from_rgb(140, 200, 255)),
+                                            RichText::new(name).size(10.5).color(theme.status_info),
                                         );
                                         ui.label(
                                             RichText::new(display)
                                                 .monospace()
                                                 .size(11.0)
-                                                .color(Color32::from_rgb(120, 230, 160)),
+                                                .color(theme.rx_color),
                                         );
                                         ui.end_row();
                                     }
@@ -1249,17 +1261,17 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                 RichText::new(&analysis.summary)
                     .monospace()
                     .size(11.5)
-                    .color(Color32::from_rgb(180, 220, 255)),
+                    .color(theme.status_info),
             );
 
             // 着色 HEX 地图
             if !analysis.fields.is_empty() {
                 let field_colors = [
-                    Color32::from_rgb(100, 200, 255),
-                    Color32::from_rgb(120, 230, 150),
-                    Color32::from_rgb(255, 190, 100),
-                    Color32::from_rgb(200, 150, 255),
-                    Color32::from_rgb(255, 150, 150),
+                    theme.tx_color,
+                    theme.rx_color,
+                    theme.accent_gold,
+                    theme.accent_purple,
+                    theme.data_negative,
                 ];
 
                 ui.add_space(2.0);
@@ -1268,7 +1280,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                         RichText::new("HEX│")
                             .monospace()
                             .size(10.5)
-                            .color(Color32::from_rgb(80, 90, 100)),
+                            .color(theme.text_muted),
                     );
                     for (i, b) in analyze_data.iter().enumerate() {
                         let color = analysis
@@ -1276,7 +1288,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                             .iter()
                             .find(|f| i >= f.offset && i < f.offset + f.length)
                             .map(|f| field_colors[f.color_idx as usize % field_colors.len()])
-                            .unwrap_or(Color32::from_rgb(140, 145, 155));
+                            .unwrap_or(theme.text_muted);
                         ui.label(
                             RichText::new(format!("{:02X}", b))
                                 .monospace()
@@ -1306,7 +1318,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
                             ui.label(
                                 RichText::new(&f.decoded)
                                     .size(10.5)
-                                    .color(Color32::from_rgb(200, 210, 220)),
+                                    .color(theme.text_secondary),
                             );
                             ui.end_row();
                         }
@@ -1321,6 +1333,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 }
 
 fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
+    let theme = state.theme.clone();
     let sdo_index = parse_u16_text(&state.ui.canopen_index_text).unwrap_or(0x1000);
     let sdo_subidx = parse_u8_text(&state.ui.canopen_subidx_text).unwrap_or(0);
 
@@ -1384,9 +1397,9 @@ fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
                         "Device Profile"
                     };
                     let cat_color = match category {
-                        "Communication" => Color32::from_rgb(100, 180, 255),
-                        "Device Profile" => Color32::from_rgb(120, 230, 150),
-                        _ => Color32::from_rgb(200, 200, 200),
+                        "Communication" => theme.status_info,
+                        "Device Profile" => theme.rx_color,
+                        _ => theme.text_secondary,
                     };
 
                     ui.label(RichText::new(format!("0x{:04X}", idx)).monospace());
@@ -1394,7 +1407,7 @@ fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
                     ui.label(object_dict_name(idx, sub));
                     ui.label(RichText::new(category).size(10.5).color(cat_color));
                     if selected {
-                        ui.colored_label(Color32::from_rgb(120, 220, 140), "◉ current");
+                        ui.colored_label(theme.data_positive, "◉ current");
                     } else {
                         ui.colored_label(Color32::GRAY, "○");
                     }
@@ -1406,6 +1419,7 @@ fn show_od_browser(ui: &mut Ui, state: &mut AppState) {
 
 fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
+    let theme = state.theme.clone();
     if !state.protocol.canopen_log.is_empty() {
         ui.add_space(8.0);
         settings_card(ui, |ui| {
@@ -1428,7 +1442,7 @@ fn show_canopen_log(ui: &mut Ui, state: &mut AppState) {
                             RichText::new(line)
                                 .monospace()
                                 .size(11.5)
-                                .color(Color32::from_rgb(210, 220, 230)),
+                                .color(theme.text_secondary),
                         );
                     }
                 });
@@ -1465,13 +1479,21 @@ fn hex_warn(lang: Language) -> &'static str {
 
 /// Single-line input that flags unparseable text in red with a hover
 /// explanation instead of failing silently at send time.
-fn flagged_edit(ui: &mut Ui, text: &mut String, width: f32, ok: bool, hint: &str, warn: &str) {
+fn flagged_edit(
+    ui: &mut Ui,
+    text: &mut String,
+    width: f32,
+    ok: bool,
+    hint: &str,
+    warn: &str,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     let mut edit = egui::TextEdit::singleline(text).desired_width(width);
     if !hint.is_empty() {
         edit = edit.hint_text(hint);
     }
     if !ok {
-        edit = edit.text_color(Color32::from_rgb(240, 110, 110));
+        edit = edit.text_color(theme.data_negative);
     }
     let response = ui.add(edit);
     if !ok {
@@ -1567,7 +1589,7 @@ fn draw_status_chip(ui: &mut Ui, text: &str, ok: bool) {
         });
 }
 
-fn draw_id_map(ui: &mut Ui, node_id: u8, lang: Language) {
+fn draw_id_map(ui: &mut Ui, node_id: u8, lang: Language, theme: &crate::views::ui_kit::AppTheme) {
     ui.label(
         RichText::new(Tr::canopen_cobid_map(lang))
             .strong()
@@ -1597,14 +1619,14 @@ fn draw_id_map(ui: &mut Ui, node_id: u8, lang: Language) {
                 ui.label(
                     RichText::new(format!("{:011b}", id & 0x07FF))
                         .monospace()
-                        .color(Color32::from_rgb(140, 200, 255)),
+                        .color(theme.status_info),
                 );
                 ui.end_row();
             }
         });
 }
 
-fn draw_sdo_bits(ui: &mut Ui, cmd: u8, lang: Language) {
+fn draw_sdo_bits(ui: &mut Ui, cmd: u8, lang: Language, theme: &crate::views::ui_kit::AppTheme) {
     ui.label(
         RichText::new(Tr::canopen_sdo_bitfield(lang))
             .strong()
@@ -1616,7 +1638,7 @@ fn draw_sdo_bits(ui: &mut Ui, cmd: u8, lang: Language) {
             RichText::new(format!("0b{}", bits))
                 .monospace()
                 .size(12.5)
-                .color(Color32::from_rgb(110, 190, 255)),
+                .color(theme.accent_blue),
         );
         ui.separator();
         ui.label(format!("ccs/scs={}", cmd >> 5));

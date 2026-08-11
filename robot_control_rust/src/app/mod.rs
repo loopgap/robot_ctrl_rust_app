@@ -19,6 +19,7 @@ use crate::i18n::Language;
 use crate::models::*;
 use crate::services::mcp_server;
 use crate::services::*;
+use robot_control_core::error::{AppError, AppResult};
 use std::collections::VecDeque;
 use std::fs::{metadata, OpenOptions};
 use std::io::Write;
@@ -115,33 +116,41 @@ pub enum DisplayMode {
 
 impl LogEntry {
     pub fn format_data(&self) -> String {
+        let mut buf = String::with_capacity(self.data.len() * 3);
+        self.format_data_to(&mut buf);
+        buf
+    }
+
+    /// Write formatted data into an existing buffer, avoiding per-call allocation.
+    pub fn format_data_to(&self, buf: &mut String) {
+        use std::fmt::Write;
         match self.display_mode {
-            DisplayMode::Hex => self
-                .data
-                .iter()
-                .map(|b| format!("{:02X}", b))
-                .collect::<Vec<_>>()
-                .join(" "),
-            DisplayMode::Ascii => String::from_utf8_lossy(&self.data).to_string(),
+            DisplayMode::Hex => {
+                for (i, b) in self.data.iter().enumerate() {
+                    if i > 0 {
+                        buf.push(' ');
+                    }
+                    let _ = write!(buf, "{:02X}", b);
+                }
+            }
+            DisplayMode::Ascii => {
+                buf.push_str(&String::from_utf8_lossy(&self.data));
+            }
             DisplayMode::Mixed => {
-                let hex = self
-                    .data
-                    .iter()
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                let ascii: String = self
-                    .data
-                    .iter()
-                    .map(|&b| {
-                        if b.is_ascii_graphic() || b == b' ' {
-                            b as char
-                        } else {
-                            '.'
-                        }
-                    })
-                    .collect();
-                format!("{} | {}", hex, ascii)
+                for (i, b) in self.data.iter().enumerate() {
+                    if i > 0 {
+                        buf.push(' ');
+                    }
+                    let _ = write!(buf, "{:02X}", b);
+                }
+                buf.push_str(" | ");
+                for &b in &self.data {
+                    if b.is_ascii_graphic() || b == b' ' {
+                        buf.push(b as char);
+                    } else {
+                        buf.push('.');
+                    }
+                }
             }
         }
     }
@@ -414,8 +423,8 @@ impl Default for UiState {
 
 // Main application state
 
-pub const MIN_UI_SCALE_PERCENT: u32 = 100;
-pub const MAX_UI_SCALE_PERCENT: u32 = 220;
+pub const MIN_UI_SCALE_PERCENT: u32 = 80;
+pub const MAX_UI_SCALE_PERCENT: u32 = 250;
 pub const DEFAULT_UI_SCALE_PERCENT: u32 = 150;
 pub const UI_SCALE_STEP_PERCENT: i32 = 10;
 
@@ -452,10 +461,16 @@ pub struct AppState {
     error_burst_count: u32,
     last_error_burst_instant: Option<Instant>,
     resource_status: String,
+    /// Set to true when data affecting resource_status changes.
+    /// `refresh_resource_status` only rebuilds the string when this is true.
+    pub(crate) resource_status_dirty: bool,
     platform_support_note: Option<String>,
 
     // === Theme ===
     pub theme: crate::views::ui_kit::AppTheme,
+    pub high_contrast: bool,
+    /// Timestamp when theme transition animation started (for fade overlay).
+    pub theme_transition_start: Option<f64>,
 
     // === Animation System ===
     pub anim: crate::app::animation::AnimationManager,
@@ -695,6 +710,8 @@ struct UserPreferences {
     schema_version: u32,
     language: Language,
     dark_mode: bool,
+    #[serde(default)]
+    high_contrast: bool,
     sidebar_expanded: bool,
     motion_level_idx: usize,
     active_tab_idx: usize,
@@ -760,6 +777,7 @@ impl Default for UserPreferences {
             schema_version: 2,
             language: Language::Chinese,
             dark_mode: true,
+            high_contrast: false,
             sidebar_expanded: true,
             motion_level_idx: 2,
             active_tab_idx: 0,
@@ -868,11 +886,14 @@ impl AppState {
             update_notes_url: String::new(),
             update_last_checked_at: "N/A".into(),
             resource_status: "Balanced".into(),
+            resource_status_dirty: true,
             platform_support_note: None,
             last_background_tick_instant: Instant::now(),
             error_burst_count: 0,
             last_error_burst_instant: None,
             theme: crate::views::ui_kit::AppTheme::dark(),
+            high_contrast: false,
+            theme_transition_start: None,
             anim: crate::app::animation::AnimationManager::new(),
         };
         if let Ok(api_key) = std::env::var("LLM_API_KEY") {
@@ -942,12 +963,20 @@ impl AppState {
         for buffer in &mut self.viz.channel_buffers {
             buffer.set_max_points(profile.max_chart_points.max(1));
         }
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
     }
 
     pub fn refresh_resource_status(&mut self) {
+        if !self.resource_status_dirty {
+            return;
+        }
+        self.resource_status_dirty = false;
         let profile = self.performance_profile();
-        self.resource_status = format!(
+        use std::fmt::Write;
+        let mut s = String::with_capacity(80);
+        let _ = write!(
+            s,
             "{}ms | logs {}/{} | state {}/{} | can {}/{}",
             profile.repaint_interval_ms,
             self.log.log_entries.len(),
@@ -957,6 +986,7 @@ impl AppState {
             self.conn.can.frames.len(),
             self.conn.can.max_frame_capacity(),
         );
+        self.resource_status = s;
     }
 
     fn detect_platform_support_note(&self) -> Option<String> {
@@ -1018,8 +1048,11 @@ impl AppState {
     }
 
     fn append_log(&mut self, entry: &LogEntry) {
-        let line = format!(
-            "{} [{}] [{}] {}",
+        use std::fmt::Write;
+        let mut line = String::with_capacity(64 + entry.data.len() * 3);
+        let _ = write!(
+            line,
+            "{} [{}] [{}] ",
             entry.timestamp,
             entry.channel,
             match entry.direction {
@@ -1027,8 +1060,8 @@ impl AppState {
                 LogDirection::Rx => "RX",
                 LogDirection::Info => "INFO",
             },
-            entry.format_data()
         );
+        entry.format_data_to(&mut line);
         self.conn.pending_log_lines.push(line);
         let max_pending = self
             .performance_profile()
@@ -1081,6 +1114,7 @@ impl AppState {
         self.last_error_burst_instant = Some(now);
         self.last_error_time = chrono::Local::now().format("%H:%M:%S").to_string();
         self.status_message = message.clone();
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
         if self.error_burst_count >= profile.error_burst_threshold {
             self.status_message = format!("{} | burst {}", message, self.error_burst_count);
@@ -1385,6 +1419,7 @@ impl AppState {
             schema_version: 2,
             language: self.language,
             dark_mode: self.dark_mode,
+            high_contrast: self.high_contrast,
             sidebar_expanded: self.ui.sidebar_expanded,
             motion_level_idx: self.ui.motion_level_idx.min(3),
             active_tab_idx,
@@ -1448,6 +1483,8 @@ impl AppState {
     fn apply_user_preferences(&mut self, prefs: UserPreferences) {
         self.language = prefs.language;
         self.dark_mode = prefs.dark_mode;
+        self.high_contrast = prefs.high_contrast;
+        self.rebuild_theme();
         self.ui.sidebar_expanded = prefs.sidebar_expanded;
         self.ui.motion_level_idx = prefs.motion_level_idx.min(3);
         self.active_tab = *ActiveTab::all()
@@ -1513,6 +1550,20 @@ impl AppState {
         self.ui.update_check_timeout_ms = prefs.update_check_timeout_ms.clamp(500, 10_000);
     }
 
+    /// Rebuild `theme` from current `dark_mode` and `high_contrast` settings.
+    pub fn rebuild_theme(&mut self) {
+        let base = if self.dark_mode {
+            crate::views::ui_kit::AppTheme::dark()
+        } else {
+            crate::views::ui_kit::AppTheme::light()
+        };
+        self.theme = if self.high_contrast {
+            base.high_contrast()
+        } else {
+            base
+        };
+    }
+
     fn load_user_preferences_from_path(&mut self, path: &std::path::Path) {
         if let Ok(text) = std::fs::read_to_string(path) {
             match serde_json::from_str::<UserPreferences>(&text) {
@@ -1576,13 +1627,13 @@ impl AppState {
         self.save_user_preferences_to_path(&path);
     }
 
-    pub fn preferences_snapshot(&self) -> Result<(PathBuf, String), String> {
+    pub fn preferences_snapshot(&self) -> AppResult<(PathBuf, String)> {
         let text = serde_json::to_string_pretty(&self.to_user_preferences())
             .map_err(|e| format!("Preferences serialize failed: {}", e))?;
         Ok((Self::user_prefs_path(), text))
     }
 
-    pub fn write_preferences_snapshot(path: &Path, text: &str) -> Result<(), String> {
+    pub fn write_preferences_snapshot(path: &Path, text: &str) -> AppResult<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Preferences create dir failed: {}", e))?;
@@ -1602,7 +1653,8 @@ impl AppState {
         std::fs::rename(&tmp_path, path).map_err(|e| {
             let _ = std::fs::remove_file(&tmp_path);
             format!("Preferences commit failed: {}", e)
-        })
+        })?;
+        Ok(())
     }
 
     pub fn reset_user_preferences(&mut self) {
@@ -1621,7 +1673,7 @@ impl AppState {
         format!("\"{}\"", escaped)
     }
 
-    pub fn export_logs_csv(&self) -> Result<std::path::PathBuf, String> {
+    pub fn export_logs_csv(&self) -> AppResult<std::path::PathBuf> {
         let mut export_dir = Self::user_prefs_path();
         export_dir.pop();
         export_dir.push("exports");
@@ -1885,7 +1937,7 @@ impl AppState {
         }
     }
 
-    pub fn connect_active(&mut self) -> Result<(), String> {
+    pub fn connect_active(&mut self) -> AppResult<()> {
         self.conn.reconnect_paused_by_user = false;
         self.metrics.connect_attempts += 1;
         let result = match self.conn.active_conn {
@@ -1948,7 +2000,8 @@ impl AppState {
                 self.conn.can.is_running = true;
                 Ok(())
             }
-        };
+        }
+        .map_err(AppError::Other);
 
         let is_serial_mode = matches!(
             self.conn.active_conn,
@@ -2019,7 +2072,7 @@ impl AppState {
         }
     }
 
-    pub fn send_data(&mut self, data: &[u8]) -> Result<(), String> {
+    pub fn send_data(&mut self, data: &[u8]) -> AppResult<()> {
         let result = match self.conn.active_conn {
             ConnectionType::Serial | ConnectionType::Usb | ConnectionType::ModbusRtu => self
                 .conn
@@ -2037,7 +2090,8 @@ impl AppState {
                 .send_default(data)
                 .map_err(|e| format!("UDP send failed: {e}")),
             _ => Err("Channel not supported".into()),
-        };
+        }
+        .map_err(AppError::Other);
 
         if result.is_ok() {
             self.add_log(LogDirection::Tx, data, &self.conn.active_conn.to_string());
@@ -2123,6 +2177,7 @@ impl AppState {
         }
 
         self.sync_mcp_state();
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
     }
     fn add_log(&mut self, dir: LogDirection, data: &[u8], channel: &str) {
@@ -2136,6 +2191,7 @@ impl AppState {
             display_mode: self.ui.display_mode,
             channel: channel.into(),
         });
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
     }
 
@@ -2149,6 +2205,7 @@ impl AppState {
             display_mode: DisplayMode::Ascii,
             channel: "System".into(),
         });
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
     }
 
@@ -2522,6 +2579,7 @@ impl AppState {
         }
 
         self.apply_performance_profile();
+        self.resource_status_dirty = true;
         self.refresh_resource_status();
     }
 
@@ -2866,7 +2924,7 @@ mod tests {
         s.conn.port_scan_in_progress = false;
 
         let err = s.connect_active().unwrap_err();
-        assert!(err.contains("Refresh ports"));
+        assert!(err.to_string().contains("Refresh ports"));
         assert!(!s.conn.port_scan_in_progress);
     }
 

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::{ToolError, ToolResult};
 use crate::i18n::Language;
 
 /// 应用偏好设置
@@ -30,32 +31,43 @@ impl Default for AppPreferences {
     }
 }
 
-pub fn load_preferences() -> Result<AppPreferences, String> {
+pub fn load_preferences() -> ToolResult<AppPreferences> {
     let path = prefs_path();
 
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read preferences file {}: {}", path.display(), e))?;
+    let content = fs::read_to_string(&path).map_err(|e| {
+        ToolError::Other(format!(
+            "Failed to read preferences file {}: {}",
+            path.display(),
+            e
+        ))
+    })?;
 
     serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse preferences: {}", e))
+        .map_err(|e| ToolError::Other(format!("Failed to parse preferences: {}", e)))
         .or_else(|_| {
             eprintln!("Warning: Preferences file corrupted, using defaults");
             Ok(AppPreferences::default())
         })
 }
-pub fn save_preferences(prefs: &AppPreferences) -> Result<(), String> {
+pub fn save_preferences(prefs: &AppPreferences) -> ToolResult<()> {
     let path = prefs_path();
 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+            .map_err(|e| ToolError::Other(format!("Failed to create config directory: {}", e)))?;
     }
 
     let json = serde_json::to_string_pretty(prefs)
-        .map_err(|e| format!("Failed to serialize preferences: {}", e))?;
+        .map_err(|e| ToolError::Other(format!("Failed to serialize preferences: {}", e)))?;
 
-    fs::write(&path, json)
-        .map_err(|e| format!("Failed to write preferences file {}: {}", path.display(), e))
+    fs::write(&path, json).map_err(|e| {
+        ToolError::Other(format!(
+            "Failed to write preferences file {}: {}",
+            path.display(),
+            e
+        ))
+    })?;
+    Ok(())
 }
 
 fn prefs_path() -> PathBuf {

@@ -1,4 +1,4 @@
-use robot_control_core::error::AppError;
+use robot_control_core::error::{AppError, AppResult};
 use robot_control_core::simulation::{
     run_parameter_scan, run_pmsm_foc_with_hooks, ScanPoint, SimulationConfig, SimulationRunResult,
 };
@@ -79,9 +79,9 @@ impl SimulationLabState {
             .unwrap_or("speed")
     }
 
-    pub fn sync_config_from_text(&mut self) -> Result<(), String> {
+    pub fn sync_config_from_text(&mut self) -> AppResult<()> {
         let duration_s = parse_finite_positive(&self.duration_text, "duration_s")?;
-        let dt_us = parse_finite_positive(&self.dt_us_text, "dt_us")?;
+        let dt_us = parse_finite(&self.dt_us_text, "dt_us")?;
         let speed_ref = parse_finite(&self.speed_ref_text, "speed_ref")?;
         let load_torque = parse_finite(&self.load_torque_text, "load_torque")?;
         let dt_ns = (dt_us * 1_000.0).round() as u64;
@@ -92,10 +92,11 @@ impl SimulationLabState {
         self.config.dt_ns = dt_ns;
         self.config.speed_ref = speed_ref;
         self.config.load_torque = load_torque;
-        self.config.validate().map_err(ui_err_text)
+        self.config.validate().map_err(ui_err_text)?;
+        Ok(())
     }
 
-    pub fn start_run(&mut self) -> Result<(), String> {
+    pub fn start_run(&mut self) -> AppResult<()> {
         if self.running {
             return Err("simulation is already running".into());
         }
@@ -128,7 +129,7 @@ impl SimulationLabState {
         Ok(())
     }
 
-    pub fn start_scan(&mut self) -> Result<(), String> {
+    pub fn start_scan(&mut self) -> AppResult<()> {
         if self.running {
             return Err("simulation is already running".into());
         }

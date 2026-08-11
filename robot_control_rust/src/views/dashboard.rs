@@ -27,6 +27,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 } else {
                     "Serial port connection"
                 },
+                &theme,
             );
             connection_card(
                 ui,
@@ -38,6 +39,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 } else {
                     "TCP/IP network connection"
                 },
+                &theme,
             );
             connection_card(
                 ui,
@@ -49,6 +51,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 } else {
                     "UDP datagram connection"
                 },
+                &theme,
             );
             connection_card(
                 ui,
@@ -64,6 +67,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 } else {
                     "CAN / CAN FD bus status"
                 },
+                &theme,
             );
         });
 
@@ -84,7 +88,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         } else if health_ratio > 0.0 {
             theme.status_warn
         } else {
-            Color32::from_rgb(128, 128, 128)
+            theme.disconnected_color
         };
         ui.horizontal(|ui| {
             ui.label(
@@ -252,6 +256,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Total data sent since application start"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -263,6 +268,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Total data received since application start"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -274,6 +280,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Cumulative error count across all channels"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -285,6 +292,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Number of entries in the communication log"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -296,6 +304,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Number of controller state history records"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -307,6 +316,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Currently selected active communication channel"
                     },
+                    &theme,
                 );
                 ui.end_row();
                 stat_row_with_tooltip(
@@ -318,6 +328,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     } else {
                         "Timestamp of the last successful communication"
                     },
+                    &theme,
                 );
                 ui.end_row();
             });
@@ -617,6 +628,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Total connection attempts since app start"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -632,6 +644,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Number of failed connection attempts (timeout, refused, etc.)"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -647,6 +660,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Total requests sent to the LLM service"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -662,6 +676,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Number of LLM requests that returned successfully"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -677,6 +692,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Number of failed LLM requests (network error, timeout, etc.)"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -692,6 +708,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Number of times the MCP server has been started"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -707,6 +724,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Total requests received by the MCP server"
                         },
+                        &theme,
                     );
                     ui.end_row();
                     stat_row_with_tooltip(
@@ -722,6 +740,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         } else {
                             "Number of MCP requests rejected due to auth failure"
                         },
+                        &theme,
                     );
                     ui.end_row();
                 });
@@ -923,9 +942,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
 // ─── 辅助函数 ─────────────────────────────────────────────
 
-fn connection_card(ui: &mut Ui, label: &str, status: &str, color: Color32, tooltip: &str) {
+fn connection_card(
+    ui: &mut Ui,
+    label: &str,
+    status: &str,
+    color: Color32,
+    tooltip: &str,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
     let frame = egui::Frame::new()
-        .fill(Color32::from_rgba_premultiplied(50, 50, 60, 180))
+        .fill(theme.bg_card)
         .corner_radius(6.0)
         .inner_margin(12.0)
         .show(ui, |ui| {
@@ -947,9 +973,28 @@ pub(crate) fn status_color(connected: bool) -> Color32 {
     }
 }
 
+/// Status color using theme tokens.
+#[allow(dead_code)]
+pub(crate) fn status_color_themed(
+    connected: bool,
+    theme: &crate::views::ui_kit::AppTheme,
+) -> Color32 {
+    if connected {
+        theme.connected_color
+    } else {
+        theme.disconnected_color
+    }
+}
+
 /// stat_row with tooltip — extends original with hover hint
-fn stat_row_with_tooltip(ui: &mut Ui, label: &str, value: &str, tooltip: &str) {
-    ui.label(RichText::new(label).size(13.0).color(Color32::GRAY));
+fn stat_row_with_tooltip(
+    ui: &mut Ui,
+    label: &str,
+    value: &str,
+    tooltip: &str,
+    theme: &crate::views::ui_kit::AppTheme,
+) {
+    ui.label(RichText::new(label).size(13.0).color(theme.text_muted));
     ui.label(RichText::new(value).size(13.0).strong())
         .on_hover_text(tooltip);
 }

@@ -1,9 +1,9 @@
 [package]
 name = "robot_control_rust"
 version.workspace = true
-edition = "2021"
+edition.workspace = true
 description = "Robot Control System — High-performance desktop workspace"
-license = "GPL-3.0-only"
+license.workspace = true
 rust-version.workspace = true
 
 [lib]
@@ -53,7 +53,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 # ── LLM API (feature-gated) ──
-ureq = { version = "3", features = ["json"], optional = true }
+ureq = { workspace = true, optional = true }
 
 # ── MCP SDK (feature-gated) ──
 rmcp = { workspace = true, optional = true }
@@ -61,7 +61,7 @@ tokio = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
-mockall = "0.14.0"
+mockall = { workspace = true }
 
 [lints]
 workspace = true

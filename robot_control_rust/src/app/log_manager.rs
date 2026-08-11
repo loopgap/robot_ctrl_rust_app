@@ -1,4 +1,5 @@
 use super::{DisplayMode, LogDirection, LogEntry};
+use robot_control_core::error::AppResult;
 use std::collections::VecDeque;
 
 /// 日志管理器，负责应用日志的存储和导出
@@ -100,7 +101,7 @@ impl LogManager {
         (self.tx_count, self.rx_count, self.info_count)
     }
 
-    pub fn export_csv(&self) -> Result<String, String> {
+    pub fn export_csv(&self) -> AppResult<String> {
         let mut csv = String::from("Timestamp,Direction,Message\n");
         for entry in &self.log_entries {
             let msg = String::from_utf8_lossy(&entry.data);

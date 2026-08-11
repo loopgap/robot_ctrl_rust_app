@@ -88,44 +88,28 @@ impl RobotControlApp {
     }
 
     fn apply_theme(&self, ctx: &egui::Context) {
+        let theme = &self.state.theme;
         let mut visuals = if self.state.dark_mode {
-            let mut visuals = egui::Visuals::dark();
-            visuals.override_text_color = Some(egui::Color32::from_rgb(220, 220, 230));
-            visuals
+            let mut v = egui::Visuals::dark();
+            v.override_text_color = Some(theme.text_primary);
+            v
         } else {
             egui::Visuals::light()
         };
-        visuals.selection.bg_fill = egui::Color32::from_rgb(0, 122, 204).gamma_multiply(0.75);
+        visuals.selection.bg_fill = theme.accent_blue.gamma_multiply(0.75);
         ctx.set_visuals(visuals);
 
         let mut style = (*ctx.style()).clone();
-        style.text_styles.insert(
-            egui::TextStyle::Small,
-            egui::FontId::new(13.5, egui::FontFamily::Proportional),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Body,
-            egui::FontId::new(15.5, egui::FontFamily::Proportional),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Button,
-            egui::FontId::new(15.0, egui::FontFamily::Proportional),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Monospace,
-            egui::FontId::new(14.5, egui::FontFamily::Monospace),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Heading,
-            egui::FontId::new(24.0, egui::FontFamily::Proportional),
-        );
-        style.spacing.item_spacing = egui::vec2(12.0, 10.0);
-        style.spacing.button_padding = egui::vec2(14.0, 8.0);
-        style.spacing.interact_size.y = 34.0;
+        let font_tokens = views::ui_kit::FontTokens::default_tokens();
+        font_tokens.apply_to_style(&mut style);
+        let sp = views::ui_kit::SpacingTokens::standard();
+        style.spacing.item_spacing = egui::vec2(sp.lg, sp.lg);
+        style.spacing.button_padding = egui::vec2(sp.lg, sp.sm);
+        style.spacing.interact_size.y = 36.0;
         style.spacing.text_edit_width = 260.0;
         style.spacing.combo_width = 260.0;
         style.spacing.slider_width = 300.0;
-        style.spacing.window_margin = egui::Margin::same(16);
+        style.spacing.window_margin = egui::Margin::same(sp.lg as i8);
         ctx.set_style(style);
     }
 
@@ -180,7 +164,7 @@ impl RobotControlApp {
         let snapshot = match self.state.preferences_snapshot() {
             Ok(snapshot) => snapshot,
             Err(err) => {
-                self.state.report_error(err);
+                self.state.report_error(err.to_string());
                 return;
             }
         };
@@ -206,6 +190,7 @@ impl RobotControlApp {
 
     fn apply_motion_level_change(&mut self) {
         self.state.apply_performance_profile();
+        self.state.resource_status_dirty = true;
         self.state.refresh_resource_status();
     }
 
@@ -322,7 +307,8 @@ impl RobotControlApp {
                             Tr::logs_exported(&path.display().to_string(), lang);
                     }
                     Err(e) => {
-                        self.state.report_error(Tr::logs_export_failed(&e, lang));
+                        self.state
+                            .report_error(Tr::logs_export_failed(&e.to_string(), lang));
                     }
                 }
                 ui.close_menu();
@@ -467,12 +453,10 @@ impl RobotControlApp {
                 Tr::dark_mode(lang)
             };
             if ui.button(theme_button).clicked() {
+                self.state.theme_transition_start = Some(ctx.input(|i| i.time));
                 self.state.dark_mode = !self.state.dark_mode;
-                self.state.theme = if self.state.dark_mode {
-                    crate::views::ui_kit::AppTheme::dark()
-                } else {
-                    crate::views::ui_kit::AppTheme::light()
-                };
+                self.state.rebuild_theme();
+                self.applied_dark_mode = None;
                 ui.close_menu();
             }
         });
@@ -560,7 +544,24 @@ impl RobotControlApp {
                     });
 
                     ui.separator();
-                    ui.checkbox(&mut self.state.dark_mode, Tr::dark_mode(lang));
+                    if ui
+                        .checkbox(&mut self.state.dark_mode, Tr::dark_mode(lang))
+                        .changed()
+                    {
+                        self.state.rebuild_theme();
+                        self.applied_dark_mode = None;
+                    }
+                    let hc_label = if lang == Language::Chinese {
+                        "高对比度"
+                    } else {
+                        "High Contrast"
+                    };
+                    if ui
+                        .checkbox(&mut self.state.high_contrast, hc_label)
+                        .changed()
+                    {
+                        self.state.rebuild_theme();
+                    }
                     ui.checkbox(&mut self.state.ui.sidebar_expanded, Tr::prefs_sidebar(lang));
                     ui.checkbox(&mut self.state.ui.auto_scroll, Tr::auto_scroll(lang));
 
@@ -762,7 +763,7 @@ impl eframe::App for RobotControlApp {
 
         let lang = self.state.lang();
         let width = ctx.available_rect().width();
-        let accent = egui::Color32::from_rgb(0, 122, 204);
+        let accent = self.state.theme.accent_blue;
 
         egui::TopBottomPanel::top("app_topbar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -789,8 +790,10 @@ impl eframe::App for RobotControlApp {
                     })
                     .clicked()
                 {
+                    self.state.theme_transition_start = Some(ctx.input(|i| i.time));
                     self.state.dark_mode = !self.state.dark_mode;
-            self.state.theme = if self.state.dark_mode { crate::views::ui_kit::AppTheme::dark() } else { crate::views::ui_kit::AppTheme::light() };
+                    self.state.rebuild_theme();
+                    self.applied_dark_mode = None;
                 }
 
                 if self.state.active_status().is_connected() {
@@ -843,6 +846,30 @@ impl eframe::App for RobotControlApp {
             self.render_active_tab(ui);
         });
 
+        // ── Theme transition fade overlay ───────────────────────
+        if let Some(start) = self.state.theme_transition_start {
+            let now = ctx.input(|i| i.time);
+            let elapsed = now - start;
+            let duration = 0.3; // 300ms fade
+            if elapsed < duration {
+                let alpha = (255.0 * (1.0 - elapsed / duration)).clamp(0.0, 255.0) as u8;
+                let overlay_color = if self.state.dark_mode {
+                    egui::Color32::from_rgba_premultiplied(240, 240, 245, alpha)
+                } else {
+                    egui::Color32::from_rgba_premultiplied(22, 28, 38, alpha)
+                };
+                let screen = ctx.screen_rect();
+                let painter = ctx.layer_painter(egui::LayerId::new(
+                    egui::Order::Foreground,
+                    egui::Id::new("theme_transition"),
+                ));
+                painter.rect_filled(screen, 0.0, overlay_color);
+                ctx.request_repaint();
+            } else {
+                self.state.theme_transition_start = None;
+            }
+        }
+
         self.render_dialogs(ctx);
 
         ctx.request_repaint_after(Duration::from_millis(
@@ -877,53 +904,82 @@ fn maybe_handle_cli_flag() -> bool {
     }
 }
 
-fn try_load_cjk_font() -> Option<Vec<u8>> {
-    let candidates: &[&str] = if cfg!(target_os = "windows") {
+/// Try to load a CJK font from the system, with multi-tier fallback.
+///
+/// Returns `(font_bytes, font_name_hint)` on success.
+fn try_load_cjk_font() -> Option<(Vec<u8>, &'static str)> {
+    // Tier 1: Modern CJK fonts (best quality, proportional metrics)
+    // Tier 2: Legacy CJK fonts (acceptable fallback)
+    let candidates: &[(&str, &str)] = if cfg!(target_os = "windows") {
         &[
-            "C:\\Windows\\Fonts\\msyh.ttc",
-            "C:\\Windows\\Fonts\\msyh.ttf",
-            "C:\\Windows\\Fonts\\simsun.ttc",
-            "C:\\Windows\\Fonts\\simhei.ttf",
+            ("C:\\Windows\\Fonts\\msyh.ttc", "Microsoft YaHei"),
+            ("C:\\Windows\\Fonts\\msyhbd.ttc", "Microsoft YaHei Bold"),
+            ("C:\\Windows\\Fonts\\simhei.ttf", "SimHei"),
+            ("C:\\Windows\\Fonts\\simsun.ttc", "SimSun"),
         ]
     } else if cfg!(target_os = "macos") {
         &[
-            "/System/Library/Fonts/PingFang.ttc",
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",
-            "/System/Library/Fonts/STHeiti Medium.ttc",
+            ("/System/Library/Fonts/PingFang.ttc", "PingFang SC"),
+            (
+                "/System/Library/Fonts/Hiragino Sans GB.ttc",
+                "Hiragino Sans GB",
+            ),
+            ("/System/Library/Fonts/STHeiti Medium.ttc", "STHeiti"),
         ]
     } else {
         &[
-            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            (
+                "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+                "WenQuanYi Micro Hei",
+            ),
+            (
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "Noto Sans CJK",
+            ),
+            (
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                "Noto Sans CJK",
+            ),
         ]
     };
 
-    for path in candidates {
+    for &(path, name) in candidates {
         if let Ok(data) = std::fs::read(path) {
-            return Some(data);
+            tracing::info!("CJK font loaded: {} ({})", name, path);
+            return Some((data, name));
         }
     }
+    tracing::warn!("No CJK font found on system; CJK text may render as placeholders");
     None
 }
 
+/// Install CJK font fallback with optimized rendering settings.
 fn install_font_fallback(ctx: &egui::Context) {
-    if let Some(font_data) = try_load_cjk_font() {
-        let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "system-cjk".into(),
-            egui::FontData::from_owned(font_data).into(),
-        );
+    let Some((font_data, font_name)) = try_load_cjk_font() else {
+        return;
+    };
 
-        if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
-            proportional.insert(0, "system-cjk".into());
-        }
-        if let Some(monospace) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
-            monospace.insert(0, "system-cjk".into());
-        }
+    let mut fonts = egui::FontDefinitions::default();
 
-        ctx.set_fonts(fonts);
+    // Enable subpixel rendering for CJK glyphs — significantly improves
+    // readability at typical UI sizes (12–24 px).
+    let font_data_owned = egui::FontData::from_owned(font_data);
+
+    fonts
+        .font_data
+        .insert("system-cjk".into(), font_data_owned.into());
+
+    // Insert CJK font as highest-priority fallback for both proportional
+    // and monospace families so mixed CJK/Latin text renders coherently.
+    if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+        proportional.insert(0, "system-cjk".into());
     }
+    if let Some(monospace) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+        monospace.insert(0, "system-cjk".into());
+    }
+
+    ctx.set_fonts(fonts);
+    tracing::info!("CJK font fallback installed: {}", font_name);
 }
 
 #[cfg(target_os = "linux")]

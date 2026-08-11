@@ -192,6 +192,12 @@ pub struct TimeSeriesBuffer {
     pub data: Vec<f64>,
     pub max_points: usize,
     pub dropped_points: u64,
+    // Incremental statistics — maintained O(1) per push, recalculated from
+    // scratch only on drain (amortized O(1)).
+    cached_sum: f64,
+    cached_sum_sq: f64,
+    cached_min: f64,
+    cached_max: f64,
 }
 
 impl Default for TimeSeriesBuffer {
@@ -200,6 +206,10 @@ impl Default for TimeSeriesBuffer {
             data: Vec::with_capacity(256),
             max_points: MAX_DATA_POINTS,
             dropped_points: 0,
+            cached_sum: 0.0,
+            cached_sum_sq: 0.0,
+            cached_min: f64::INFINITY,
+            cached_max: f64::NEG_INFINITY,
         }
     }
 }
@@ -211,6 +221,7 @@ impl TimeSeriesBuffer {
             let overflow = self.data.len() - self.max_points;
             self.data.drain(..overflow);
             self.dropped_points += overflow as u64;
+            self.recalc_stats();
             return overflow;
         }
         0
@@ -222,10 +233,22 @@ impl TimeSeriesBuffer {
 
     pub fn push_with_overflow(&mut self, value: f64) -> usize {
         self.data.push(value);
+        // O(1) incremental update
+        self.cached_sum += value;
+        self.cached_sum_sq += value * value;
+        if value < self.cached_min {
+            self.cached_min = value;
+        }
+        if value > self.cached_max {
+            self.cached_max = value;
+        }
+
         if self.data.len() > self.max_points {
             let overflow = self.data.len() - self.max_points;
             self.data.drain(..overflow);
             self.dropped_points += overflow as u64;
+            // Drain invalidates incremental stats — recalculate from remaining data.
+            self.recalc_stats();
             return overflow;
         }
         0
@@ -233,6 +256,39 @@ impl TimeSeriesBuffer {
 
     pub fn clear(&mut self) {
         self.data.clear();
+        self.cached_sum = 0.0;
+        self.cached_sum_sq = 0.0;
+        self.cached_min = f64::INFINITY;
+        self.cached_max = f64::NEG_INFINITY;
+    }
+
+    /// Recalculate incremental stats from scratch after a drain.
+    fn recalc_stats(&mut self) {
+        if self.data.is_empty() {
+            self.cached_sum = 0.0;
+            self.cached_sum_sq = 0.0;
+            self.cached_min = f64::INFINITY;
+            self.cached_max = f64::NEG_INFINITY;
+            return;
+        }
+        let mut sum = 0.0f64;
+        let mut sum_sq = 0.0f64;
+        let mut min = f64::INFINITY;
+        let mut max = f64::NEG_INFINITY;
+        for &v in &self.data {
+            sum += v;
+            sum_sq += v * v;
+            if v < min {
+                min = v;
+            }
+            if v > max {
+                max = v;
+            }
+        }
+        self.cached_sum = sum;
+        self.cached_sum_sq = sum_sq;
+        self.cached_min = min;
+        self.cached_max = max;
     }
 
     pub fn last_n(&self, n: usize) -> &[f64] {
@@ -249,22 +305,21 @@ impl TimeSeriesBuffer {
             .collect()
     }
 
+    /// Compute statistics using cached incremental values — O(1).
     pub fn statistics(&self) -> DataStatistics {
         if self.data.is_empty() {
             return DataStatistics::default();
         }
         let n = self.data.len() as f64;
-        let sum: f64 = self.data.iter().sum();
-        let mean = sum / n;
-        let min = self.data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = self.data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let variance = self.data.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-        let std_dev = variance.sqrt();
+        let mean = self.cached_sum / n;
+        let variance = (self.cached_sum_sq / n) - mean * mean;
+        // Clamp to handle floating-point rounding that could make variance < 0
+        let std_dev = variance.max(0.0).sqrt();
         let last = *self.data.last().unwrap_or(&0.0);
 
         DataStatistics {
-            min,
-            max,
+            min: self.cached_min,
+            max: self.cached_max,
             mean,
             std_dev,
             last,
@@ -373,6 +428,7 @@ mod tests {
             data: Vec::new(),
             max_points: 5,
             dropped_points: 0,
+            ..Default::default()
         };
         for i in 0..10 {
             buf.push(i as f64);
@@ -388,6 +444,7 @@ mod tests {
             data: Vec::new(),
             max_points: 3,
             dropped_points: 0,
+            ..Default::default()
         };
         assert_eq!(buf.push_with_overflow(1.0), 0);
         assert_eq!(buf.push_with_overflow(2.0), 0);
