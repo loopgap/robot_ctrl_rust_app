@@ -4,7 +4,7 @@
 
 | Version | Tag | Local Tag Status | Remote Tag Status | Release Notes | Local Archive Status | Local Archive Path |
 |---|---|---|---|---|---|---|
-| 0.3.0 | v0.3.0 | present | unknown | release_notes/RELEASE_NOTES_v0.3.0.md | not-archived | - |
+| 0.2.2 | v0.2.2 | present | unknown | release_notes/RELEASE_NOTES_v0.2.2.md | not-archived | - |
 | 0.2.1 | v0.2.1 | present | unknown | release_notes/RELEASE_NOTES_v0.2.1.md | not-archived | - |
 | 0.2.0 | v0.2.0 | present | unknown | release_notes/RELEASE_NOTES_v0.2.0.md | not-archived | - |
 | 0.1.9 | v0.1.9 | present | unknown | release_notes/RELEASE_NOTES_v0.1.9.md | not-archived | - |
