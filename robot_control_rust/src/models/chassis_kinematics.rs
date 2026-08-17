@@ -431,4 +431,65 @@ mod tests {
             assert!(!zh.is_empty(), "Missing ZH example for {}", key);
         }
     }
+
+    #[test]
+    fn test_all_chassis_keys_count() {
+        assert_eq!(ChassisCodeExamples::all_chassis_keys().len(), 6);
+    }
+
+    #[test]
+    fn test_unknown_chassis_returns_generic() {
+        let example = ChassisCodeExamples::get_example("UnknownType", "en");
+        assert_eq!(example, GENERIC_EXAMPLE);
+        assert!(!example.is_empty());
+    }
+
+    #[test]
+    fn test_unknown_lang_returns_generic() {
+        let example = ChassisCodeExamples::get_example("Differential", "fr");
+        assert_eq!(example, GENERIC_EXAMPLE);
+    }
+
+    #[test]
+    fn test_examples_contain_code_signatures() {
+        // EN examples should contain Rust code keywords
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let en = ChassisCodeExamples::get_example(key, "en");
+            assert!(
+                en.contains("fn ") || en.contains("struct ") || en.contains("let "),
+                "EN example for {} should contain Rust code",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn test_each_chassis_has_unique_content() {
+        // Each chassis type should have distinct example content
+        let examples: Vec<&str> = ChassisCodeExamples::all_chassis_keys()
+            .iter()
+            .map(|k| ChassisCodeExamples::get_example(k, "en"))
+            .collect();
+        for i in 0..examples.len() {
+            for j in (i + 1)..examples.len() {
+                assert_ne!(
+                    examples[i],
+                    examples[j],
+                    "Examples for chassis {} and {} should differ",
+                    ChassisCodeExamples::all_chassis_keys()[i],
+                    ChassisCodeExamples::all_chassis_keys()[j]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_zh_and_en_differ() {
+        // Chinese and English examples should be different translations
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let en = ChassisCodeExamples::get_example(key, "en");
+            let zh = ChassisCodeExamples::get_example(key, "zh");
+            assert_ne!(en, zh, "EN and ZH examples for {} should differ", key);
+        }
+    }
 }

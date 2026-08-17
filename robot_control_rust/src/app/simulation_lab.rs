@@ -316,4 +316,135 @@ mod tests {
         assert!(parse_scan_values("1,NaN").is_err());
         assert_eq!(parse_scan_values("1, 2; 3").unwrap(), vec![1.0, 2.0, 3.0]);
     }
+
+    #[test]
+    fn sync_config_rejects_zero_dt() {
+        let mut state = SimulationLabState::new();
+        state.dt_us_text = "0.0001".into(); // rounds to 0 ns
+        assert!(state.sync_config_from_text().is_err());
+    }
+
+    #[test]
+    fn sync_config_rejects_negative_duration() {
+        let mut state = SimulationLabState::new();
+        state.duration_text = "-1.0".into();
+        assert!(state.sync_config_from_text().is_err());
+    }
+
+    #[test]
+    fn sync_config_rejects_infinite_values() {
+        let mut state = SimulationLabState::new();
+        state.speed_ref_text = "inf".into();
+        assert!(state.sync_config_from_text().is_err());
+
+        state.speed_ref_text = "100.0".into();
+        state.duration_text = "NaN".into();
+        assert!(state.sync_config_from_text().is_err());
+    }
+
+    #[test]
+    fn parse_finite_positive_rejects_zero() {
+        assert!(parse_finite_positive("0", "test").is_err());
+        assert!(parse_finite_positive("-1", "test").is_err());
+        assert_eq!(parse_finite_positive("1.5", "test").unwrap(), 1.5);
+    }
+
+    #[test]
+    fn parse_finite_rejects_non_numeric() {
+        assert!(parse_finite("abc", "test").is_err());
+        assert!(parse_finite("", "test").is_err());
+        assert!(parse_finite("12.34.56", "test").is_err());
+    }
+
+    #[test]
+    fn parse_scan_values_delimiter_variants() {
+        assert_eq!(parse_scan_values("1,2,3").unwrap(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(parse_scan_values("1;2;3").unwrap(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(parse_scan_values("1 2 3").unwrap(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(parse_scan_values("1\n2\n3").unwrap(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(parse_scan_values("1\t2\t3").unwrap(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(
+            parse_scan_values("1, 2; 3 4").unwrap(),
+            vec![1.0, 2.0, 3.0, 4.0]
+        );
+    }
+
+    #[test]
+    fn parse_scan_values_rejects_too_many() {
+        let many: String = (0..33)
+            .map(|i| format!("{}", i))
+            .collect::<Vec<_>>()
+            .join(",");
+        assert!(parse_scan_values(&many).is_err());
+    }
+
+    #[test]
+    fn parse_scan_values_accepts_max_32() {
+        let max: String = (0..32)
+            .map(|i| format!("{}", i))
+            .collect::<Vec<_>>()
+            .join(",");
+        assert_eq!(parse_scan_values(&max).unwrap().len(), 32);
+    }
+
+    #[test]
+    fn new_state_defaults() {
+        let state = SimulationLabState::new();
+        assert!(!state.running);
+        assert!(state.result.is_none());
+        assert!(state.scan_results.is_empty());
+        assert_eq!(state.progress, 0.0);
+        assert_eq!(state.status, "Ready");
+        assert_eq!(state.scan_param_idx, 0);
+        assert!(state.result_rx.is_none());
+        assert!(state.scan_rx.is_none());
+        assert!(state.progress_rx.is_none());
+        assert!(state.cancel_tx.is_none());
+    }
+
+    #[test]
+    fn scan_params_count() {
+        assert_eq!(SimulationLabState::scan_params().len(), 8);
+    }
+
+    #[test]
+    fn selected_scan_param_default() {
+        let state = SimulationLabState::new();
+        assert_eq!(state.selected_scan_param(), "speed");
+    }
+
+    #[test]
+    fn selected_scan_param_index_bounds() {
+        let mut state = SimulationLabState::new();
+        state.scan_param_idx = 7; // last valid
+        assert_eq!(state.selected_scan_param(), "spd_ki");
+
+        state.scan_param_idx = 999; // out of bounds
+        assert_eq!(state.selected_scan_param(), "speed"); // fallback
+    }
+
+    #[test]
+    fn start_run_rejects_double_start() {
+        let mut state = SimulationLabState::new();
+        state.running = true;
+        assert!(state.start_run().is_err());
+    }
+
+    #[test]
+    fn cancel_without_run_is_noop() {
+        let mut state = SimulationLabState::new();
+        state.cancel(); // should not panic
+        assert!(!state.can_cancel());
+    }
+
+    #[test]
+    fn can_cancel_reflects_state() {
+        let mut state = SimulationLabState::new();
+        assert!(!state.can_cancel());
+        // After start_run, cancel_tx would be set (but we'd need a real sim)
+        // Test the property: can_cancel is true iff cancel_tx is Some
+        let (tx, _rx) = std::sync::mpsc::channel();
+        state.cancel_tx = Some(tx);
+        assert!(state.can_cancel());
+    }
 }
