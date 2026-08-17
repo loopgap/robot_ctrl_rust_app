@@ -62,6 +62,12 @@ mod tests {
         assert_eq!(s.current, 0.0);
         assert_eq!(s.temperature, 0.0);
         assert!(!s.emergency_stop);
+        assert_eq!(s.pid_output, 0.0);
+        assert_eq!(s.error, 0.0);
+        assert_eq!(s.acceleration, 0.0);
+        assert_eq!(s.voltage, 0.0);
+        assert_eq!(s.pwm_duty, 0.0);
+        assert_eq!(s.encoder_count, 0);
     }
 
     #[test]
@@ -72,14 +78,56 @@ mod tests {
         assert_eq!(s.current, 0.5);
         assert_eq!(s.temperature, 25.0);
         assert_eq!(s.error, 0.0); // default
+        assert_eq!(s.pid_output, 0.0); // default
+        assert!(!s.emergency_stop); // default
     }
 
     #[test]
-    fn test_robot_state_serialization() {
+    fn test_robot_state_serialization_roundtrip() {
         let s = RobotState::new(10.0, 5.0, 1.0, 30.0);
         let json = serde_json::to_string(&s).unwrap();
         let s2: RobotState = serde_json::from_str(&json).unwrap();
         assert_eq!(s.position, s2.position);
         assert_eq!(s.velocity, s2.velocity);
+        assert_eq!(s.current, s2.current);
+        assert_eq!(s.temperature, s2.temperature);
+    }
+
+    #[test]
+    fn test_robot_state_extreme_values() {
+        let s = RobotState::new(f64::MAX, f64::MIN, f64::MAX, f64::MIN);
+        assert_eq!(s.position, f64::MAX);
+        assert_eq!(s.velocity, f64::MIN);
+        // Verify serialization survives extreme values
+        let json = serde_json::to_string(&s).unwrap();
+        let s2: RobotState = serde_json::from_str(&json).unwrap();
+        assert_eq!(s.position, s2.position);
+        assert_eq!(s.velocity, s2.velocity);
+    }
+
+    #[test]
+    fn test_robot_state_negative_values() {
+        let s = RobotState::new(-100.0, -50.0, -5.0, -40.0);
+        assert_eq!(s.position, -100.0);
+        assert_eq!(s.velocity, -50.0);
+        assert_eq!(s.current, -5.0);
+        assert_eq!(s.temperature, -40.0);
+    }
+
+    #[test]
+    fn test_robot_state_mutation() {
+        let mut s = RobotState::default();
+        s.position = 42.0;
+        s.velocity = 3.14;
+        s.pid_output = 0.75;
+        s.error = -0.5;
+        s.emergency_stop = true;
+        s.encoder_count = 12345;
+        assert_eq!(s.position, 42.0);
+        assert_eq!(s.velocity, 3.14);
+        assert_eq!(s.pid_output, 0.75);
+        assert_eq!(s.error, -0.5);
+        assert!(s.emergency_stop);
+        assert_eq!(s.encoder_count, 12345);
     }
 }

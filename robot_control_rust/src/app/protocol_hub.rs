@@ -44,5 +44,71 @@ mod tests {
         assert!(hub.modbus_registers.is_empty());
         assert!(hub.modbus_response_log.is_empty());
         assert!(hub.canopen_log.is_empty());
+        assert!(hub.canopen_pdo_configs.is_empty());
+    }
+
+    #[test]
+    fn test_sync_packet_parser_with_templates() {
+        let mut hub = ProtocolHub::new();
+        hub.packet_templates.push(crate::models::PacketTemplate {
+            name: "TestTemplate".into(),
+            header_hex: "AA".into(),
+            fields: vec![],
+            checksum_type: crate::models::packet::ChecksumType::Sum8,
+            tail_hex: "55".into(),
+            include_length: true,
+            description: String::new(),
+        });
+        hub.sync_packet_parser();
+        assert_eq!(hub.packet_parser.template_count(), 1);
+    }
+
+    #[test]
+    fn test_sync_packet_parser_clears_old() {
+        let mut hub = ProtocolHub::new();
+        hub.packet_templates.push(crate::models::PacketTemplate {
+            name: "T1".into(),
+            header_hex: "AA".into(),
+            fields: vec![],
+            checksum_type: crate::models::packet::ChecksumType::Sum8,
+            tail_hex: "55".into(),
+            include_length: true,
+            description: String::new(),
+        });
+        hub.sync_packet_parser();
+        assert_eq!(hub.packet_parser.template_count(), 1);
+
+        // Replace templates and re-sync
+        hub.packet_templates.clear();
+        hub.packet_templates
+            .push(crate::models::PacketTemplate::default());
+        hub.packet_templates
+            .push(crate::models::PacketTemplate::default());
+        hub.sync_packet_parser();
+        assert_eq!(hub.packet_parser.template_count(), 2);
+    }
+
+    #[test]
+    fn test_modbus_registers_growable() {
+        let mut hub = ProtocolHub::new();
+        hub.modbus_registers.extend_from_slice(&[100, 200, 300]);
+        assert_eq!(hub.modbus_registers.len(), 3);
+        assert_eq!(hub.modbus_registers[1], 200);
+    }
+
+    #[test]
+    fn test_response_log_append() {
+        let mut hub = ProtocolHub::new();
+        hub.modbus_response_log.push("Response 1".into());
+        hub.modbus_response_log.push("Response 2".into());
+        assert_eq!(hub.modbus_response_log.len(), 2);
+        assert_eq!(hub.modbus_response_log[0], "Response 1");
+    }
+
+    #[test]
+    fn test_canopen_log_append() {
+        let mut hub = ProtocolHub::new();
+        hub.canopen_log.push("NMT Start".into());
+        assert_eq!(hub.canopen_log.len(), 1);
     }
 }

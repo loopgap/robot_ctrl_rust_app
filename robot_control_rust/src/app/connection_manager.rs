@@ -227,6 +227,7 @@ impl ConnectionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn test_new_default_state() {
@@ -235,113 +236,223 @@ mod tests {
         assert!(!cm.is_any_connected());
         assert!(!cm.reconnect_armed());
         assert!(cm.available_ports.is_empty());
+        assert!(!cm.reconnect_paused_by_user);
+        assert!(cm.next_reconnect_at.is_none());
+        assert!(cm.last_rx_instant.is_none());
+        assert_eq!(cm.reconnect_attempts, 0);
+        assert!(!cm.serial_connect_in_progress);
+        assert!(!cm.port_scan_in_progress);
     }
 
     #[test]
-    fn test_active_status_disconnected() {
-        let cm = ConnectionManager::new();
-        assert!(matches!(cm.active_status(), ConnectionStatus::Disconnected));
-    }
-
-    #[test]
-    fn test_set_active_connection() {
+    fn test_active_status_all_connection_types() {
         let mut cm = ConnectionManager::new();
+
+        // Serial types → serial.status
+        cm.set_active_connection(ConnectionType::Serial);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+        cm.set_active_connection(ConnectionType::Usb);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+        cm.set_active_connection(ConnectionType::ModbusRtu);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+
+        // TCP types → tcp.status
         cm.set_active_connection(ConnectionType::Tcp);
-        assert_eq!(cm.active_conn, ConnectionType::Tcp);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+        cm.set_active_connection(ConnectionType::ModbusTcp);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+
+        // UDP → udp.status
+        cm.set_active_connection(ConnectionType::Udp);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+
+        // CAN types → based on is_running
+        cm.set_active_connection(ConnectionType::Can);
+        assert_eq!(cm.active_status(), ConnectionStatus::Disconnected);
+        cm.can.is_running = true;
+        assert_eq!(cm.active_status(), ConnectionStatus::Connected);
+        cm.set_active_connection(ConnectionType::CanFd);
+        assert_eq!(cm.active_status(), ConnectionStatus::Connected);
     }
 
     #[test]
-    fn test_total_bytes_start_at_zero() {
-        let cm = ConnectionManager::new();
+    fn test_link_health_text_all_statuses() {
+        let mut cm = ConnectionManager::new();
+
+        // Disconnected (default)
+        assert_eq!(cm.link_health_text(), "Offline");
+        cm.reconnect_paused_by_user = true;
+        assert_eq!(cm.link_health_text(), "Offline (manual)");
+        cm.reconnect_paused_by_user = false;
+
+        // Connecting
+        cm.serial.status = ConnectionStatus::Connecting;
+        assert_eq!(cm.link_health_text(), "Connecting");
+
+        // Error
+        cm.serial.status = ConnectionStatus::Error;
+        assert_eq!(cm.link_health_text(), "Error");
+
+        // HardwareFault
+        cm.serial.status = ConnectionStatus::HardwareFault;
+        assert_eq!(cm.link_health_text(), "HW Fault");
+
+        // Connected with no RX yet
+        cm.serial.status = ConnectionStatus::Connected;
+        cm.last_rx_instant = None;
+        assert_eq!(cm.link_health_text(), "Connected (no RX yet)");
+    }
+
+    #[test]
+    fn test_link_health_text_connected_with_elapsed() {
+        let mut cm = ConnectionManager::new();
+        cm.serial.status = ConnectionStatus::Connected;
+
+        // Live (< 1s)
+        cm.last_rx_instant = Some(Instant::now());
+        let text = cm.link_health_text();
+        assert_eq!(text, "Live");
+
+        // Stale (> 10s)
+        cm.last_rx_instant = Some(Instant::now() - Duration::from_secs(15));
+        let text = cm.link_health_text();
+        assert!(text.starts_with("Stale"), "Expected 'Stale', got: {}", text);
+    }
+
+    #[test]
+    fn test_reset_counters_all_services() {
+        let mut cm = ConnectionManager::new();
+        cm.serial.bytes_sent = 100;
+        cm.serial.bytes_received = 200;
+        cm.serial.error_count = 5;
+        cm.tcp.bytes_sent = 300;
+        cm.tcp.bytes_received = 400;
+        cm.tcp.error_count = 10;
+        cm.udp.bytes_sent = 500;
+        cm.udp.bytes_received = 600;
+        cm.udp.error_count = 15;
+        cm.reset_counters();
         assert_eq!(cm.total_bytes_sent(), 0);
         assert_eq!(cm.total_bytes_received(), 0);
         assert_eq!(cm.total_errors(), 0);
     }
 
     #[test]
-    fn test_reset_counters() {
+    fn test_total_bytes_aggregates_all_services() {
         let mut cm = ConnectionManager::new();
         cm.serial.bytes_sent = 100;
-        cm.reset_counters();
-        assert_eq!(cm.total_bytes_sent(), 0);
+        cm.tcp.bytes_sent = 200;
+        cm.udp.bytes_sent = 300;
+        assert_eq!(cm.total_bytes_sent(), 600);
+
+        cm.serial.bytes_received = 10;
+        cm.tcp.bytes_received = 20;
+        cm.udp.bytes_received = 30;
+        assert_eq!(cm.total_bytes_received(), 60);
+
+        cm.serial.error_count = 1;
+        cm.tcp.error_count = 2;
+        cm.udp.error_count = 3;
+        assert_eq!(cm.total_errors(), 6);
     }
 
     #[test]
-    fn test_reconnect_lifecycle() {
+    fn test_reconnect_lifecycle_complete() {
         let mut cm = ConnectionManager::new();
         assert!(!cm.reconnect_armed());
+        assert!(!cm.reconnect_paused());
+
         cm.arm_auto_reconnect();
         assert!(cm.reconnect_armed());
-        cm.pause_auto_reconnect();
-        assert!(cm.reconnect_paused());
-        cm.resume_auto_reconnect();
         assert!(!cm.reconnect_paused());
+
+        cm.pause_auto_reconnect();
+        assert!(cm.reconnect_armed());
+        assert!(cm.reconnect_paused());
+
+        cm.resume_auto_reconnect();
+        assert!(cm.reconnect_armed());
+        assert!(!cm.reconnect_paused());
+
+        cm.reconnect_attempts = 5;
+        cm.next_reconnect_at = Some(Instant::now() + Duration::from_secs(10));
         cm.clear_reconnect_schedule();
         assert!(!cm.reconnect_armed());
+        assert!(cm.next_reconnect_at.is_none());
+        assert_eq!(cm.reconnect_attempts, 0);
     }
 
     #[test]
-    fn test_send_data_when_disconnected() {
+    fn test_send_data_routes_to_correct_service() {
         let mut cm = ConnectionManager::new();
+
+        // Serial (disconnected → error)
+        cm.set_active_connection(ConnectionType::Serial);
+        assert!(cm.send_data(&[0x01]).is_err());
+
+        // TCP (disconnected → error)
+        cm.set_active_connection(ConnectionType::Tcp);
+        assert!(cm.send_data(&[0x01]).is_err());
+
+        // UDP (disconnected → error)
+        cm.set_active_connection(ConnectionType::Udp);
+        assert!(cm.send_data(&[0x01]).is_err());
+
+        // CAN → error (no active connection)
+        cm.set_active_connection(ConnectionType::Can);
         assert!(cm.send_data(&[0x01]).is_err());
     }
 
     #[test]
-    fn test_link_health_text() {
-        let cm = ConnectionManager::new();
-        let text = cm.link_health_text();
-        assert!(!text.is_empty());
-    }
-
-    #[test]
-    fn test_reconnect_countdown_not_armed() {
-        let cm = ConnectionManager::new();
-        assert_eq!(cm.reconnect_countdown_text(), "N/A");
-    }
-
-    #[test]
-    fn test_total_bytes_sent_received() {
-        let cm = ConnectionManager::new();
-        assert_eq!(cm.total_bytes_sent(), 0);
-        assert_eq!(cm.total_bytes_received(), 0);
-    }
-
-    #[test]
-    fn test_total_errors() {
-        let cm = ConnectionManager::new();
-        assert_eq!(cm.total_errors(), 0);
-    }
-
-    #[test]
-    fn test_link_health_text_disconnected() {
-        let cm = ConnectionManager::new();
-        let text = cm.link_health_text();
-        assert!(!text.is_empty());
-    }
-
-    #[test]
-    fn test_reconnect_lifecycle_detailed() {
-        let mut cm = ConnectionManager::new();
-        assert!(!cm.reconnect_armed);
-        cm.arm_auto_reconnect();
-        assert!(cm.reconnect_armed);
-        cm.clear_reconnect_schedule();
-        assert!(!cm.reconnect_armed);
-    }
-
-    #[test]
-    fn test_pause_resume_reconnect() {
+    fn test_reconnect_countdown_armed_with_timer() {
         let mut cm = ConnectionManager::new();
         cm.arm_auto_reconnect();
-        cm.pause_auto_reconnect();
-        assert!(cm.reconnect_paused_by_user);
-        cm.resume_auto_reconnect();
-        assert!(!cm.reconnect_paused_by_user);
+        cm.next_reconnect_at = Some(Instant::now() + Duration::from_secs(5));
+        let text = cm.reconnect_countdown_text();
+        // Should show a countdown like "4.Xs" or "5.Xs"
+        assert!(
+            text.ends_with('s'),
+            "Expected countdown text, got: {}",
+            text
+        );
+        assert!(text != "N/A");
     }
 
     #[test]
-    fn test_active_conn_default() {
-        let cm = ConnectionManager::new();
-        assert_eq!(cm.active_conn, crate::models::ConnectionType::Serial);
+    fn test_reconnect_countdown_due_now() {
+        let mut cm = ConnectionManager::new();
+        cm.arm_auto_reconnect();
+        cm.next_reconnect_at = Some(Instant::now() - Duration::from_secs(1));
+        let text = cm.reconnect_countdown_text();
+        assert_eq!(text, "Due now");
+    }
+
+    #[test]
+    fn test_last_comm_all_types() {
+        let mut cm = ConnectionManager::new();
+
+        cm.set_active_connection(ConnectionType::Serial);
+        assert_eq!(cm.last_comm(), "N/A");
+
+        cm.set_active_connection(ConnectionType::Tcp);
+        assert_eq!(cm.last_comm(), "N/A");
+
+        cm.set_active_connection(ConnectionType::Udp);
+        assert_eq!(cm.last_comm(), "N/A");
+
+        cm.set_active_connection(ConnectionType::Can);
+        assert_eq!(cm.last_comm(), "No CAN frame yet");
+    }
+
+    #[test]
+    fn test_is_any_connected_reflects_service_state() {
+        let mut cm = ConnectionManager::new();
+        assert!(!cm.is_any_connected());
+
+        // CAN running counts as connected
+        cm.can.is_running = true;
+        assert!(cm.is_any_connected());
+        cm.can.is_running = false;
+        assert!(!cm.is_any_connected());
     }
 }
