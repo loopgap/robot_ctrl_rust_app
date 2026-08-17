@@ -319,6 +319,19 @@ mod tests {
     }
 
     #[test]
+    fn test_format_bytes_short_zero() {
+        assert_eq!(format_bytes_short(0), "0B");
+    }
+
+    #[test]
+    fn test_format_bytes_short_boundary() {
+        assert_eq!(format_bytes_short(1023), "1023B");
+        assert_eq!(format_bytes_short(1024), "1.0K");
+        assert_eq!(format_bytes_short(1048575), "1024.0K");
+        assert_eq!(format_bytes_short(1048576), "1.0M");
+    }
+
+    #[test]
     fn test_format_data_hex() {
         let result = format_data_with_mode(&[0x48, 0x65], DisplayMode::Hex);
         assert!(result.contains("48") || result.contains("65"));
@@ -328,5 +341,25 @@ mod tests {
     fn test_format_data_ascii() {
         let result = format_data_with_mode(&[0x48, 0x65], DisplayMode::Ascii);
         assert!(result.contains("He"));
+    }
+
+    #[test]
+    fn test_format_data_hex_empty() {
+        let result = format_data_with_mode(&[], DisplayMode::Hex);
+        assert!(result.is_empty() || result == "");
+    }
+
+    #[test]
+    fn test_format_data_mixed() {
+        let result = format_data_with_mode(&[0x48, 0x65, 0x6C], DisplayMode::Mixed);
+        // Mixed mode should show both hex and ASCII
+        assert!(!result.is_empty());
+    }
+
+    #[test]
+    fn test_format_data_ascii_non_printable() {
+        // Non-printable bytes should be handled gracefully
+        let result = format_data_with_mode(&[0x00, 0x01, 0xFF], DisplayMode::Ascii);
+        assert!(!result.is_empty());
     }
 }

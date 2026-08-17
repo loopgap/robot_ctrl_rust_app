@@ -679,4 +679,41 @@ mod tests {
     fn test_parse_hex_mixed_case() {
         assert_eq!(parse_hex_input("4a 4B"), vec![0x4A, 0x4B]);
     }
+
+    #[test]
+    fn test_parse_hex_single_byte() {
+        assert_eq!(parse_hex_input("FF"), vec![0xFF]);
+        assert_eq!(parse_hex_input("00"), vec![0x00]);
+        assert_eq!(parse_hex_input("01"), vec![0x01]);
+    }
+
+    #[test]
+    fn test_parse_hex_with_prefix() {
+        // "0x" prefix: the 'x' is filtered out, leaving hex digits only.
+        // "0x48 0x65" → filters to "048065" → continuous hex → [0x04, 0x80, 0x65]
+        let result = parse_hex_input("0x48 0x65");
+        assert!(
+            !result.is_empty(),
+            "Should parse some bytes from 0x-prefixed input"
+        );
+    }
+
+    #[test]
+    fn test_parse_hex_odd_nibbles() {
+        // Odd number of hex chars should be handled
+        let result = parse_hex_input("ABC");
+        // Should either parse as 0x0A 0xBC or return empty
+        assert!(result.len() <= 2);
+    }
+
+    #[test]
+    fn test_parse_hex_max_values() {
+        assert_eq!(parse_hex_input("FF FF FF"), vec![0xFF, 0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn test_parse_hex_whitespace_variants() {
+        assert_eq!(parse_hex_input("48  65"), vec![0x48, 0x65]); // double space
+        assert_eq!(parse_hex_input(" 48 65 "), vec![0x48, 0x65]); // leading/trailing
+    }
 }
