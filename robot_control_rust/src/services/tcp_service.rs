@@ -154,13 +154,25 @@ impl TcpService {
             Ok(Err(e)) => {
                 self.status = ConnectionStatus::Error;
                 self.error_count += 1;
-                let _ = handle.join();
+                // Bounded join: the connect already failed, worker should exit quickly.
+                let (jtx, jrx) = mpsc::channel();
+                thread::spawn(move || {
+                    let _ = handle.join();
+                    let _ = jtx.send(());
+                });
+                let _ = jrx.recv_timeout(JOIN_TIMEOUT);
                 Err(e)
             }
             Err(_) => {
                 // Timeout — the worker thread may still be connecting.
                 self.stop_flag.store(true, Ordering::Release);
-                let _ = handle.join();
+                // Bounded join: prevent UI freeze if connect hangs.
+                let (jtx, jrx) = mpsc::channel();
+                thread::spawn(move || {
+                    let _ = handle.join();
+                    let _ = jtx.send(());
+                });
+                let _ = jrx.recv_timeout(JOIN_TIMEOUT);
                 self.status = ConnectionStatus::Error;
                 self.error_count += 1;
                 Err(anyhow::anyhow!(
@@ -252,13 +264,17 @@ impl TcpService {
 
             // Non-blocking read
             match stream.read(&mut buf) {
-                Ok(n) if n > 0 => {
+                Ok(0) => {
+                    // Peer closed connection (FIN). Exit loop to avoid
+                    // CPU spin on repeated Ok(0).
+                    info!("TCP client: peer closed connection");
+                    worker_errored.store(true, Ordering::Release);
+                    return;
+                }
+                Ok(n) => {
                     if tx_to_main.try_send(buf[..n].to_vec()).is_err() {
                         // Channel full or disconnected
                     }
-                }
-                Ok(_) => {
-                    // Connection closed by peer (n == 0)
                 }
                 Err(ref e)
                     if e.kind() == std::io::ErrorKind::WouldBlock
@@ -319,8 +335,15 @@ impl TcpService {
             // Read from current stream
             if let Some(ref mut stream) = current_stream {
                 match stream.read(&mut buf) {
-                    Ok(n) if n > 0 => if tx_to_main.try_send(buf[..n].to_vec()).is_err() {},
-                    Ok(_) => {}
+                    Ok(0) => {
+                        // Peer closed connection (FIN).
+                        info!("TCP server: client disconnected (peer closed)");
+                        current_stream = None;
+                        if let Ok(mut clients) = connected_clients.lock() {
+                            clients.clear();
+                        }
+                    }
+                    Ok(n) => if tx_to_main.try_send(buf[..n].to_vec()).is_err() {},
                     Err(ref e)
                         if e.kind() == std::io::ErrorKind::WouldBlock
                             || e.kind() == std::io::ErrorKind::TimedOut => {}
@@ -335,13 +358,40 @@ impl TcpService {
             }
 
             // Drain ALL pending write requests from the main thread
+            let mut drop_count: u32 = 0;
             while let Ok(data) = rx_from_main.try_recv() {
                 if let Some(ref mut stream) = current_stream {
-                    if stream.write_all(&data).is_err() {
-                        worker_errored.store(true, Ordering::Release);
+                    match stream.write_all(&data) {
+                        Ok(()) => {
+                            let _ = stream.flush();
+                        }
+                        Err(ref e)
+                            if e.kind() == std::io::ErrorKind::BrokenPipe
+                                || e.kind() == std::io::ErrorKind::ConnectionReset
+                                || e.kind() == std::io::ErrorKind::ConnectionAborted =>
+                        {
+                            // Client gone — drop it, keep server alive.
+                            warn!("TCP server: write failed (client gone): {}", e);
+                            current_stream = None;
+                            if let Ok(mut clients) = connected_clients.lock() {
+                                clients.clear();
+                            }
+                        }
+                        Err(e) => {
+                            error!("TCP server: write error: {}", e);
+                            worker_errored.store(true, Ordering::Release);
+                        }
                     }
-                    let _ = stream.flush();
+                } else {
+                    // No client connected — data is dropped. Log once per batch.
+                    drop_count += 1;
                 }
+            }
+            if drop_count > 0 {
+                warn!(
+                    "TCP server: dropped {} message(s) — no client connected",
+                    drop_count
+                );
             }
 
             thread::sleep(Duration::from_millis(1));

@@ -1914,9 +1914,11 @@ impl AppState {
 
         let mut interval_ms = (self.ui.auto_reconnect_interval_ms as u64).clamp(500, 30_000);
         interval_ms = interval_ms.max(profile.reconnect_backoff_base_ms.max(500));
-        // Exponential backoff multiplier
+        // Exponential backoff multiplier: 2^attempts, capped at 2^6 = 64×.
+        // Combined with BACKOFF_CAP_MS, this gives a smooth progression:
+        // 2s → 4s → 8s → 16s → 32s → 60s → 60s …
         interval_ms = interval_ms
-            .saturating_mul(1u64 << self.conn.reconnect_attempts.min(10))
+            .saturating_mul(1u64 << self.conn.reconnect_attempts.min(6))
             .min(BACKOFF_CAP_MS);
 
         if self.error_burst_count >= profile.error_burst_threshold {
@@ -2015,6 +2017,7 @@ impl AppState {
             Ok(_) => {
                 self.arm_auto_reconnect();
                 self.conn.reconnect_attempts = 0; // Reset backoff on success
+                self.error_burst_count = 0; // Reset burst counter on success
                 info!(target: "connection", connection = %self.conn.active_conn, "connect_success");
                 self.add_info_log(&format!("Connected: {}", self.conn.active_conn));
             }
@@ -2118,6 +2121,7 @@ impl AppState {
             let raw = self.conn.serial.try_read_raw();
             if !raw.is_empty() {
                 self.conn.last_rx_instant = Some(now);
+                self.error_burst_count = 0; // Successful RX clears burst state
                 self.add_log(LogDirection::Rx, &raw, "Serial");
                 self.conn.serial.push_rx_data(&raw);
                 all_raw.extend_from_slice(&raw);
@@ -2128,6 +2132,7 @@ impl AppState {
             let data = self.conn.tcp.try_read_raw();
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
+                self.error_burst_count = 0;
                 self.add_log(LogDirection::Rx, &data, "TCP");
                 all_raw.extend_from_slice(&data);
             }
@@ -2137,6 +2142,7 @@ impl AppState {
             let data = self.conn.udp.try_read_raw();
             if !data.is_empty() {
                 self.conn.last_rx_instant = Some(now);
+                self.error_burst_count = 0;
                 self.add_log(LogDirection::Rx, &data, "UDP");
                 all_raw.extend_from_slice(&data);
             }
@@ -2501,6 +2507,8 @@ impl AppState {
                     match result {
                         Ok(serial) => {
                             self.conn.serial = serial;
+                            self.conn.reconnect_attempts = 0; // Reset backoff on success
+                            self.error_burst_count = 0; // Reset burst counter on success
                             self.arm_auto_reconnect();
                             info!(target: "connection", connection = %self.conn.active_conn, "connect_success");
                             self.add_info_log(&format!("Connected: {}", self.conn.active_conn));

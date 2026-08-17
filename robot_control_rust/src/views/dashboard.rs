@@ -1,5 +1,6 @@
 use crate::app::{ActiveTab, AppState};
 use crate::i18n::{Language, Tr};
+use crate::models::ConnectionStatus;
 use crate::services::ConnectionProvider;
 use crate::views::ui_kit::{page_header, section_title, settings_card};
 use egui::{self, Color32, RichText, Ui, Vec2};
@@ -21,7 +22,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui,
                 "Serial",
                 &state.conn.serial.status.to_string(),
-                status_color(state.conn.serial.is_connected()),
+                connection_status_color(state.conn.serial.status),
                 if lang == Language::Chinese {
                     "串口连接状态"
                 } else {
@@ -33,7 +34,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui,
                 "TCP",
                 &state.conn.tcp.status.to_string(),
-                status_color(state.conn.tcp.is_connected()),
+                connection_status_color(state.conn.tcp.status),
                 if lang == Language::Chinese {
                     "TCP/IP 网络连接状态"
                 } else {
@@ -45,7 +46,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 ui,
                 "UDP",
                 &state.conn.udp.status.to_string(),
-                status_color(state.conn.udp.is_connected()),
+                connection_status_color(state.conn.udp.status),
                 if lang == Language::Chinese {
                     "UDP 数据报连接状态"
                 } else {
@@ -973,6 +974,17 @@ pub(crate) fn status_color(connected: bool) -> Color32 {
     }
 }
 
+/// Map full ConnectionStatus to a dashboard color.
+pub(crate) fn connection_status_color(status: ConnectionStatus) -> Color32 {
+    match status {
+        ConnectionStatus::Connected => Color32::from_rgb(46, 160, 67),
+        ConnectionStatus::Connecting => Color32::from_rgb(255, 165, 0),
+        ConnectionStatus::Error => Color32::from_rgb(218, 54, 51),
+        ConnectionStatus::HardwareFault => Color32::from_rgb(180, 0, 0),
+        ConnectionStatus::Disconnected => Color32::from_rgb(128, 128, 128),
+    }
+}
+
 /// Status color using theme tokens.
 #[allow(dead_code)]
 pub(crate) fn status_color_themed(
@@ -1059,5 +1071,51 @@ mod tests {
     #[test]
     fn test_status_color_disconnected() {
         assert_eq!(status_color(false), Color32::from_rgb(128, 128, 128));
+    }
+
+    #[test]
+    fn test_connection_status_color_all_variants() {
+        assert_eq!(
+            connection_status_color(ConnectionStatus::Connected),
+            Color32::from_rgb(46, 160, 67)
+        );
+        assert_eq!(
+            connection_status_color(ConnectionStatus::Connecting),
+            Color32::from_rgb(255, 165, 0)
+        );
+        assert_eq!(
+            connection_status_color(ConnectionStatus::Error),
+            Color32::from_rgb(218, 54, 51)
+        );
+        assert_eq!(
+            connection_status_color(ConnectionStatus::HardwareFault),
+            Color32::from_rgb(180, 0, 0)
+        );
+        assert_eq!(
+            connection_status_color(ConnectionStatus::Disconnected),
+            Color32::from_rgb(128, 128, 128)
+        );
+    }
+
+    #[test]
+    fn test_connection_status_colors_are_distinct() {
+        // All 5 status colors must be distinct for UI clarity
+        let colors: Vec<Color32> = [
+            ConnectionStatus::Connected,
+            ConnectionStatus::Connecting,
+            ConnectionStatus::Error,
+            ConnectionStatus::HardwareFault,
+            ConnectionStatus::Disconnected,
+        ]
+        .iter()
+        .map(|s| connection_status_color(*s))
+        .collect();
+        let mut unique = colors.clone();
+        unique.dedup();
+        assert_eq!(
+            colors.len(),
+            unique.len(),
+            "All status colors must be distinct"
+        );
     }
 }

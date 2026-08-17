@@ -37,6 +37,8 @@ pub struct SerialService {
     /// Read cursor into rx_buffer — bytes before this index have been consumed.
     /// Avoids O(n) drain() on every parse attempt.
     rx_read_pos: usize,
+    /// Pre-allocated scratch buffer for `try_read_raw` to avoid per-call heap allocation.
+    rx_scratch: Vec<u8>,
 
     // Communication with the background thread
     tx: Option<mpsc::Sender<Vec<u8>>>,
@@ -65,6 +67,7 @@ impl SerialService {
             last_comm: "N/A".into(),
             rx_buffer: Vec::with_capacity(4096),
             rx_read_pos: 0,
+            rx_scratch: Vec::with_capacity(8192),
             tx: None,
             rx: None,
             stop_flag: Arc::new(AtomicBool::new(false)),
@@ -418,19 +421,20 @@ impl SerialService {
             self.error_count += 1;
         }
 
-        let mut all_data = Vec::new();
+        // Reuse pre-allocated scratch buffer to avoid per-call heap allocation.
+        self.rx_scratch.clear();
         if let Some(rx) = &self.rx {
             while let Ok(data) = rx.try_recv() {
-                all_data.extend_from_slice(&data);
+                self.rx_scratch.extend_from_slice(&data);
             }
         }
 
-        if !all_data.is_empty() {
-            self.bytes_received += all_data.len() as u64;
+        if !self.rx_scratch.is_empty() {
+            self.bytes_received += self.rx_scratch.len() as u64;
             self.last_comm = Local::now().format("%H:%M:%S%.3f").to_string();
         }
 
-        all_data
+        std::mem::take(&mut self.rx_scratch)
     }
 
     pub fn send_data(&mut self, data: &[u8]) -> Result<()> {
