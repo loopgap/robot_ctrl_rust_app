@@ -2228,23 +2228,118 @@ impl AppState {
     }
 
     pub fn emergency_stop(&mut self) {
-        self.control.is_running = false;
-        let send_result = if self.conn.serial.is_connected() {
-            self.conn.serial.send_emergency_stop()
+        // IEC 61508 / ISO 13849: Emergency stop must be sent reliably.
+        // 1. Immediately stop the control loop (fail-safe: output goes to 0).
+        // 2. Broadcast the E-Stop command via ALL connected interfaces.
+        // 3. Retry up to 3 times per interface with a small delay.
+        self.control.emergency_stop();
+
+        const ESTOP_RETRIES: usize = 3;
+        const ESTOP_RETRY_DELAY: Duration = Duration::from_millis(50);
+
+        let mut any_success = false;
+        let mut errors: Vec<String> = Vec::new();
+
+        // Serial interface
+        if self.conn.serial.is_connected() {
+            let mut sent = false;
+            for attempt in 1..=ESTOP_RETRIES {
+                match self.conn.serial.send_emergency_stop() {
+                    Ok(()) => {
+                        sent = true;
+                        break;
+                    }
+                    Err(e) => {
+                        if attempt < ESTOP_RETRIES {
+                            warn!(
+                                "E-Stop serial attempt {}/{} failed: {}",
+                                attempt, ESTOP_RETRIES, e
+                            );
+                            thread::sleep(ESTOP_RETRY_DELAY);
+                        } else {
+                            errors.push(format!("Serial: {e}"));
+                        }
+                    }
+                }
+            }
+            if sent {
+                any_success = true;
+            }
+        }
+
+        // TCP interface
+        if self.conn.tcp.is_connected() {
+            let estop_pkt = SerialService::encode_packet(0xFF, &[0x01]);
+            let mut sent = false;
+            for attempt in 1..=ESTOP_RETRIES {
+                match self.conn.tcp.send_data(&estop_pkt) {
+                    Ok(()) => {
+                        sent = true;
+                        break;
+                    }
+                    Err(e) => {
+                        if attempt < ESTOP_RETRIES {
+                            warn!(
+                                "E-Stop TCP attempt {}/{} failed: {}",
+                                attempt, ESTOP_RETRIES, e
+                            );
+                            thread::sleep(ESTOP_RETRY_DELAY);
+                        } else {
+                            errors.push(format!("TCP: {e}"));
+                        }
+                    }
+                }
+            }
+            if sent {
+                any_success = true;
+            }
+        }
+
+        // UDP interface
+        if self.conn.udp.is_connected() {
+            let estop_pkt = SerialService::encode_packet(0xFF, &[0x01]);
+            let mut sent = false;
+            for attempt in 1..=ESTOP_RETRIES {
+                match self.conn.udp.send_data(&estop_pkt) {
+                    Ok(()) => {
+                        sent = true;
+                        break;
+                    }
+                    Err(e) => {
+                        if attempt < ESTOP_RETRIES {
+                            warn!(
+                                "E-Stop UDP attempt {}/{} failed: {}",
+                                attempt, ESTOP_RETRIES, e
+                            );
+                            thread::sleep(ESTOP_RETRY_DELAY);
+                        } else {
+                            errors.push(format!("UDP: {e}"));
+                        }
+                    }
+                }
+            }
+            if sent {
+                any_success = true;
+            }
+        }
+
+        // Report result
+        if any_success {
+            self.status_message = "EMERGENCY STOP!".into();
+            self.add_info_log("EMERGENCY STOP sent (multi-interface, retried)");
+            if !errors.is_empty() {
+                self.add_info_log(&format!("E-Stop partial failure: {}", errors.join("; ")));
+            }
+        } else if errors.is_empty() {
+            // No connected interface — E-Stop only stops the control loop locally.
+            self.status_message = "EMERGENCY STOP (local only — no connection)".into();
+            self.add_info_log("E-Stop: no connected interface, control loop stopped locally");
         } else {
-            Ok(())
-        };
-        match send_result {
-            Ok(()) => {
-                self.status_message = "EMERGENCY STOP!".into();
-                self.add_info_log("Warning: Emergency Stop activated!");
-            }
-            Err(e) => {
-                self.status_message = "EMERGENCY STOP \u{2014} send failed!".into();
-                self.report_error(format!(
-                    "Emergency stop command failed to send: {e}. Motor may still be running!"
-                ));
-            }
+            self.status_message = "EMERGENCY STOP — send failed on all interfaces!".into();
+            self.report_error(format!(
+                "E-Stop failed on all interfaces: {}. Motor may still be running!",
+                errors.join("; ")
+            ));
         }
     }
 
@@ -2582,6 +2677,29 @@ impl AppState {
                     self.ui.llm_loading = false;
                     self.metrics.llm_failures += 1;
                     self.report_error("LLM worker disconnected unexpectedly");
+                }
+            }
+        }
+
+        // ── Connection Watchdog ──────────────────────────────────────────
+        // IEC 61784: Detect stale connections (half-open TCP, dead serial).
+        // If connected but no RX for >10s, auto-disconnect and log warning.
+        const STALE_RX_TIMEOUT: Duration = Duration::from_secs(10);
+        if self.is_any_connected() {
+            if let Some(last_rx) = self.conn.last_rx_instant {
+                if last_rx.elapsed() > STALE_RX_TIMEOUT {
+                    warn!(
+                        "Connection watchdog: no RX for >{:.0}s, disconnecting stale link",
+                        STALE_RX_TIMEOUT.as_secs_f32()
+                    );
+                    self.add_info_log(&format!(
+                        "Watchdog: no data received for >{}s — auto-disconnecting stale connection",
+                        STALE_RX_TIMEOUT.as_secs()
+                    ));
+                    self.disconnect_active();
+                    if self.ui.auto_reconnect_enabled {
+                        self.arm_auto_reconnect();
+                    }
                 }
             }
         }

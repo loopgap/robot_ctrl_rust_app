@@ -1,5 +1,6 @@
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 const MAX_CAN_FRAMES: usize = 10_000;
 
@@ -297,6 +298,36 @@ impl CanService {
         self.bus_state = CanBusState::from_counters(self.tx_error_count, self.rx_error_count);
     }
 
+    /// Attempt Bus-Off recovery per ISO 11898-1 §10.1.3.
+    ///
+    /// After Bus-Off (TEC > 255), the CAN controller must observe
+    /// 128 × 11 consecutive recessive bits before re-entering Error-Active.
+    /// In software simulation, this resets the error counters to simulate
+    /// the hardware recovery sequence.
+    ///
+    /// Returns `true` if recovery was performed (was in Bus-Off state).
+    pub fn attempt_bus_off_recovery(&mut self) -> bool {
+        if self.bus_state != CanBusState::BusOff {
+            return false;
+        }
+        // ISO 11898-1 §10.1.3: after 128 × 11 recessive bits,
+        // TEC and REC are reset and state returns to Error-Active.
+        self.tx_error_count = 0;
+        self.rx_error_count = 0;
+        self.bus_state = CanBusState::ErrorActive;
+        info!("CAN Bus-Off recovery: counters reset, state → ErrorActive");
+        true
+    }
+
+    /// Current bus state as a human-readable string for UI display.
+    pub fn bus_state_label(&self) -> &'static str {
+        match self.bus_state {
+            CanBusState::ErrorActive => "Error Active",
+            CanBusState::ErrorPassive => "Error Passive",
+            CanBusState::BusOff => "Bus Off",
+        }
+    }
+
     /// 模拟发送帧（记录到日志）
     pub fn send_frame(&mut self, mut frame: CanFrame) {
         frame.direction = FrameDirection::Tx;
@@ -463,5 +494,49 @@ mod tests {
         }
         assert!(svc.frames.len() <= MAX_CAN_FRAMES);
         assert_eq!(svc.dropped_frames, 500);
+    }
+
+    #[test]
+    fn test_can_bus_off_recovery() {
+        let mut svc = CanService::new();
+        // Drive into Bus-Off: TEC > 255 requires 33 TX errors (33 × 8 = 264)
+        for _ in 0..33 {
+            svc.record_tx_error();
+        }
+        assert_eq!(svc.bus_state, CanBusState::BusOff);
+
+        // Attempt recovery
+        let recovered = svc.attempt_bus_off_recovery();
+        assert!(recovered);
+        assert_eq!(svc.bus_state, CanBusState::ErrorActive);
+        assert_eq!(svc.tx_error_count, 0);
+        assert_eq!(svc.rx_error_count, 0);
+    }
+
+    #[test]
+    fn test_can_bus_off_recovery_noop_when_not_bus_off() {
+        let mut svc = CanService::new();
+        assert_eq!(svc.bus_state, CanBusState::ErrorActive);
+        let recovered = svc.attempt_bus_off_recovery();
+        assert!(!recovered);
+        assert_eq!(svc.bus_state, CanBusState::ErrorActive);
+    }
+
+    #[test]
+    fn test_can_bus_state_label() {
+        let mut svc = CanService::new();
+        assert_eq!(svc.bus_state_label(), "Error Active");
+
+        // Drive to Error Passive: REC > 127
+        for _ in 0..128 {
+            svc.record_rx_error();
+        }
+        assert_eq!(svc.bus_state_label(), "Error Passive");
+
+        // Drive to Bus Off
+        for _ in 0..33 {
+            svc.record_tx_error();
+        }
+        assert_eq!(svc.bus_state_label(), "Bus Off");
     }
 }
