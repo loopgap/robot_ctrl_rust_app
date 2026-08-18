@@ -485,11 +485,58 @@ mod tests {
 
     #[test]
     fn test_zh_and_en_differ() {
-        // Chinese and English examples should be different translations
         for key in ChassisCodeExamples::all_chassis_keys() {
             let en = ChassisCodeExamples::get_example(key, "en");
             let zh = ChassisCodeExamples::get_example(key, "zh");
             assert_ne!(en, zh, "EN and ZH examples for {} should differ", key);
+        }
+    }
+
+    // ── Deep: case-insensitive lookup ──
+
+    #[test]
+    fn test_case_sensitive_lookup() {
+        // The lookup is case-sensitive; "differential" != "Differential"
+        let lower = ChassisCodeExamples::get_example("differential", "en");
+        let proper = ChassisCodeExamples::get_example("Differential", "en");
+        assert_ne!(lower, proper, "lookup should be case-sensitive");
+    }
+
+    // ── Deep: ZH examples also contain code signatures ──
+
+    #[test]
+    fn test_zh_examples_contain_code() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let zh = ChassisCodeExamples::get_example(key, "zh");
+            assert!(
+                zh.contains("fn ") || zh.contains("struct ") || zh.contains("let "),
+                "ZH example for {} should contain code",
+                key
+            );
+        }
+    }
+
+    // ── Deep: all chassis keys are non-empty strings ──
+
+    #[test]
+    fn test_chassis_keys_non_empty() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            assert!(!key.is_empty(), "chassis key should not be empty");
+        }
+    }
+
+    // ── Deep: examples are substantial (>50 chars) ──
+
+    #[test]
+    fn test_examples_are_substantial() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let en = ChassisCodeExamples::get_example(key, "en");
+            assert!(
+                en.len() > 50,
+                "EN example for {} should be substantial (got {})",
+                key,
+                en.len()
+            );
         }
     }
 }
