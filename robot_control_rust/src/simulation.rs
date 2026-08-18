@@ -1787,4 +1787,206 @@ mod tests {
             assert!(MAX_TOTAL_STEPS > 0);
         }
     }
+
+    // ── Deep: SimulationConfig validation (every rejection path) ──
+
+    #[test]
+    fn config_default_is_valid() {
+        let config = SimulationConfig::default();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn config_rejects_empty_name() {
+        let config = SimulationConfig {
+            name: "".into(),
+            ..Default::default()
+        };
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("name"));
+    }
+
+    #[test]
+    fn config_rejects_whitespace_name() {
+        let config = SimulationConfig {
+            name: "   ".into(),
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_zero_duration() {
+        let config = SimulationConfig {
+            duration_s: 0.0,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_negative_duration() {
+        let config = SimulationConfig {
+            duration_s: -1.0,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_nan_duration() {
+        let config = SimulationConfig {
+            duration_s: f64::NAN,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_inf_duration() {
+        let config = SimulationConfig {
+            duration_s: f64::INFINITY,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_zero_dt() {
+        let config = SimulationConfig {
+            dt_ns: 0,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_zero_speed_loop() {
+        let config = SimulationConfig {
+            speed_loop_ns: 0,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_nan_speed_ref() {
+        let config = SimulationConfig {
+            speed_ref: f64::NAN,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_inf_load_torque() {
+        let config = SimulationConfig {
+            load_torque: f64::INFINITY,
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_excessive_steps() {
+        let config = SimulationConfig {
+            dt_ns: 1, // 1ns → 1.5s = 1.5e9 steps > MAX
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_zero_inductance() {
+        let config = SimulationConfig {
+            motor: PmsmParams {
+                ld: 0.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_negative_inertia() {
+        let config = SimulationConfig {
+            motor: PmsmParams {
+                j: -0.001,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_zero_vbus() {
+        let config = SimulationConfig {
+            foc: FocParams {
+                v_bus: 0.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_rejects_nan_motor_param() {
+        let config = SimulationConfig {
+            motor: PmsmParams {
+                rs: f64::NAN,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn config_total_steps_computes_correctly() {
+        let config = SimulationConfig::default();
+        let steps = config.total_steps().unwrap();
+        // 1.5s / 50_000ns = 1.5e9 / 50000 = 30000
+        assert_eq!(steps, 30000);
+    }
+
+    #[test]
+    fn config_total_steps_fails_on_invalid() {
+        let config = SimulationConfig {
+            duration_s: -1.0,
+            ..Default::default()
+        };
+        assert!(config.total_steps().is_err());
+    }
+
+    // ── Deep: SimulationMetrics default ──
+
+    #[test]
+    fn simulation_metrics_default() {
+        let m = SimulationMetrics::default();
+        assert_eq!(m.final_speed, 0.0);
+        assert_eq!(m.speed_error_pct, 100.0);
+        assert_eq!(m.max_temperature_c, 25.0);
+        assert!(!m.settled);
+        assert!(!m.cancelled);
+        assert_eq!(m.steps_executed, 0);
+    }
+
+    // ── Deep: EnergyAudit imbalance with negative input ──
+
+    #[test]
+    fn energy_audit_negative_input() {
+        let audit = EnergyAudit {
+            power_input_j: -100.0,
+            mechanical_output_j: -90.0,
+            thermal_loss_j: -8.0,
+            stored_energy_j: -2.0,
+            imbalance_j: -5.0,
+        };
+        let pct = audit.imbalance_pct();
+        assert!(pct.is_finite());
+        assert!(pct > 0.0);
+    }
 }

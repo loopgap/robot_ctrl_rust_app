@@ -320,4 +320,40 @@ mod tests {
         assert_eq!(yes_no(true), "yes");
         assert_eq!(yes_no(false), "no");
     }
+
+    // ── Deep: preview_text edge cases ──
+
+    #[test]
+    fn preview_text_empty_input() {
+        assert_eq!(preview_text("", 10), "");
+    }
+
+    #[test]
+    fn preview_text_exact_boundary() {
+        assert_eq!(preview_text("abc", 3), "abc");
+    }
+
+    #[test]
+    fn preview_text_one_over_boundary() {
+        assert_eq!(preview_text("abcd", 3), "abc\n...");
+    }
+
+    #[test]
+    fn preview_text_zero_max() {
+        assert_eq!(preview_text("hello", 0), "\n...");
+    }
+
+    #[test]
+    fn preview_text_unicode_boundary() {
+        // Chinese chars are multi-byte but 1 char each
+        let text = "你好世界";
+        assert_eq!(preview_text(text, 2), "你好\n...");
+        assert_eq!(preview_text(text, 4), "你好世界");
+    }
+
+    #[test]
+    fn preview_text_large_max_returns_original() {
+        let text = "short";
+        assert_eq!(preview_text(text, 1000), "short");
+    }
 }

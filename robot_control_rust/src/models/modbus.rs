@@ -518,4 +518,256 @@ mod tests {
     fn test_all_functions_listed() {
         assert_eq!(ModbusFunction::all().len(), 8);
     }
+
+    // ── Deep: ModbusFunction Display ──
+
+    #[test]
+    fn test_modbus_function_display_all() {
+        let expected = [
+            "01 - Read Coils",
+            "02 - Read Discrete Inputs",
+            "03 - Read Holding Registers",
+            "04 - Read Input Registers",
+            "05 - Write Single Coil",
+            "06 - Write Single Register",
+            "0F - Write Multiple Coils",
+            "10 - Write Multiple Registers",
+        ];
+        for (i, func) in ModbusFunction::all().iter().enumerate() {
+            assert_eq!(format!("{}", func), expected[i]);
+        }
+    }
+
+    #[test]
+    fn test_modbus_function_code_values() {
+        assert_eq!(ModbusFunction::ReadCoils.code(), 0x01);
+        assert_eq!(ModbusFunction::ReadDiscreteInputs.code(), 0x02);
+        assert_eq!(ModbusFunction::ReadHoldingRegisters.code(), 0x03);
+        assert_eq!(ModbusFunction::ReadInputRegisters.code(), 0x04);
+        assert_eq!(ModbusFunction::WriteSingleCoil.code(), 0x05);
+        assert_eq!(ModbusFunction::WriteSingleRegister.code(), 0x06);
+        assert_eq!(ModbusFunction::WriteMultipleCoils.code(), 0x0F);
+        assert_eq!(ModbusFunction::WriteMultipleRegisters.code(), 0x10);
+    }
+
+    #[test]
+    fn test_is_read_all_write_false() {
+        for func in [
+            ModbusFunction::WriteSingleCoil,
+            ModbusFunction::WriteSingleRegister,
+            ModbusFunction::WriteMultipleCoils,
+            ModbusFunction::WriteMultipleRegisters,
+        ] {
+            assert!(!func.is_read(), "{:?} should not be read", func);
+        }
+    }
+
+    // ── Deep: ModbusFrame RTU build for each function ──
+
+    #[test]
+    fn test_build_rtu_write_single_coil_on() {
+        let frame = ModbusFrame {
+            slave_id: 2,
+            function: ModbusFunction::WriteSingleCoil,
+            start_address: 10,
+            quantity: 1,
+            write_values: vec![1], // ON
+        };
+        let rtu = frame.build_rtu_request();
+        assert_eq!(rtu[0], 2); // slave_id
+        assert_eq!(rtu[1], 0x05); // function code
+                                  // value = 0xFF00 (coil ON)
+        assert_eq!(rtu[4], 0xFF);
+        assert_eq!(rtu[5], 0x00);
+    }
+
+    #[test]
+    fn test_build_rtu_write_single_coil_off() {
+        let frame = ModbusFrame {
+            slave_id: 2,
+            function: ModbusFunction::WriteSingleCoil,
+            start_address: 10,
+            quantity: 1,
+            write_values: vec![0], // OFF
+        };
+        let rtu = frame.build_rtu_request();
+        assert_eq!(rtu[4], 0x00);
+        assert_eq!(rtu[5], 0x00);
+    }
+
+    #[test]
+    fn test_build_rtu_write_multiple_registers() {
+        let frame = ModbusFrame {
+            slave_id: 1,
+            function: ModbusFunction::WriteMultipleRegisters,
+            start_address: 0,
+            quantity: 3,
+            write_values: vec![0x0100, 0x0200, 0x0300],
+        };
+        let rtu = frame.build_rtu_request();
+        assert_eq!(rtu[0], 1);
+        assert_eq!(rtu[1], 0x10);
+        // byte_count = 3 * 2 = 6
+        assert_eq!(rtu[6], 6);
+    }
+
+    #[test]
+    fn test_build_rtu_write_multiple_coils() {
+        let frame = ModbusFrame {
+            slave_id: 1,
+            function: ModbusFunction::WriteMultipleCoils,
+            start_address: 0,
+            quantity: 10,
+            write_values: vec![1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        };
+        let rtu = frame.build_rtu_request();
+        assert_eq!(rtu[1], 0x0F);
+        // byte_count = ceil(10/8) = 2
+        assert_eq!(rtu[6], 2);
+    }
+
+    // ── Deep: ModbusFrame TCP build ──
+
+    #[test]
+    fn test_build_tcp_mbap_header_structure() {
+        let frame = ModbusFrame {
+            slave_id: 5,
+            function: ModbusFunction::ReadInputRegisters,
+            start_address: 100,
+            quantity: 3,
+            write_values: Vec::new(),
+        };
+        let tcp = frame.build_tcp_request(0x1234);
+        // Transaction ID
+        assert_eq!(u16::from_be_bytes([tcp[0], tcp[1]]), 0x1234);
+        // Protocol ID = 0
+        assert_eq!(u16::from_be_bytes([tcp[2], tcp[3]]), 0);
+        // Length = PDU length (slave_id + fn_code + addr + qty = 1+1+2+2 = 6)
+        assert_eq!(u16::from_be_bytes([tcp[4], tcp[5]]), 6);
+        // Unit ID
+        assert_eq!(tcp[6], 5);
+        // Function code
+        assert_eq!(tcp[7], 0x04);
+    }
+
+    // ── Deep: ModbusFrame default ──
+
+    #[test]
+    fn test_modbus_frame_default() {
+        let frame = ModbusFrame::default();
+        assert_eq!(frame.slave_id, 1);
+        assert_eq!(frame.function, ModbusFunction::ReadHoldingRegisters);
+        assert_eq!(frame.start_address, 0);
+        assert_eq!(frame.quantity, 10);
+        assert!(frame.write_values.is_empty());
+    }
+
+    // ── Deep: parse_rtu_response edge cases ──
+
+    #[test]
+    fn test_parse_rtu_response_empty() {
+        assert!(ModbusFrame::parse_rtu_response(&[]).is_none());
+    }
+
+    #[test]
+    fn test_parse_rtu_response_single_byte() {
+        assert!(ModbusFrame::parse_rtu_response(&[0x01]).is_none());
+    }
+
+    #[test]
+    fn test_parse_rtu_response_max_payload() {
+        // byte_count = 253 (max allowed)
+        let mut resp = vec![0x01, 0x03, 253];
+        resp.extend(std::iter::repeat_n(0x00, 253));
+        let crc = crc16_modbus(&resp);
+        resp.extend_from_slice(&crc.to_le_bytes());
+        let parsed = ModbusFrame::parse_rtu_response(&resp);
+        assert!(parsed.is_some());
+        assert_eq!(parsed.unwrap().data.len(), 253);
+    }
+
+    #[test]
+    fn test_parse_rtu_response_byte_count_254_rejected() {
+        // byte_count = 254 > 253 → rejected
+        let mut resp = vec![0x01, 0x03, 254];
+        resp.extend(std::iter::repeat_n(0x00, 254));
+        let crc = crc16_modbus(&resp);
+        resp.extend_from_slice(&crc.to_le_bytes());
+        assert!(ModbusFrame::parse_rtu_response(&resp).is_none());
+    }
+
+    // ── Deep: ModbusException ──
+
+    #[test]
+    fn test_modbus_exception_from_code() {
+        assert!(matches!(
+            ModbusException::from_code(0x01),
+            ModbusException::IllegalFunction
+        ));
+        assert!(matches!(
+            ModbusException::from_code(0x02),
+            ModbusException::IllegalDataAddress
+        ));
+        assert!(matches!(
+            ModbusException::from_code(0x0B),
+            ModbusException::GatewayTargetDeviceFailedToRespond
+        ));
+        assert!(matches!(
+            ModbusException::from_code(0xFF),
+            ModbusException::Unknown(0xFF)
+        ));
+    }
+
+    #[test]
+    fn test_modbus_exception_describe() {
+        assert!(ModbusException::describe(0x01).contains("Illegal Function"));
+        assert!(ModbusException::describe(0x04).contains("Server Device Failure"));
+        assert!(ModbusException::describe(0xFF).contains("Unknown"));
+    }
+
+    // ── Deep: as_registers edge cases ──
+
+    #[test]
+    fn test_as_registers_empty() {
+        let resp = ModbusResponse {
+            slave_id: 1,
+            function_code: 0x03,
+            data: vec![],
+            is_error: false,
+            error_code: None,
+        };
+        assert!(resp.as_registers().is_empty());
+    }
+
+    #[test]
+    fn test_as_registers_max_values() {
+        let resp = ModbusResponse {
+            slave_id: 1,
+            function_code: 0x03,
+            data: vec![0xFF, 0xFF],
+            is_error: false,
+            error_code: None,
+        };
+        assert_eq!(resp.as_registers(), vec![0xFFFF]);
+    }
+
+    // ── Deep: CRC16 integrity ──
+
+    #[test]
+    fn test_rtu_roundtrip_crc() {
+        // Build a request, verify CRC matches
+        let frame = ModbusFrame {
+            slave_id: 3,
+            function: ModbusFunction::ReadDiscreteInputs,
+            start_address: 50,
+            quantity: 20,
+            write_values: Vec::new(),
+        };
+        let rtu = frame.build_rtu_request();
+        let payload = &rtu[..rtu.len() - 2];
+        let crc_bytes = &rtu[rtu.len() - 2..];
+        let expected_crc = crc16_modbus(payload);
+        let actual_crc = u16::from_le_bytes([crc_bytes[0], crc_bytes[1]]);
+        assert_eq!(actual_crc, expected_crc);
+    }
 }
