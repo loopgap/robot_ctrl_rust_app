@@ -411,72 +411,77 @@ mod tests {
 
     #[test]
     fn test_bang_bang_accessor() {
-        let engine = ControlEngine::new();
+        let mut engine = ControlEngine::new();
+        engine.bang_bang_mut().set_setpoint(5.0);
         let bb = engine.bang_bang();
+        assert_eq!(bb.setpoint(), 5.0);
         assert!(bb.as_any().downcast_ref::<BangBangController>().is_some());
     }
 
     #[test]
     fn test_fuzzy_pid_accessor() {
-        let engine = ControlEngine::new();
+        let mut engine = ControlEngine::new();
         assert_eq!(engine.fuzzy_pid().kp_base, 1.0);
+        engine.fuzzy_pid_mut().kp_base = 2.5;
+        assert_eq!(engine.fuzzy_pid().kp_base, 2.5);
     }
 
     #[test]
     fn test_cascade_pid_accessor() {
-        let engine = ControlEngine::new();
+        let mut engine = ControlEngine::new();
         let cp = engine.cascade_pid();
         assert!(cp.as_any().downcast_ref::<CascadePidController>().is_some());
+        assert_eq!(cp.setpoint(), 0.0);
+        engine.cascade_pid_mut().set_setpoint(10.0);
+        assert_eq!(engine.cascade_pid().setpoint(), 10.0);
     }
 
     #[test]
     fn test_smith_predictor_accessor() {
-        let engine = ControlEngine::new();
-        assert!(engine
-            .smith_predictor()
+        let mut engine = ControlEngine::new();
+        let sp = engine.smith_predictor();
+        assert!(sp
             .as_any()
             .downcast_ref::<SmithPredictorController>()
             .is_some());
+        engine.smith_predictor_mut().set_setpoint(7.0);
+        assert_eq!(engine.smith_predictor().setpoint(), 7.0);
     }
 
     #[test]
     fn test_adrc_accessor() {
-        let engine = ControlEngine::new();
-        assert!(engine
-            .adrc()
-            .as_any()
-            .downcast_ref::<AdrcController>()
-            .is_some());
+        let mut engine = ControlEngine::new();
+        let adrc = engine.adrc();
+        assert!(adrc.as_any().downcast_ref::<AdrcController>().is_some());
+        engine.adrc_mut().set_setpoint(3.0);
+        assert_eq!(engine.adrc().setpoint(), 3.0);
     }
 
     #[test]
     fn test_ladrc_accessor() {
-        let engine = ControlEngine::new();
-        assert!(engine
-            .ladrc()
-            .as_any()
-            .downcast_ref::<LadrcController>()
-            .is_some());
+        let mut engine = ControlEngine::new();
+        let ladrc = engine.ladrc();
+        assert!(ladrc.as_any().downcast_ref::<LadrcController>().is_some());
+        engine.ladrc_mut().set_setpoint(4.0);
+        assert_eq!(engine.ladrc().setpoint(), 4.0);
     }
 
     #[test]
     fn test_lqr_accessor() {
-        let engine = ControlEngine::new();
-        assert!(engine
-            .lqr()
-            .as_any()
-            .downcast_ref::<LqrController>()
-            .is_some());
+        let mut engine = ControlEngine::new();
+        let lqr = engine.lqr();
+        assert!(lqr.as_any().downcast_ref::<LqrController>().is_some());
+        engine.lqr_mut().set_setpoint(6.0);
+        assert_eq!(engine.lqr().setpoint(), 6.0);
     }
 
     #[test]
     fn test_mpc_accessor() {
-        let engine = ControlEngine::new();
-        assert!(engine
-            .mpc()
-            .as_any()
-            .downcast_ref::<MpcController>()
-            .is_some());
+        let mut engine = ControlEngine::new();
+        let mpc = engine.mpc();
+        assert!(mpc.as_any().downcast_ref::<MpcController>().is_some());
+        engine.mpc_mut().set_setpoint(8.0);
+        assert_eq!(engine.mpc().setpoint(), 8.0);
     }
 
     // ── Deep: NN training pipeline ──

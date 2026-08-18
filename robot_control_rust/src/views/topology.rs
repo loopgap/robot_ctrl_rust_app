@@ -368,48 +368,60 @@ mod tests {
     fn test_chassis_ascii_art_mecanum() {
         let art = chassis_ascii_art(ChassisType::Mecanum);
         assert!(!art.is_empty());
+        assert!(
+            art.contains("M"),
+            "mecanum art should contain motor markers: {}",
+            art
+        );
     }
 
     #[test]
     fn test_chassis_ascii_art_omni3() {
         let art = chassis_ascii_art(ChassisType::Omni3);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "omni3 art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_omni4() {
         let art = chassis_ascii_art(ChassisType::Omni4);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "omni4 art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_ackermann() {
         let art = chassis_ascii_art(ChassisType::Ackermann);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "ackermann art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_tracked() {
         let art = chassis_ascii_art(ChassisType::Tracked);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "tracked art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_scara() {
         let art = chassis_ascii_art(ChassisType::Scara);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "scara art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_six_dof_arm() {
         let art = chassis_ascii_art(ChassisType::SixDofArm);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "six-dof art should be substantial");
     }
 
     #[test]
     fn test_chassis_ascii_art_delta_robot() {
         let art = chassis_ascii_art(ChassisType::DeltaRobot);
         assert!(!art.is_empty());
+        assert!(art.len() > 10, "delta art should be substantial");
     }
 
     #[test]

@@ -1794,6 +1794,8 @@ mod tests {
     fn config_default_is_valid() {
         let config = SimulationConfig::default();
         assert!(config.validate().is_ok());
+        assert!(config.total_steps().unwrap() > 0);
+        assert_eq!(config.solver, SolverType::ForwardEuler);
     }
 
     #[test]
@@ -1812,7 +1814,8 @@ mod tests {
             name: "   ".into(),
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("name"), "error: {}", err);
     }
 
     #[test]
@@ -1821,7 +1824,8 @@ mod tests {
             duration_s: 0.0,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("duration"), "error: {}", err);
     }
 
     #[test]
@@ -1830,7 +1834,8 @@ mod tests {
             duration_s: -1.0,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("duration"), "error: {}", err);
     }
 
     #[test]
@@ -1839,7 +1844,8 @@ mod tests {
             duration_s: f64::NAN,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("duration"), "error: {}", err);
     }
 
     #[test]
@@ -1848,7 +1854,8 @@ mod tests {
             duration_s: f64::INFINITY,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("duration"), "error: {}", err);
     }
 
     #[test]
@@ -1857,7 +1864,8 @@ mod tests {
             dt_ns: 0,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("dt_ns"), "error: {}", err);
     }
 
     #[test]
@@ -1866,7 +1874,8 @@ mod tests {
             speed_loop_ns: 0,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("speed_loop"), "error: {}", err);
     }
 
     #[test]
@@ -1875,7 +1884,8 @@ mod tests {
             speed_ref: f64::NAN,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("finite"), "error: {}", err);
     }
 
     #[test]
@@ -1884,7 +1894,8 @@ mod tests {
             load_torque: f64::INFINITY,
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("finite"), "error: {}", err);
     }
 
     #[test]
@@ -1893,7 +1904,8 @@ mod tests {
             dt_ns: 1, // 1ns → 1.5s = 1.5e9 steps > MAX
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("exceeds"), "error: {}", err);
     }
 
     #[test]
@@ -1905,7 +1917,8 @@ mod tests {
             },
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("positive"), "error: {}", err);
     }
 
     #[test]
@@ -1917,7 +1930,8 @@ mod tests {
             },
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("positive"), "error: {}", err);
     }
 
     #[test]
@@ -1929,7 +1943,8 @@ mod tests {
             },
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("v_bus"), "error: {}", err);
     }
 
     #[test]
@@ -1941,7 +1956,8 @@ mod tests {
             },
             ..Default::default()
         };
-        assert!(config.validate().is_err());
+        let err = config.validate().unwrap_err();
+        assert!(err.to_string().contains("finite"), "error: {}", err);
     }
 
     #[test]
