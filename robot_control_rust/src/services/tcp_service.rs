@@ -588,4 +588,74 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::HardwareFault);
     }
+
+    // ── Deep: Industrial safety — default port/host validation ──
+
+    #[test]
+    fn test_default_values_industrial() {
+        let service = TcpService::default();
+        // Default host should be localhost (safety: no accidental remote connection)
+        assert_eq!(service.host, "127.0.0.1");
+        // Default port should be in user range
+        assert!(service.port >= 1024, "port should be in user range");
+        // Not a server by default (safety: must explicitly enable)
+        assert!(!service.is_server);
+    }
+
+    // ── Deep: Multiple disconnect calls are safe ──
+
+    #[test]
+    fn test_multiple_disconnect_calls_safe() {
+        let mut service = TcpService::default();
+        service.disconnect();
+        service.disconnect();
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    // ── Deep: Stats reset preserves connection state ──
+
+    #[test]
+    fn test_reset_stats_preserves_status() {
+        let mut service = TcpService {
+            status: ConnectionStatus::Connected,
+            bytes_sent: 100,
+            ..Default::default()
+        };
+        service.reset_stats();
+        assert_eq!(service.bytes_sent, 0);
+        // Status should be preserved
+        assert_eq!(service.status, ConnectionStatus::Connected);
+    }
+
+    // ── Deep: Worker error propagates to status ──
+
+    #[test]
+    fn test_worker_error_sets_hardware_fault_on_send() {
+        let mut service = TcpService::default();
+        service.worker_errored.store(true, Ordering::Release);
+        let _ = service.send_data(b"test");
+        assert_eq!(service.status, ConnectionStatus::HardwareFault);
+    }
+
+    // ── Deep: try_read_raw returns empty on disconnected ──
+
+    #[test]
+    fn test_try_read_raw_returns_empty_when_disconnected() {
+        let mut service = TcpService::default();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        let data = service.try_read_raw();
+        assert!(data.is_empty());
+    }
+
+    // ── Deep: scratch buffer exists ──
+
+    #[test]
+    fn test_scratch_buffer_initialized() {
+        let service = TcpService::default();
+        assert!(
+            service.rx_scratch.capacity() > 0,
+            "scratch buffer should be pre-allocated"
+        );
+    }
 }

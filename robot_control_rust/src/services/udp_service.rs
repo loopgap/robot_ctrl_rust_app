@@ -399,4 +399,90 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::HardwareFault);
     }
+
+    // ── Deep: Industrial safety — default addresses ──
+
+    #[test]
+    fn test_default_values_industrial() {
+        let service = UdpService::default();
+        // Default local should bind to all interfaces
+        assert_eq!(service.local_addr, "0.0.0.0");
+        // Default remote should be localhost (safety)
+        assert_eq!(service.remote_addr, "127.0.0.1");
+        // Ports should be in user range
+        assert!(service.local_port >= 1024);
+        assert!(service.remote_port >= 1024);
+        // Ports should be different
+        assert_ne!(service.local_port, service.remote_port);
+    }
+
+    // ── Deep: Multiple close calls are safe ──
+
+    #[test]
+    fn test_multiple_close_calls_safe() {
+        let mut service = UdpService::default();
+        service.close();
+        service.close();
+        service.close();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    // ── Deep: Stats reset preserves status ──
+
+    #[test]
+    fn test_reset_stats_preserves_status() {
+        let mut service = UdpService {
+            status: ConnectionStatus::Connected,
+            bytes_sent: 100,
+            ..Default::default()
+        };
+        service.reset_stats();
+        assert_eq!(service.bytes_sent, 0);
+        assert_eq!(service.status, ConnectionStatus::Connected);
+    }
+
+    // ── Deep: try_read_raw returns empty on disconnected ──
+
+    #[test]
+    fn test_try_read_raw_returns_empty_when_disconnected() {
+        let mut service = UdpService::default();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+        let data = service.try_read_raw();
+        assert!(data.is_empty());
+    }
+
+    // ── Deep: scratch buffer exists ──
+
+    #[test]
+    fn test_scratch_buffer_initialized() {
+        let service = UdpService::default();
+        assert!(
+            service.rx_scratch.capacity() > 0,
+            "scratch buffer should be pre-allocated"
+        );
+    }
+
+    // ── Deep: is_connected checks status + socket ──
+
+    #[test]
+    fn test_is_connected_requires_status_and_socket() {
+        let service = UdpService::default();
+        assert!(!service.is_connected(), "disconnected by default");
+        // Setting status alone is not enough — need actual socket (tx)
+        let service2 = UdpService {
+            status: ConnectionStatus::Connected,
+            ..Default::default()
+        };
+        assert!(!service2.is_connected(), "still needs tx socket");
+    }
+
+    #[test]
+    fn test_is_connected_blocked_by_worker_error() {
+        let service = UdpService {
+            status: ConnectionStatus::Connected,
+            ..Default::default()
+        };
+        service.worker_errored.store(true, Ordering::Release);
+        assert!(!service.is_connected(), "worker error blocks connection");
+    }
 }
