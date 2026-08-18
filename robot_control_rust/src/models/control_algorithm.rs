@@ -188,4 +188,79 @@ mod tests {
         let restored: ControlAlgorithmType = serde_json::from_str(&json).unwrap();
         assert_eq!(t, restored);
     }
+
+    // ── Deep: index/from_index roundtrip ──
+
+    #[test]
+    fn test_index_from_index_roundtrip() {
+        for (i, algo) in ControlAlgorithmType::all().iter().enumerate() {
+            assert_eq!(algo.index(), i, "index mismatch for {:?}", algo);
+            assert_eq!(
+                ControlAlgorithmType::from_index(i),
+                Some(*algo),
+                "from_index mismatch for {}",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_from_index_out_of_range() {
+        assert!(ControlAlgorithmType::from_index(10).is_none());
+        assert!(ControlAlgorithmType::from_index(100).is_none());
+        assert!(ControlAlgorithmType::from_index(usize::MAX).is_none());
+    }
+
+    // ── Deep: all names unique ──
+
+    #[test]
+    fn test_en_names_unique() {
+        let names: std::collections::HashSet<&str> = ControlAlgorithmType::all()
+            .iter()
+            .map(|t| t.name_en())
+            .collect();
+        assert_eq!(names.len(), 10, "all EN names should be unique");
+    }
+
+    #[test]
+    fn test_zh_names_unique() {
+        let names: std::collections::HashSet<&str> = ControlAlgorithmType::all()
+            .iter()
+            .map(|t| t.name_zh())
+            .collect();
+        assert_eq!(names.len(), 10, "all ZH names should be unique");
+    }
+
+    #[test]
+    fn test_desc_en_longer_than_name() {
+        for t in ControlAlgorithmType::all() {
+            assert!(
+                t.desc_en().len() > t.name_en().len(),
+                "desc_en should be longer than name_en for {:?}",
+                t
+            );
+        }
+    }
+
+    // ── Deep: serialization roundtrip for all types ──
+
+    #[test]
+    fn test_serialization_roundtrip_all() {
+        for algo in ControlAlgorithmType::all() {
+            let json = serde_json::to_string(algo).unwrap();
+            let restored: ControlAlgorithmType = serde_json::from_str(&json).unwrap();
+            assert_eq!(*algo, restored, "roundtrip failed for {:?}", algo);
+        }
+    }
+
+    // ── Deep: index values are sequential 0..9 ──
+
+    #[test]
+    fn test_indices_are_sequential() {
+        let indices: Vec<usize> = ControlAlgorithmType::all()
+            .iter()
+            .map(|t| t.index())
+            .collect();
+        assert_eq!(indices, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
 }

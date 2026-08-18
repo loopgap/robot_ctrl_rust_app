@@ -164,4 +164,115 @@ mod tests {
         assert_eq!(deserialized.name, "Ser");
         assert_eq!(deserialized.kp, 1.0);
     }
+
+    // ── Deep: default presets have distinct values ──
+
+    #[test]
+    fn test_defaults_have_distinct_kp() {
+        let presets = Preset::defaults();
+        let kps: std::collections::HashSet<i64> = presets
+            .iter()
+            .map(|p| (p.kp * 100.0).round() as i64)
+            .collect();
+        assert_eq!(
+            kps.len(),
+            4,
+            "default presets should have distinct kp values"
+        );
+    }
+
+    #[test]
+    fn test_defaults_ordered_by_aggressiveness() {
+        let presets = Preset::defaults();
+        for i in 0..presets.len() - 1 {
+            assert!(
+                presets[i].kp < presets[i + 1].kp,
+                "presets should be ordered by increasing kp: {} < {}",
+                presets[i].kp,
+                presets[i + 1].kp
+            );
+        }
+    }
+
+    // ── Deep: from_controller captures all fields ──
+
+    #[test]
+    fn test_from_controller_captures_limits() {
+        let pid = PidController::with_limits(1.0, 0.1, 0.01, 50.0, 200.0, 100.0);
+        let preset = Preset::from_controller("L", "limits test", &pid);
+        assert_eq!(preset.output_limit, 200.0);
+        assert_eq!(preset.integral_limit, 100.0);
+    }
+
+    // ── Deep: apply_to overwrites previous values ──
+
+    #[test]
+    fn test_apply_to_overwrites() {
+        let mut pid = PidController::new(99.0, 99.0, 99.0, 99.0);
+        let preset = Preset::new("O", "overwrite", 1.0, 0.1, 0.01, 0.0, 100.0, 50.0);
+        preset.apply_to(&mut pid);
+        assert_eq!(pid.kp, 1.0, "kp should be overwritten");
+        assert_eq!(pid.ki, 0.1, "ki should be overwritten");
+        assert_eq!(pid.kd, 0.01, "kd should be overwritten");
+    }
+
+    // ── Deep: serialization preserves all fields ──
+
+    #[test]
+    fn test_serialization_all_fields() {
+        let preset = Preset::new("Full", "all fields", 2.5, 0.25, 0.025, 15.0, 300.0, 150.0);
+        let json = serde_json::to_string(&preset).unwrap();
+        let d: Preset = serde_json::from_str(&json).unwrap();
+        assert_eq!(d.name, "Full");
+        assert_eq!(d.description, "all fields");
+        assert_eq!(d.kp, 2.5);
+        assert_eq!(d.ki, 0.25);
+        assert_eq!(d.kd, 0.025);
+        assert_eq!(d.setpoint, 15.0);
+        assert_eq!(d.output_limit, 300.0);
+        assert_eq!(d.integral_limit, 150.0);
+    }
+
+    // ── Deep: new() accepts string types ──
+
+    #[test]
+    fn test_new_accepts_string_and_str() {
+        let p1 = Preset::new("name", "desc", 1.0, 0.1, 0.01, 0.0, 100.0, 50.0);
+        let p2 = Preset::new(
+            String::from("name"),
+            String::from("desc"),
+            1.0,
+            0.1,
+            0.01,
+            0.0,
+            100.0,
+            50.0,
+        );
+        assert_eq!(p1.name, p2.name);
+        assert_eq!(p1.description, p2.description);
+    }
+
+    // ── Deep: default presets have positive gains ──
+
+    #[test]
+    fn test_defaults_have_positive_gains() {
+        for preset in Preset::defaults() {
+            assert!(preset.kp > 0.0, "{}: kp should be positive", preset.name);
+            assert!(
+                preset.ki >= 0.0,
+                "{}: ki should be non-negative",
+                preset.name
+            );
+            assert!(
+                preset.kd >= 0.0,
+                "{}: kd should be non-negative",
+                preset.name
+            );
+            assert!(
+                preset.output_limit > 0.0,
+                "{}: output_limit should be positive",
+                preset.name
+            );
+        }
+    }
 }
