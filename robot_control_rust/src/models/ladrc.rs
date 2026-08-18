@@ -290,4 +290,57 @@ mod tests {
         let restored: LadrcOrder = serde_json::from_str(&json).unwrap();
         assert_eq!(t, restored);
     }
+
+    // ── Deep: Industrial edge cases ──
+
+    #[test]
+    fn test_ladrc_zero_gains_produces_zero() {
+        let mut c = LadrcController::new(10.0, 0.0, 0.0, 0.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0);
+        assert_eq!(out, 0.0, "Zero gains should produce zero output");
+    }
+
+    #[test]
+    fn test_ladrc_finite_output_under_rapid_calls() {
+        let mut c = LadrcController::new(50.0, 10.0, 50.0, 1.0);
+        for i in 0..100 {
+            let feedback = (i as f64 * 0.1).sin() * 10.0;
+            let out = c.compute(feedback);
+            assert!(
+                out.is_finite(),
+                "Output should always be finite, got {}",
+                out
+            );
+        }
+    }
+
+    #[test]
+    fn test_ladrc_first_order_serialization_roundtrip() {
+        let t = LadrcOrder::First;
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: LadrcOrder = serde_json::from_str(&json).unwrap();
+        assert_eq!(t, restored);
+    }
+
+    #[test]
+    fn test_ladrc_second_order_serialization_roundtrip() {
+        let t = LadrcOrder::Second;
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: LadrcOrder = serde_json::from_str(&json).unwrap();
+        assert_eq!(t, restored);
+    }
+
+    #[test]
+    fn test_ladrc_observer_state_bounded() {
+        let mut c = LadrcController::new(100.0, 10.0, 50.0, 1.0);
+        for _ in 0..50 {
+            c.compute(0.0);
+            thread::sleep(Duration::from_millis(2));
+        }
+        assert!(c.z1.is_finite(), "z1 should be finite");
+        assert!(c.z2.is_finite(), "z2 should be finite");
+        assert!(c.z3.is_finite(), "z3 should be finite");
+    }
 }

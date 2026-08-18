@@ -419,10 +419,72 @@ mod tests {
         c.compute(0.0, 0.0);
         thread::sleep(Duration::from_millis(10));
         c.compute(0.0, 0.0);
-        // 外环有输出则内环有设定值
         assert!(
             c.outer_output.abs() > 0.0,
             "Outer should have non-zero output"
         );
+    }
+
+    // ── Deep: Industrial edge cases ──
+
+    #[test]
+    fn test_cascade_zero_gains_produces_zero() {
+        let mut c = CascadePidController::new(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, 0.0, 200.0, 0.0);
+        c.setpoint = 100.0;
+        c.compute(0.0, 0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert_eq!(out, 0.0, "Zero gains should produce zero output");
+    }
+
+    #[test]
+    fn test_cascade_negative_setpoint() {
+        let mut c = CascadePidController::new(2.0, 0.0, 0.0, 100.0, 1.0, 0.0, 0.0, 200.0, -10.0);
+        c.compute(0.0, 0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert!(
+            out < 0.0,
+            "Negative setpoint should produce negative output, got {}",
+            out
+        );
+    }
+
+    #[test]
+    fn test_cascade_overshoot_limited() {
+        let mut c = CascadePidController::new(10.0, 0.0, 0.0, 10.0, 10.0, 0.0, 0.0, 5.0, 100.0);
+        // Large error should be limited by inner output_limit
+        c.compute(0.0, 0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert!(out <= 5.0, "Output should respect inner limit, got {}", out);
+    }
+
+    #[test]
+    fn test_cascade_reset_clears_integrators() {
+        let mut c = CascadePidController::new(1.0, 0.5, 0.1, 100.0, 1.0, 0.5, 0.1, 200.0, 10.0);
+        // Build up integrator state
+        for _ in 0..10 {
+            c.compute(0.0, 0.0);
+            thread::sleep(Duration::from_millis(5));
+        }
+        c.reset();
+        assert_eq!(c.output, 0.0);
+        assert_eq!(c.outer_output, 0.0);
+        assert!(c.last_update.is_none());
+    }
+
+    #[test]
+    fn test_cascade_finite_output_under_rapid_calls() {
+        let mut c = CascadePidController::new(5.0, 0.1, 0.01, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        for i in 0..100 {
+            let feedback = (i as f64 * 0.1).sin() * 10.0;
+            let out = c.compute(feedback, feedback * 0.5);
+            assert!(
+                out.is_finite(),
+                "Output should always be finite, got {}",
+                out
+            );
+        }
     }
 }
