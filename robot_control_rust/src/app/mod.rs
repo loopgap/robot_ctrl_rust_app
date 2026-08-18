@@ -2786,7 +2786,10 @@ impl AppState {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_port, parse_version_triplet, valid_http_url, AppState, LOG_FILE_MAX_BYTES};
+    use super::{
+        parse_port, parse_version_triplet, valid_http_url, AppState, DisplayMode, LogDirection,
+        LogEntry, LOG_FILE_MAX_BYTES,
+    };
     use std::fs;
     use std::io::Write;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -3169,5 +3172,184 @@ mod tests {
     fn test_parse_version_triplet_invalid() {
         let result = parse_version_triplet("abc");
         assert!(result.is_none());
+    }
+
+    // ── Deep: LogEntry::format_data ──
+
+    #[test]
+    fn test_log_entry_hex_mode() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Tx,
+            data: vec![0x48, 0x65, 0x6C],
+            display_mode: DisplayMode::Hex,
+            channel: "Test".into(),
+        };
+        let formatted = entry.format_data();
+        assert_eq!(formatted, "48 65 6C");
+    }
+
+    #[test]
+    fn test_log_entry_ascii_mode() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Rx,
+            data: b"Hello".to_vec(),
+            display_mode: DisplayMode::Ascii,
+            channel: "Test".into(),
+        };
+        assert_eq!(entry.format_data(), "Hello");
+    }
+
+    #[test]
+    fn test_log_entry_mixed_mode() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Info,
+            data: b"AB".to_vec(),
+            display_mode: DisplayMode::Mixed,
+            channel: "Test".into(),
+        };
+        let formatted = entry.format_data();
+        // Should contain hex and ASCII separated by |
+        assert!(formatted.contains("41 42"));
+        assert!(formatted.contains(" | "));
+        assert!(formatted.contains("AB"));
+    }
+
+    #[test]
+    fn test_log_entry_mixed_non_printable() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Rx,
+            data: vec![0x00, 0x01, 0xFF],
+            display_mode: DisplayMode::Mixed,
+            channel: "Test".into(),
+        };
+        let formatted = entry.format_data();
+        // Non-printable bytes should be replaced with '.'
+        assert!(formatted.contains("00 01 FF"));
+        assert!(formatted.contains(" | ..."));
+    }
+
+    #[test]
+    fn test_log_entry_empty_data() {
+        let make_entry = |mode: DisplayMode| LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Info,
+            data: vec![],
+            display_mode: mode,
+            channel: "Test".into(),
+        };
+        assert_eq!(make_entry(DisplayMode::Hex).format_data(), "");
+        assert_eq!(make_entry(DisplayMode::Ascii).format_data(), "");
+        // Mixed mode still outputs " | " even for empty data
+        let mixed = make_entry(DisplayMode::Mixed).format_data();
+        assert!(mixed.contains(" | "), "Mixed empty: {:?}", mixed);
+    }
+
+    #[test]
+    fn test_log_entry_single_byte_hex() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Tx,
+            data: vec![0xFF],
+            display_mode: DisplayMode::Hex,
+            channel: "Test".into(),
+        };
+        assert_eq!(entry.format_data(), "FF");
+    }
+
+    #[test]
+    fn test_log_entry_format_data_to_reuses_buffer() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Tx,
+            data: b"Test".to_vec(),
+            display_mode: DisplayMode::Ascii,
+            channel: "Test".into(),
+        };
+        let mut buf = String::new();
+        entry.format_data_to(&mut buf);
+        assert_eq!(buf, "Test");
+        // Second call appends
+        entry.format_data_to(&mut buf);
+        assert_eq!(buf, "TestTest");
+    }
+
+    // ── Deep: LogDirection ──
+
+    #[test]
+    fn test_log_direction_variants() {
+        assert_ne!(LogDirection::Tx, LogDirection::Rx);
+        assert_ne!(LogDirection::Rx, LogDirection::Info);
+        assert_ne!(LogDirection::Tx, LogDirection::Info);
+    }
+
+    #[test]
+    fn test_log_direction_copy() {
+        let d = LogDirection::Tx;
+        let d2 = d;
+        assert_eq!(d, d2); // Copy, not move
+    }
+
+    // ── Deep: DisplayMode ──
+
+    #[test]
+    fn test_display_mode_variants() {
+        assert_ne!(DisplayMode::Hex, DisplayMode::Ascii);
+        assert_ne!(DisplayMode::Ascii, DisplayMode::Mixed);
+        assert_ne!(DisplayMode::Hex, DisplayMode::Mixed);
+    }
+
+    #[test]
+    fn test_display_mode_copy() {
+        let m = DisplayMode::Hex;
+        let m2 = m;
+        assert_eq!(m, m2);
+    }
+
+    #[test]
+    fn test_display_mode_serialization() {
+        let modes = [DisplayMode::Hex, DisplayMode::Ascii, DisplayMode::Mixed];
+        for mode in &modes {
+            let json = serde_json::to_string(mode).unwrap();
+            let restored: DisplayMode = serde_json::from_str(&json).unwrap();
+            assert_eq!(*mode, restored);
+        }
+    }
+
+    // ── Deep: LogEntry clone and debug ──
+
+    #[test]
+    fn test_log_entry_clone() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Tx,
+            data: vec![1, 2, 3],
+            display_mode: DisplayMode::Hex,
+            channel: "CAN".into(),
+        };
+        let cloned = entry.clone();
+        assert_eq!(cloned.timestamp, entry.timestamp);
+        assert_eq!(cloned.direction, entry.direction);
+        assert_eq!(cloned.data, entry.data);
+        assert_eq!(cloned.display_mode, entry.display_mode);
+        assert_eq!(cloned.channel, entry.channel);
+    }
+
+    #[test]
+    fn test_log_entry_debug_format() {
+        let entry = LogEntry {
+            timestamp: "12:00:00.000".into(),
+            direction: LogDirection::Info,
+            data: vec![0x41],
+            display_mode: DisplayMode::Ascii,
+            channel: "SYS".into(),
+        };
+        let debug = format!("{:?}", entry);
+        assert!(debug.contains("LogEntry"));
+        assert!(debug.contains("Info"));
+        assert!(debug.contains("SYS"));
     }
 }
