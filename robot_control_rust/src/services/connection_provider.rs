@@ -29,7 +29,8 @@ mod tests {
         mock.expect_send_data()
             .withf(|data| data == b"test")
             .returning(|_| Ok(()));
-        mock.send_data(b"test").unwrap();
+        let result = mock.send_data(b"test");
+        assert!(result.is_ok(), "send_data should return Ok");
     }
 
     #[test]
@@ -44,6 +45,7 @@ mod tests {
         let mut mock = MockConnectionProvider::new();
         mock.expect_disconnect().times(1).returning(|| ());
         mock.disconnect();
+        // mockall validates that disconnect() was called exactly once (times(1))
     }
 
     #[test]
@@ -51,5 +53,16 @@ mod tests {
         let mut mock = MockConnectionProvider::new();
         mock.expect_reset_stats().times(1).returning(|| ());
         mock.reset_stats();
+        // mockall validates that reset_stats() was called exactly once (times(1))
+    }
+
+    #[test]
+    fn test_mock_connection_provider_send_error() {
+        let mut mock = MockConnectionProvider::new();
+        mock.expect_send_data()
+            .returning(|_| Err(anyhow::anyhow!("disconnected")));
+        let result = mock.send_data(b"test");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disconnected"));
     }
 }

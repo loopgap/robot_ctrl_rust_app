@@ -45,12 +45,15 @@ mod tests {
     #[test]
     fn test_mcp_shared_state_default() {
         let es = ExternalServices::new();
-        // Verify the shared state is accessible and in default state
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             let state = es.mcp_shared_state.lock().await;
-            // Default state should be initialized without panic
-            drop(state);
+            assert_eq!(state.kp, 1.0, "default kp");
+            assert_eq!(state.ki, 0.1, "default ki");
+            assert_eq!(state.kd, 0.01, "default kd");
+            assert_eq!(state.setpoint, 0.0, "default setpoint");
+            assert!(state.state_history.is_empty(), "no history by default");
+            assert!(state.request_count == 0, "no requests by default");
         });
     }
 
