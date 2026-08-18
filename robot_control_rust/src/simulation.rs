@@ -1549,4 +1549,242 @@ mod tests {
         let json = result.to_json().unwrap();
         assert!(json.contains("final_speed"));
     }
+
+    // ── Deep: guard_numeric ──
+
+    #[test]
+    fn guard_numeric_normal_value() {
+        assert_eq!(guard_numeric(2.5, 0.0), 2.5);
+    }
+
+    #[test]
+    fn guard_numeric_zero_is_valid() {
+        assert_eq!(guard_numeric(0.0, 99.0), 0.0);
+    }
+
+    #[test]
+    fn guard_numeric_negative_is_valid() {
+        assert_eq!(guard_numeric(-42.0, 0.0), -42.0);
+    }
+
+    #[test]
+    fn guard_numeric_nan_returns_fallback() {
+        assert_eq!(guard_numeric(f64::NAN, 7.0), 7.0);
+    }
+
+    #[test]
+    fn guard_numeric_inf_returns_fallback() {
+        assert_eq!(guard_numeric(f64::INFINITY, -1.0), -1.0);
+    }
+
+    #[test]
+    fn guard_numeric_neg_inf_returns_fallback() {
+        assert_eq!(guard_numeric(f64::NEG_INFINITY, 5.0), 5.0);
+    }
+
+    #[test]
+    fn guard_numeric_max_f64() {
+        assert_eq!(guard_numeric(f64::MAX, 0.0), f64::MAX);
+    }
+
+    #[test]
+    fn guard_numeric_min_f64() {
+        assert_eq!(guard_numeric(f64::MIN, 0.0), f64::MIN);
+    }
+
+    // ── Deep: guard_positive ──
+
+    #[test]
+    fn guard_positive_normal_value() {
+        assert_eq!(guard_positive(5.0, 0.0, 0.0), 5.0);
+    }
+
+    #[test]
+    fn guard_positive_negative_clamped_to_min() {
+        assert_eq!(guard_positive(-3.0, 0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn guard_positive_nan_returns_fallback() {
+        assert_eq!(guard_positive(f64::NAN, 1.0, 0.0), 1.0);
+    }
+
+    #[test]
+    fn guard_positive_inf_returns_fallback() {
+        // guard_numeric(f64::INFINITY, 1.0) = 1.0 (fallback), then max(1.0, 0.0) = 1.0
+        assert_eq!(guard_positive(f64::INFINITY, 1.0, 0.0), 1.0);
+    }
+
+    #[test]
+    fn guard_positive_below_min_clamped() {
+        assert_eq!(guard_positive(0.5, 0.0, 1.0), 1.0);
+    }
+
+    #[test]
+    fn guard_positive_at_min_boundary() {
+        assert_eq!(guard_positive(1.0, 0.0, 1.0), 1.0);
+    }
+
+    #[test]
+    fn guard_positive_custom_min() {
+        assert_eq!(guard_positive(0.001, 0.01, 0.01), 0.01);
+    }
+
+    // ── Deep: guard_range ──
+
+    #[test]
+    fn guard_range_in_range() {
+        assert_eq!(guard_range(5.0, 0.0, 10.0, 0.0), 5.0);
+    }
+
+    #[test]
+    fn guard_range_below_clamped() {
+        assert_eq!(guard_range(-1.0, 0.0, 10.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn guard_range_above_clamped() {
+        assert_eq!(guard_range(15.0, 0.0, 10.0, 0.0), 10.0);
+    }
+
+    #[test]
+    fn guard_range_nan_returns_fallback_then_clamped() {
+        // guard_numeric(NaN, 5.0) = 5.0, clamp(0.0, 10.0) = 5.0
+        assert_eq!(guard_range(f64::NAN, 0.0, 10.0, 5.0), 5.0);
+    }
+
+    #[test]
+    fn guard_range_nan_fallback_below_range() {
+        // guard_numeric(NaN, -5.0) = -5.0, clamp(0.0, 10.0) = 0.0
+        assert_eq!(guard_range(f64::NAN, 0.0, 10.0, -5.0), 0.0);
+    }
+
+    #[test]
+    fn guard_range_nan_fallback_above_range() {
+        assert_eq!(guard_range(f64::NAN, 0.0, 10.0, 99.0), 10.0);
+    }
+
+    #[test]
+    fn guard_range_at_boundaries() {
+        assert_eq!(guard_range(0.0, 0.0, 10.0, 0.0), 0.0);
+        assert_eq!(guard_range(10.0, 0.0, 10.0, 0.0), 10.0);
+    }
+
+    #[test]
+    fn guard_range_negative_range() {
+        assert_eq!(guard_range(0.0, -10.0, -1.0, 0.0), -1.0);
+    }
+
+    // ── Deep: safe_divide ──
+
+    #[test]
+    fn safe_divide_normal() {
+        assert_eq!(safe_divide(10.0, 2.0, 0.0), 5.0);
+    }
+
+    #[test]
+    fn safe_divide_zero_denom() {
+        assert_eq!(safe_divide(10.0, 0.0, -1.0), -1.0);
+    }
+
+    #[test]
+    fn safe_divide_near_zero_denom() {
+        assert_eq!(safe_divide(10.0, 1e-15, 99.0), 99.0);
+    }
+
+    #[test]
+    fn safe_divide_negative_denom() {
+        assert_eq!(safe_divide(10.0, -2.0, 0.0), -5.0);
+    }
+
+    #[test]
+    fn safe_divide_nan_numerator() {
+        assert_eq!(safe_divide(f64::NAN, 2.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn safe_divide_inf_numerator() {
+        assert_eq!(safe_divide(f64::INFINITY, 2.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn safe_divide_nan_denom() {
+        // NAN.abs() = NAN, which is not < EPS, so it divides: 1.0/NAN = NAN, returns fallback
+        assert_eq!(safe_divide(1.0, f64::NAN, 42.0), 42.0);
+    }
+
+    #[test]
+    fn safe_divide_inf_denom() {
+        // inf.abs() = inf, not < EPS, so it divides: 1.0/inf = 0.0
+        assert_eq!(safe_divide(1.0, f64::INFINITY, 42.0), 0.0);
+    }
+
+    #[test]
+    fn safe_divide_both_zero() {
+        assert_eq!(safe_divide(0.0, 0.0, 7.0), 7.0);
+    }
+
+    #[test]
+    fn safe_divide_boundary_epsilon() {
+        // denominator exactly at NUMERIC_EPS: abs() < EPS is false, so it divides
+        let result = safe_divide(1.0, NUMERIC_EPS, 0.0);
+        assert!(result.is_finite(), "exact epsilon should divide");
+        // Just below EPS triggers fallback
+        assert_eq!(safe_divide(1.0, NUMERIC_EPS * 0.5, 0.0), 0.0);
+    }
+
+    // ── Deep: EnergyAudit ──
+
+    #[test]
+    fn energy_audit_balanced() {
+        let audit = EnergyAudit {
+            power_input_j: 100.0,
+            mechanical_output_j: 90.0,
+            thermal_loss_j: 8.0,
+            stored_energy_j: 2.0,
+            imbalance_j: 0.0,
+        };
+        assert_eq!(audit.imbalance_pct(), 0.0);
+    }
+
+    #[test]
+    fn energy_audit_imbalanced() {
+        let audit = EnergyAudit {
+            power_input_j: 100.0,
+            mechanical_output_j: 80.0,
+            thermal_loss_j: 10.0,
+            stored_energy_j: 5.0,
+            imbalance_j: 5.0,
+        };
+        assert!((audit.imbalance_pct() - 5.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn energy_audit_zero_input_no_panic() {
+        let audit = EnergyAudit {
+            power_input_j: 0.0,
+            mechanical_output_j: 0.0,
+            thermal_loss_j: 0.0,
+            stored_energy_j: 0.0,
+            imbalance_j: 0.0,
+        };
+        // Should not panic — uses max(NUMERIC_EPS)
+        let pct = audit.imbalance_pct();
+        assert!(pct.is_finite());
+    }
+
+    // ── Deep: Constants ──
+
+    #[test]
+    fn constants_are_sensible() {
+        const {
+            assert!(NUMERIC_EPS > 0.0);
+            assert!(MOTOR_EPS_L > 0.0);
+            assert!(MOTOR_EPS_J > 0.0);
+            assert!(DEFAULT_I_MAX > 0.0);
+            assert!(DEFAULT_DT_NS > 0);
+            assert!(DEFAULT_SPEED_LOOP_NS >= DEFAULT_DT_NS);
+            assert!(MAX_TOTAL_STEPS > 0);
+        }
+    }
 }

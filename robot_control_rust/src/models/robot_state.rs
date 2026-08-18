@@ -116,15 +116,17 @@ mod tests {
 
     #[test]
     fn test_robot_state_mutation() {
-        let mut s = RobotState::default();
-        s.position = 42.0;
-        s.velocity = 3.14;
-        s.pid_output = 0.75;
-        s.error = -0.5;
-        s.emergency_stop = true;
-        s.encoder_count = 12345;
+        let s = RobotState {
+            position: 42.0,
+            velocity: std::f64::consts::PI,
+            pid_output: 0.75,
+            error: -0.5,
+            emergency_stop: true,
+            encoder_count: 12345,
+            ..Default::default()
+        };
         assert_eq!(s.position, 42.0);
-        assert_eq!(s.velocity, 3.14);
+        assert_eq!(s.velocity, std::f64::consts::PI);
         assert_eq!(s.pid_output, 0.75);
         assert_eq!(s.error, -0.5);
         assert!(s.emergency_stop);

@@ -346,7 +346,7 @@ mod tests {
     #[test]
     fn test_format_data_hex_empty() {
         let result = format_data_with_mode(&[], DisplayMode::Hex);
-        assert!(result.is_empty() || result == "");
+        assert!(result.is_empty());
     }
 
     #[test]

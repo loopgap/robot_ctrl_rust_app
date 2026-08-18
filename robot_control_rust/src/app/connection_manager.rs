@@ -314,7 +314,7 @@ mod tests {
         assert_eq!(text, "Live");
 
         // Stale (> 10s)
-        cm.last_rx_instant = Some(Instant::now() - Duration::from_secs(15));
+        cm.last_rx_instant = Some(Instant::now().checked_sub(Duration::from_secs(15)).unwrap());
         let text = cm.link_health_text();
         assert!(text.starts_with("Stale"), "Expected 'Stale', got: {}", text);
     }
@@ -422,7 +422,7 @@ mod tests {
     fn test_reconnect_countdown_due_now() {
         let mut cm = ConnectionManager::new();
         cm.arm_auto_reconnect();
-        cm.next_reconnect_at = Some(Instant::now() - Duration::from_secs(1));
+        cm.next_reconnect_at = Some(Instant::now().checked_sub(Duration::from_secs(1)).unwrap());
         let text = cm.reconnect_countdown_text();
         assert_eq!(text, "Due now");
     }

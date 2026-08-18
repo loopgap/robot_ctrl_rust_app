@@ -217,86 +217,74 @@ mod tests {
     use crate::models::DualFeedbackControl;
 
     #[test]
-    fn test_new_creates_10_algorithms() {
+    fn test_new_creates_all_algorithms() {
         let engine = ControlEngine::new();
         assert_eq!(engine.algorithms.len(), 10);
+        // Verify all expected names
+        let expected_names = [
+            "Classic PID",
+            "Incremental PID",
+            "Bang-Bang",
+            "Fuzzy PID",
+            "Cascade PID",
+            "Smith Predictor",
+            "ADRC",
+            "LADRC",
+            "LQR",
+            "MPC",
+        ];
+        for (i, expected) in expected_names.iter().enumerate() {
+            let mut e = ControlEngine::new();
+            e.set_active_algorithm(i);
+            assert_eq!(e.algorithm_name(), *expected, "algo[{}]", i);
+        }
     }
 
     #[test]
-    fn test_active_algorithm_name() {
-        let engine = ControlEngine::new();
-        assert_eq!(engine.algorithm_name(), "Classic PID");
-    }
-
-    #[test]
-    fn test_set_active_algorithm() {
+    fn test_set_active_algorithm_valid_and_invalid() {
         let mut engine = ControlEngine::new();
         engine.set_active_algorithm(6);
         assert_eq!(engine.algorithm_name(), "ADRC");
-    }
-
-    #[test]
-    fn test_set_active_algorithm_out_of_range_ignored() {
-        let mut engine = ControlEngine::new();
+        // Out of range ignored
         engine.set_active_algorithm(999);
-        assert_eq!(engine.active_index, 0);
+        assert_eq!(engine.active_index, 6);
     }
 
     #[test]
-    fn test_compute_returns_finite() {
+    fn test_compute_and_output_consistency() {
         let mut engine = ControlEngine::new();
-        assert!(engine.compute(1.0).is_finite());
-    }
-
-    #[test]
-    fn test_setpoint_default() {
-        let engine = ControlEngine::new();
-        assert_eq!(engine.setpoint(), 0.0);
-    }
-
-    #[test]
-    fn test_set_setpoint() {
-        let mut engine = ControlEngine::new();
-        engine.set_setpoint(42.0);
-        assert_eq!(engine.setpoint(), 42.0);
-    }
-
-    #[test]
-    fn test_output_after_compute() {
-        let mut engine = ControlEngine::new();
-        engine.compute(1.0);
+        engine.set_setpoint(10.0);
+        let output = engine.compute(5.0);
+        assert!(output.is_finite());
         assert_eq!(engine.output(), engine.active_algorithm().output());
     }
 
     #[test]
-    fn test_toggle_running() {
+    fn test_setpoint_roundtrip() {
+        let mut engine = ControlEngine::new();
+        assert_eq!(engine.setpoint(), 0.0);
+        engine.set_setpoint(42.0);
+        assert_eq!(engine.setpoint(), 42.0);
+        engine.set_setpoint(-100.0);
+        assert_eq!(engine.setpoint(), -100.0);
+    }
+
+    #[test]
+    fn test_toggle_and_emergency_stop() {
         let mut engine = ControlEngine::new();
         assert!(!engine.is_running);
         engine.toggle_running();
         assert!(engine.is_running);
-        engine.toggle_running();
-        assert!(!engine.is_running);
-    }
-
-    #[test]
-    fn test_emergency_stop() {
-        let mut engine = ControlEngine::new();
-        engine.is_running = true;
+        engine.set_setpoint(50.0);
+        engine.compute(1.0);
         engine.emergency_stop();
         assert!(!engine.is_running);
         assert_eq!(engine.setpoint(), 0.0);
-    }
-
-    #[test]
-    fn test_reset_active() {
-        let mut engine = ControlEngine::new();
-        engine.compute(1.0);
-        engine.reset_active();
         assert_eq!(engine.output(), 0.0);
     }
 
     #[test]
-    fn test_push_state_limits_history() {
+    fn test_push_state_preserves_order_and_limits() {
         let mut engine = ControlEngine::new();
         for i in 0..10001 {
             engine.push_state(RobotState {
@@ -305,6 +293,9 @@ mod tests {
             });
         }
         assert_eq!(engine.state_history.len(), 10000);
+        // Oldest entry (0.0) was evicted, newest starts at 1.0
+        assert_eq!(engine.state_history.first().unwrap().position, 1.0);
+        assert_eq!(engine.state_history.last().unwrap().position, 10000.0);
     }
 
     #[test]
@@ -328,22 +319,37 @@ mod tests {
             engine.set_active_algorithm(i);
             engine.compute(1.0);
             engine.reset_active();
-            assert_eq!(engine.output(), 0.0);
+            assert_eq!(engine.output(), 0.0, "{}", engine.algorithm_name());
         }
     }
 
     #[test]
-    fn test_compute_dual_for_cascade_pid() {
+    fn test_compute_dual_cascade_pid() {
         let mut engine = ControlEngine::new();
-        engine.set_active_algorithm(4);
-        assert!(engine.compute_dual(1.0, 0.5).is_finite());
+        engine.set_active_algorithm(4); // Cascade PID
+        let out = engine.compute_dual(10.0, 0.5);
+        assert!(out.is_finite());
     }
 
     #[test]
-    fn test_compute_dual_for_lqr() {
+    fn test_compute_dual_lqr() {
         let mut engine = ControlEngine::new();
-        engine.set_active_algorithm(8);
-        assert!(engine.compute_dual(1.0, 0.5).is_finite());
+        engine.set_active_algorithm(8); // LQR
+        let out = engine.compute_dual(10.0, 0.5);
+        assert!(out.is_finite());
+    }
+
+    #[test]
+    fn test_compute_dual_fallback_for_non_dual_algo() {
+        let mut engine = ControlEngine::new();
+        engine.set_active_algorithm(0); // Classic PID — no dual
+        let dual_out = engine.compute_dual(5.0, 1.0);
+        // Falls back to compute(position)
+        let mut engine2 = ControlEngine::new();
+        let single_out = engine2.compute(5.0);
+        // Both should produce finite values (not necessarily equal due to state)
+        assert!(dual_out.is_finite());
+        assert!(single_out.is_finite());
     }
 
     #[test]
@@ -353,90 +359,264 @@ mod tests {
     }
 
     #[test]
-    fn test_dual_feedback_control_trait_cascade_pid() {
+    fn test_dual_feedback_trait_cascade_pid() {
         let mut engine = ControlEngine::new();
         engine.set_active_algorithm(4);
-
         let algorithm = engine.active_algorithm_mut();
-        if let Some(dual) = algorithm
+        let dual = algorithm
             .as_any_mut()
             .downcast_mut::<CascadePidController>()
-        {
-            let output = dual.compute_dual(10.0, 1.0);
-            assert!(output.is_finite());
-        } else {
-            panic!("CascadePidController should implement DualFeedbackControl");
-        }
+            .expect("CascadePidController");
+        let output = dual.compute_dual(10.0, 1.0);
+        assert!(output.is_finite());
     }
 
     #[test]
-    fn test_dual_feedback_control_trait_lqr() {
+    fn test_dual_feedback_trait_lqr() {
         let mut engine = ControlEngine::new();
         engine.set_active_algorithm(8);
-
         let algorithm = engine.active_algorithm_mut();
-        if let Some(dual) = algorithm.as_any_mut().downcast_mut::<LqrController>() {
-            let output = dual.compute_dual(10.0, 1.0);
-            assert!(output.is_finite());
-        } else {
-            panic!("LqrController should implement DualFeedbackControl");
-        }
+        let dual = algorithm
+            .as_any_mut()
+            .downcast_mut::<LqrController>()
+            .expect("LqrController");
+        let output = dual.compute_dual(10.0, 1.0);
+        assert!(output.is_finite());
+    }
+
+    // ── Deep: pid accessor macros ──
+
+    #[test]
+    fn test_pid_accessor() {
+        let engine = ControlEngine::new();
+        let pid = engine.pid();
+        assert_eq!(pid.kp, 1.0);
+        assert_eq!(pid.ki, 0.1);
+        assert_eq!(pid.kd, 0.01);
     }
 
     #[test]
-    fn test_all_algorithms_have_names() {
-        for i in 0..10 {
-            let mut e = ControlEngine::new();
-            e.set_active_algorithm(i);
-            assert!(!e.algorithm_name().is_empty());
-        }
-    }
-
-    #[test]
-    fn test_all_algorithms_reset_to_zero_v2() {
-        for i in 0..10 {
-            let mut e = ControlEngine::new();
-            e.set_active_algorithm(i);
-            e.compute(1.0);
-            e.reset_active();
-            assert_eq!(e.output(), 0.0);
-        }
-    }
-
-    #[test]
-    fn test_setpoint_roundtrip() {
+    fn test_pid_mut_accessor() {
         let mut engine = ControlEngine::new();
-        engine.set_setpoint(42.0);
-        assert_eq!(engine.setpoint(), 42.0);
+        engine.pid_mut().kp = 5.0;
+        assert_eq!(engine.pid().kp, 5.0);
     }
 
     #[test]
-    fn test_emergency_stop_v2() {
+    fn test_incremental_pid_accessor() {
         let mut engine = ControlEngine::new();
-        engine.toggle_running();
-        assert!(engine.is_running);
-        engine.emergency_stop();
-        assert!(!engine.is_running);
-        assert_eq!(engine.output(), 0.0);
+        engine.incremental_pid_mut().kp = 2.5;
+        assert_eq!(engine.incremental_pid().kp, 2.5);
     }
 
     #[test]
-    fn test_push_state_limits_history_v2() {
+    fn test_bang_bang_accessor() {
+        let engine = ControlEngine::new();
+        let bb = engine.bang_bang();
+        assert!(bb.as_any().downcast_ref::<BangBangController>().is_some());
+    }
+
+    #[test]
+    fn test_fuzzy_pid_accessor() {
+        let engine = ControlEngine::new();
+        assert_eq!(engine.fuzzy_pid().kp_base, 1.0);
+    }
+
+    #[test]
+    fn test_cascade_pid_accessor() {
+        let engine = ControlEngine::new();
+        let cp = engine.cascade_pid();
+        assert!(cp.as_any().downcast_ref::<CascadePidController>().is_some());
+    }
+
+    #[test]
+    fn test_smith_predictor_accessor() {
+        let engine = ControlEngine::new();
+        assert!(engine
+            .smith_predictor()
+            .as_any()
+            .downcast_ref::<SmithPredictorController>()
+            .is_some());
+    }
+
+    #[test]
+    fn test_adrc_accessor() {
+        let engine = ControlEngine::new();
+        assert!(engine
+            .adrc()
+            .as_any()
+            .downcast_ref::<AdrcController>()
+            .is_some());
+    }
+
+    #[test]
+    fn test_ladrc_accessor() {
+        let engine = ControlEngine::new();
+        assert!(engine
+            .ladrc()
+            .as_any()
+            .downcast_ref::<LadrcController>()
+            .is_some());
+    }
+
+    #[test]
+    fn test_lqr_accessor() {
+        let engine = ControlEngine::new();
+        assert!(engine
+            .lqr()
+            .as_any()
+            .downcast_ref::<LqrController>()
+            .is_some());
+    }
+
+    #[test]
+    fn test_mpc_accessor() {
+        let engine = ControlEngine::new();
+        assert!(engine
+            .mpc()
+            .as_any()
+            .downcast_ref::<MpcController>()
+            .is_some());
+    }
+
+    // ── Deep: NN training pipeline ──
+
+    #[test]
+    fn test_nn_train_step_insufficient_history() {
         let mut engine = ControlEngine::new();
-        for i in 0..10001 {
+        // Push fewer than 20 states
+        for i in 0..15 {
             engine.push_state(RobotState {
-                position: i as f64,
+                error: (i as f64 * 0.1).sin(),
                 ..Default::default()
             });
         }
-        assert!(engine.state_history.len() <= 10000);
+        assert!(engine.nn_train_step().is_none(), "need >= 20 states");
     }
 
     #[test]
-    fn test_active_index_out_of_range_ignored() {
+    fn test_nn_train_step_sufficient_history() {
         let mut engine = ControlEngine::new();
-        engine.set_active_algorithm(0);
-        engine.set_active_algorithm(100);
+        for i in 0..25 {
+            engine.push_state(RobotState {
+                error: (i as f64 * 0.1).sin(),
+                ..Default::default()
+            });
+        }
+        let result = engine.nn_train_step();
+        assert!(result.is_some());
+        let msg = result.unwrap();
+        assert!(msg.contains("Loss"));
+        assert!(msg.contains("Epoch"));
+    }
+
+    #[test]
+    fn test_nn_train_step_increments_epochs() {
+        let mut engine = ControlEngine::new();
+        for i in 0..25 {
+            engine.push_state(RobotState {
+                error: (i as f64 * 0.1).sin(),
+                ..Default::default()
+            });
+        }
+        engine.nn_train_step();
+        let epoch_after_first = engine.nn.training_epochs;
+        engine.nn_train_step();
+        assert!(engine.nn.training_epochs > epoch_after_first);
+    }
+
+    #[test]
+    fn test_nn_suggest_params_insufficient_history() {
+        let mut engine = ControlEngine::new();
+        for i in 0..5 {
+            engine.push_state(RobotState {
+                error: i as f64,
+                ..Default::default()
+            });
+        }
+        // Should be no-op with < 10 states
+        engine.nn_suggest_params();
+        assert_eq!(engine.nn_suggested_kp, 0.0);
+    }
+
+    #[test]
+    fn test_nn_suggest_params_sufficient_history() {
+        let mut engine = ControlEngine::new();
+        for i in 0..15 {
+            engine.push_state(RobotState {
+                error: (i as f64 * 0.2).sin(),
+                ..Default::default()
+            });
+        }
+        engine.nn_suggest_params();
+        // Suggested params should be finite (may be zero depending on NN output)
+        assert!(engine.nn_suggested_kp.is_finite());
+        assert!(engine.nn_suggested_ki.is_finite());
+        assert!(engine.nn_suggested_kd.is_finite());
+    }
+
+    #[test]
+    fn test_apply_nn_params() {
+        let mut engine = ControlEngine::new();
+        engine.nn_suggested_kp = 2.5;
+        engine.nn_suggested_ki = 0.25;
+        engine.nn_suggested_kd = 0.025;
+        engine.apply_nn_params();
+        let pid = engine.pid();
+        assert_eq!(pid.kp, 2.5);
+        assert_eq!(pid.ki, 0.25);
+        assert_eq!(pid.kd, 0.025);
+    }
+
+    // ── Deep: different algorithms produce different outputs ──
+
+    #[test]
+    fn test_different_algorithms_produce_different_outputs() {
+        let mut outputs = Vec::new();
+        for i in 0..10 {
+            let mut engine = ControlEngine::new();
+            engine.set_active_algorithm(i);
+            engine.set_setpoint(10.0);
+            // Feed same error multiple times for stateful algorithms
+            let mut last_output = 0.0;
+            for _ in 0..5 {
+                last_output = engine.compute(5.0);
+            }
+            outputs.push((engine.algorithm_name(), last_output));
+        }
+        // At least some outputs should differ
+        let unique: std::collections::HashSet<i64> = outputs
+            .iter()
+            .map(|(_, o)| (o * 1000.0).round() as i64)
+            .collect();
+        assert!(
+            unique.len() > 1,
+            "algorithms should produce different outputs: {:?}",
+            outputs
+        );
+    }
+
+    // ── Deep: presets and NN defaults ──
+
+    #[test]
+    fn test_defaults() {
+        let engine = ControlEngine::new();
+        assert!(engine.presets.is_empty());
+        assert_eq!(engine.nn_suggested_kp, 0.0);
+        assert_eq!(engine.nn_suggested_ki, 0.0);
+        assert_eq!(engine.nn_suggested_kd, 0.0);
+        assert!(!engine.is_running);
         assert_eq!(engine.active_index, 0);
+        assert!(engine.state_history.is_empty());
+    }
+
+    #[test]
+    fn test_nn_is_pid_tuner() {
+        let engine = ControlEngine::new();
+        // NeuralNetwork::pid_tuner creates [6, 16, 8, 3] = 3 layers
+        assert_eq!(engine.nn.layers.len(), 3);
+        assert_eq!(engine.nn.layers[0].biases.len(), 16); // first hidden
+        assert_eq!(engine.nn.layers[1].biases.len(), 8); // second hidden
+        assert_eq!(engine.nn.layers[2].biases.len(), 3); // output: kp, ki, kd
     }
 }
