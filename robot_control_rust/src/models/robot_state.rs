@@ -98,7 +98,6 @@ mod tests {
         let s = RobotState::new(f64::MAX, f64::MIN, f64::MAX, f64::MIN);
         assert_eq!(s.position, f64::MAX);
         assert_eq!(s.velocity, f64::MIN);
-        // Verify serialization survives extreme values
         let json = serde_json::to_string(&s).unwrap();
         let s2: RobotState = serde_json::from_str(&json).unwrap();
         assert_eq!(s.position, s2.position);
@@ -131,5 +130,79 @@ mod tests {
         assert_eq!(s.error, -0.5);
         assert!(s.emergency_stop);
         assert_eq!(s.encoder_count, 12345);
+    }
+
+    // ── Deep: serialization preserves all fields ──
+
+    #[test]
+    fn test_serialization_preserves_all_fields() {
+        let s = RobotState {
+            position: 1.0,
+            velocity: 2.0,
+            current: 3.0,
+            temperature: 4.0,
+            pid_output: 5.0,
+            error: 6.0,
+            emergency_stop: true,
+            acceleration: 7.0,
+            voltage: 48.0,
+            pwm_duty: 75.5,
+            encoder_count: 99999,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&s).unwrap();
+        let s2: RobotState = serde_json::from_str(&json).unwrap();
+        assert_eq!(s2.position, 1.0);
+        assert_eq!(s2.velocity, 2.0);
+        assert_eq!(s2.current, 3.0);
+        assert_eq!(s2.temperature, 4.0);
+        assert_eq!(s2.pid_output, 5.0);
+        assert_eq!(s2.error, 6.0);
+        assert!(s2.emergency_stop);
+        assert_eq!(s2.acceleration, 7.0);
+        assert_eq!(s2.voltage, 48.0);
+        assert_eq!(s2.pwm_duty, 75.5);
+        assert_eq!(s2.encoder_count, 99999);
+    }
+
+    // ── Deep: Debug format ──
+
+    #[test]
+    fn test_debug_format() {
+        let s = RobotState::new(1.0, 2.0, 3.0, 4.0);
+        let debug = format!("{:?}", s);
+        assert!(
+            debug.contains("position"),
+            "Debug should contain field names"
+        );
+        assert!(
+            debug.contains("velocity"),
+            "Debug should contain field names"
+        );
+    }
+
+    // ── Deep: Clone ──
+
+    #[test]
+    fn test_clone() {
+        let s = RobotState::new(10.0, 20.0, 30.0, 40.0);
+        let s2 = s.clone();
+        assert_eq!(s.position, s2.position);
+        assert_eq!(s.velocity, s2.velocity);
+        assert_eq!(s.emergency_stop, s2.emergency_stop);
+    }
+
+    // ── Deep: new() defaults unused fields to zero ──
+
+    #[test]
+    fn test_new_defaults_unused_fields() {
+        let s = RobotState::new(1.0, 2.0, 3.0, 4.0);
+        assert_eq!(s.pid_output, 0.0);
+        assert_eq!(s.error, 0.0);
+        assert!(!s.emergency_stop);
+        assert_eq!(s.acceleration, 0.0);
+        assert_eq!(s.voltage, 0.0);
+        assert_eq!(s.pwm_duty, 0.0);
+        assert_eq!(s.encoder_count, 0);
     }
 }
