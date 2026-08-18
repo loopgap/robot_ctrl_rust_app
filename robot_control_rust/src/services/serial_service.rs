@@ -624,4 +624,95 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
+
+    // ── Deep: Stability — scratch buffer pre-allocation ──
+
+    #[test]
+    fn test_scratch_buffer_pre_allocated() {
+        let service = SerialService::default();
+        assert!(
+            service.rx_scratch.capacity() >= 8192,
+            "scratch buffer should be pre-allocated to 8192"
+        );
+    }
+
+    // ── Deep: Stability — rx_buffer pre-allocation ──
+
+    #[test]
+    fn test_rx_buffer_pre_allocated() {
+        let service = SerialService::default();
+        assert!(
+            service.rx_buffer.capacity() >= 4096,
+            "rx_buffer should be pre-allocated to 4096"
+        );
+    }
+
+    // ── Deep: Stability — rx_read_pos starts at zero ──
+
+    #[test]
+    fn test_rx_read_pos_starts_at_zero() {
+        let service = SerialService::default();
+        assert_eq!(service.rx_read_pos, 0);
+    }
+
+    // ── Deep: Stability — stop_flag is false by default ──
+
+    #[test]
+    fn test_stop_flag_false_by_default() {
+        let service = SerialService::default();
+        assert!(!service.stop_flag.load(Ordering::Acquire));
+    }
+
+    // ── Deep: Stability — worker_errored is false by default ──
+
+    #[test]
+    fn test_worker_errored_false_by_default() {
+        let service = SerialService::default();
+        assert!(!service.worker_errored.load(Ordering::Acquire));
+    }
+
+    // ── Deep: Stability — multiple disconnect calls safe ──
+
+    #[test]
+    fn test_multiple_disconnect_calls_safe() {
+        let mut service = SerialService::default();
+        service.disconnect();
+        service.disconnect();
+        service.disconnect();
+        assert_eq!(service.status, ConnectionStatus::Disconnected);
+    }
+
+    // ── Deep: Stability — default config values ──
+
+    #[test]
+    fn test_default_config_industrial() {
+        let service = SerialService::default();
+        // Default config should have valid baud rate
+        assert!(service.config.baud_rate > 0, "baud rate should be positive");
+        // port_name may be empty (user selects before connect)
+        assert!(
+            service.config.data_bits >= 5 && service.config.data_bits <= 8,
+            "data bits should be 5-8"
+        );
+    }
+
+    // ── Deep: Stability — encode_packet structure ──
+
+    #[test]
+    fn test_encode_packet_header_tail() {
+        let pkt = SerialService::encode_packet(0xFF, &[0x00, 0xFF, 0x55]);
+        assert_eq!(pkt[0], 0xAA, "header");
+        assert_eq!(pkt[pkt.len() - 1], 0x55, "tail");
+        assert_eq!(pkt[1], 0xFF, "command");
+        assert_eq!(pkt[2], 3, "data length");
+    }
+
+    // ── Deep: Stability — try_read_raw returns empty when disconnected ──
+
+    #[test]
+    fn test_try_read_raw_empty_when_disconnected() {
+        let mut service = SerialService::default();
+        let data = service.try_read_raw();
+        assert!(data.is_empty());
+    }
 }
