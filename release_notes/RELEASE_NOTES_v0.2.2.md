@@ -52,7 +52,7 @@
 ## Verification
 - [x] ./scripts/windows/task.ps1 preflight
 - [x] Local release artifact smoke checks completed
-- [ ] GitHub release workflow verifies uploaded artifacts and checksums
+- [x] GitHub release workflow verifies uploaded artifacts and checksums
 - [x] 1289 tests passing (100% pass rate)
 - [x] Zero clippy warnings with `-D warnings`
 - [x] Zero security vulnerabilities
