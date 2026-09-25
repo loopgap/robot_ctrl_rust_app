@@ -169,6 +169,7 @@ implicit_clone = "allow"
 or_fun_call = "allow"
 unnested_or_patterns = "allow"
 unused_async_trait_impl = "allow"
+manual_midpoint = "allow"
 # Quality lints — kept as warnings:
 unused_async = "warn"
 redundant_clone = "warn"

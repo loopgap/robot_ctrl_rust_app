@@ -595,7 +595,7 @@ pub fn skeleton_rect(
             egui::pos2(band_left, rect.top()),
             egui::pos2(band_right, rect.bottom()),
         );
-        let dist = (band_center - (band_left + band_right) * 0.5).abs();
+        let dist = (band_center - band_left.midpoint(band_right)).abs();
         let factor = (1.0 - (dist / (band_width * 0.5 + 1.0))).clamp(0.0, 1.0);
         let alpha = (28.0 * factor) as u8;
         let is_dark = luminance(theme.bg_dark) < 0.5;
