@@ -62,6 +62,7 @@ indicatif = "0.18"
 colored = "3"
 jsonwebtoken = { version = "10", features = ["aws_lc_rs"] }
 aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+winres = "0.1"
 
 [profile.dev]
 opt-level = 1

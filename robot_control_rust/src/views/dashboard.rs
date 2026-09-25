@@ -7,13 +7,10 @@ use egui::{self, Color32, RichText, Ui, Vec2};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
 
-    // ── 1) RichText: styled page header ──────────────────────
     page_header(ui, Tr::tab_dashboard(lang), "dashboard");
 
-    // ═══ 连接状态卡片 ═══════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::connection_status(lang));
         ui.horizontal_wrapped(|ui| {
@@ -72,7 +69,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             );
         });
 
-        // ── 3) ProgressBar: overall connection health ────────
         ui.add_space(6.0);
         let connected_count = [
             state.conn.serial.is_connected(),
@@ -110,17 +106,14 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 启动自检 ═══════════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::system_check_label(lang));
         let (ok_count, total_count) = state.system_check_summary();
 
-        // ── 3) ProgressBar: system check pass rate ───────────
         let check_ratio = if total_count > 0 {
             ok_count as f32 / total_count as f32
         } else {
@@ -134,7 +127,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             theme.status_error
         };
         ui.horizontal(|ui| {
-            // ── 2) RichText: styled label ────────────────────
             ui.label(
                 RichText::new(if lang == Language::Chinese {
                     "自检结果"
@@ -148,7 +140,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             let check_bar = egui::ProgressBar::new(check_ratio)
                 .fill(check_color)
                 .text(format!("{}/{}", ok_count, total_count));
-            // ── 1) Tooltip ───────────────────────────────────
             ui.add(check_bar)
                 .on_hover_text(if lang == Language::Chinese {
                     "所有自检项的通过率"
@@ -157,7 +148,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 });
         });
 
-        // ── 2) RichText: version & status ────────────────────
         ui.label(
             RichText::new(if lang == Language::Chinese {
                 format!(
@@ -201,7 +191,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         );
         ui.add_space(6.0);
 
-        // ── 5) ScrollArea + 6) CollapsingHeader: system checks detail ──
         egui::CollapsingHeader::new(
             RichText::new(if lang == Language::Chinese {
                 "自检详情"
@@ -235,19 +224,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 系统统计 ═══════════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::system_stats(lang));
         egui::Grid::new("stats_grid")
             .num_columns(2)
             .spacing([28.0, 8.0])
             .show(ui, |ui| {
-                // ── 1) Tooltip: on hover for each stat ───────
                 stat_row_with_tooltip(
                     ui,
                     Tr::bytes_sent(lang),
@@ -335,12 +321,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 快捷操作 ═══════════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::quick_actions(lang));
         ui.horizontal_wrapped(|ui| {
@@ -349,7 +333,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             if state.is_any_connected() {
                 let btn = ui
                     .button(RichText::new(Tr::disconnect(lang)).size(14.0))
-                    // ── 1) Tooltip ───────────────────────────
                     .on_hover_text(if lang == Language::Chinese {
                         "断开当前活动通道的连接"
                     } else {
@@ -386,31 +369,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }
             }
 
-            let run_text = if state.control.is_running {
-                RichText::new(Tr::stop_control(lang))
-                    .size(14.0)
-                    .color(state.anim.animate_color(
-                        "dashboard_1".into(),
-                        theme.status_error,
-                        theme.status_error,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ))
+            let (run_label, run_color) = if state.control.is_running {
+                (Tr::stop_control(lang), theme.status_error)
             } else {
-                RichText::new(Tr::start_control(lang))
-                    .size(14.0)
-                    .color(state.anim.animate_color(
-                        "dashboard_1".into(),
-                        theme.status_ok,
-                        theme.status_ok,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ))
+                (Tr::start_control(lang), theme.status_ok)
             };
             let run_btn = ui
-                .button(run_text)
+                .button(
+                    RichText::new(run_label)
+                        .size(14.0)
+                        .color(run_color)
+                        .strong(),
+                )
                 .on_hover_text(if lang == Language::Chinese {
                     "启动或停止控制回路"
                 } else {
@@ -420,24 +390,26 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 state.toggle_running();
             }
 
-            // ── 1) Tooltip: emergency stop ───────────────────
+            let estop_widget = egui::Button::new(
+                RichText::new(Tr::emergency_stop(lang))
+                    .size(14.0)
+                    .color(Color32::WHITE)
+                    .strong(),
+            )
+            .fill(theme.status_error)
+            .stroke(egui::Stroke::new(1.5_f32, Color32::from_rgb(255, 100, 100)))
+            .corner_radius(6.0);
             let estop_btn = ui
-                .button(
-                    RichText::new(Tr::emergency_stop(lang))
-                        .size(14.0)
-                        .color(Color32::RED)
-                        .strong(),
-                )
+                .add(estop_widget)
                 .on_hover_text(if lang == Language::Chinese {
-                    "立即停止所有电机输出（安全操作）"
+                    "立即停止所有电机输出（安全急停）"
                 } else {
-                    "Immediately halt all motor output (safety operation)"
+                    "Immediately halt all motor output (safety E-stop)"
                 });
             if estop_btn.clicked() {
                 state.emergency_stop();
             }
 
-            // ── 1) Tooltip: refresh ports ────────────────────
             let refresh_btn = ui
                 .button(RichText::new(Tr::refresh_ports(lang)).size(14.0))
                 .on_hover_text(if lang == Language::Chinese {
@@ -451,11 +423,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             let update_text = if state.update_available {
-                "⬆ Open Available Update"
+                "^ Open Available Update"
             } else {
-                "⬆ Check Updates"
+                "^ Check Updates"
             };
-            // ── 1) Tooltip: update check ─────────────────────
             let update_btn = ui
                 .button(RichText::new(update_text).size(14.0))
                 .on_hover_text(if lang == Language::Chinese {
@@ -470,27 +441,84 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 机器人状态 ═══════════════════════════════════════
     settings_card(ui, |ui| {
         section_title(ui, Tr::robot_state(lang));
         let s = &state.control.current_state;
+        let temp_color = if s.temperature > 75.0 {
+            Some(theme.status_error)
+        } else if s.temperature > 55.0 {
+            Some(theme.status_warn)
+        } else {
+            Some(theme.status_ok)
+        };
+        let current_color = if s.current.abs() > 8.0 {
+            Some(theme.status_error)
+        } else if s.current.abs() > 5.0 {
+            Some(theme.status_warn)
+        } else {
+            None
+        };
+        let volt_color = if s.voltage < 10.0 || s.voltage > 52.0 {
+            Some(theme.status_error)
+        } else if s.voltage < 12.0 || s.voltage > 48.0 {
+            Some(theme.status_warn)
+        } else {
+            Some(theme.status_ok)
+        };
+        let error_color = if s.error.abs() > 0.5 {
+            Some(theme.status_warn)
+        } else {
+            None
+        };
+
         ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(18.0, 10.0);
-            state_cell(ui, Tr::position(lang), &format!("{:.2}", s.position));
-            state_cell(ui, Tr::velocity(lang), &format!("{:.2}", s.velocity));
-            state_cell(ui, Tr::current_a(lang), &format!("{:.2} A", s.current));
+            ui.spacing_mut().item_spacing = egui::vec2(10.0, 10.0);
+            state_cell(
+                ui,
+                Tr::position(lang),
+                &format!("{:.2}", s.position),
+                &theme,
+                None,
+            );
+            state_cell(
+                ui,
+                Tr::velocity(lang),
+                &format!("{:.2}", s.velocity),
+                &theme,
+                None,
+            );
+            state_cell(
+                ui,
+                Tr::current_a(lang),
+                &format!("{:.2} A", s.current),
+                &theme,
+                current_color,
+            );
             state_cell(
                 ui,
                 Tr::temperature(lang),
                 &format!("{:.1} \u{00B0}C", s.temperature),
+                &theme,
+                temp_color,
             );
-            state_cell(ui, Tr::error_ch(lang), &format!("{:.3}", s.error));
-            state_cell(ui, Tr::pid_output(lang), &format!("{:.2}", s.pid_output));
+            state_cell(
+                ui,
+                Tr::error_ch(lang),
+                &format!("{:.3}", s.error),
+                &theme,
+                error_color,
+            );
+            state_cell(
+                ui,
+                Tr::pid_output(lang),
+                &format!("{:.2}", s.pid_output),
+                &theme,
+                None,
+            );
             state_cell(
                 ui,
                 if lang == Language::Chinese {
@@ -499,6 +527,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     "Voltage"
                 },
                 &format!("{:.1} V", s.voltage),
+                &theme,
+                volt_color,
             );
             state_cell(
                 ui,
@@ -508,10 +538,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     "PWM"
                 },
                 &format!("{:.1}%", s.pwm_duty),
+                &theme,
+                None,
             );
         });
 
-        // ── 3) ProgressBar: visual gauges for key metrics ────
         ui.add_space(8.0);
         egui::Grid::new("robot_state_gauges")
             .num_columns(2)
@@ -597,12 +628,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 6) CollapsingHeader: 运行指标 ════════════════════
     settings_card(ui, |ui| {
         egui::CollapsingHeader::new(
             RichText::new(Tr::runtime_metrics_label(lang))
@@ -746,7 +775,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     ui.end_row();
                 });
 
-            // ── 3) ProgressBar: LLM success rate ─────────────
             if state.metrics.llm_requests > 0 {
                 ui.add_space(6.0);
                 let llm_ratio =
@@ -781,12 +809,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 6) CollapsingHeader: 拓扑信息 ════════════════════
     settings_card(ui, |ui| {
         egui::CollapsingHeader::new(RichText::new(Tr::topology_info(lang)).size(17.0).strong())
             .default_open(true)
@@ -828,12 +854,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             });
     });
 
-    // ── 4) Separator ─────────────────────────────────────────
     ui.add_space(6.0);
     ui.separator();
     ui.add_space(4.0);
 
-    // ═══ 6) CollapsingHeader: 协议分析入口 ════════════════════
     settings_card(ui, |ui| {
         egui::CollapsingHeader::new(
             RichText::new(Tr::protocol_analysis_entry_label(lang))
@@ -892,7 +916,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 });
             });
 
-            // ── 3) ProgressBar: TX / RX ratio ────────────────
             let total_frames = tx + rx;
             if total_frames > 0 {
                 ui.add_space(4.0);
@@ -921,7 +944,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 "Protocol analysis is integrated into the main workspace. Open the Protocol Analysis tab for the full toolset."
             });
 
-            // ── 1) Tooltip: protocol analysis button ─────────
             if ui
                 .button(if lang == Language::Chinese {
                     "打开协议分析页"
@@ -940,9 +962,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 }
-
-// ─── 辅助函数 ─────────────────────────────────────────────
-
 fn connection_card(
     ui: &mut Ui,
     label: &str,
@@ -953,16 +972,18 @@ fn connection_card(
 ) {
     let frame = egui::Frame::new()
         .fill(theme.bg_card)
-        .corner_radius(6.0)
-        .inner_margin(12.0)
+        .stroke(egui::Stroke::new(1.0_f32, theme.border))
+        .corner_radius(8.0)
+        .inner_margin(egui::Margin::symmetric(14, 10))
         .show(ui, |ui| {
             ui.set_min_size(Vec2::new(165.0, 0.0));
-            // ── 2) RichText: styled connection label ─────────
             ui.label(RichText::new(label).size(13.0).strong());
             ui.add_space(4.0);
-            ui.label(RichText::new(status).size(12.0).color(color));
+            ui.horizontal(|ui| {
+                ui.colored_label(color, "●");
+                ui.label(RichText::new(status).size(12.0).color(color));
+            });
         });
-    // ── 1) Tooltip: on_hover_text for connection card frame ──
     frame.response.on_hover_text(tooltip);
 }
 
@@ -1011,12 +1032,26 @@ fn stat_row_with_tooltip(
         .on_hover_text(tooltip);
 }
 
-fn state_cell(ui: &mut Ui, label: &str, value: &str) {
-    ui.vertical(|ui| {
-        ui.label(RichText::new(label).size(11.5).color(Color32::GRAY));
-        ui.add_space(2.0);
-        ui.label(RichText::new(value).size(15.0).strong());
-    });
+fn state_cell(
+    ui: &mut Ui,
+    label: &str,
+    value: &str,
+    theme: &crate::views::ui_kit::AppTheme,
+    val_color: Option<Color32>,
+) {
+    egui::Frame::new()
+        .fill(theme.bg_card)
+        .stroke(egui::Stroke::new(1.0_f32, theme.border))
+        .corner_radius(6.0)
+        .inner_margin(egui::Margin::symmetric(12, 8))
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.label(RichText::new(label).size(11.0).color(theme.text_muted));
+                ui.add_space(2.0);
+                let text_color = val_color.unwrap_or(theme.text_primary);
+                ui.label(RichText::new(value).size(15.0).color(text_color).strong());
+            });
+        });
 }
 
 pub(crate) fn format_bytes(bytes: u64) -> String {

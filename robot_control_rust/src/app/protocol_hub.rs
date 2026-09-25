@@ -111,4 +111,54 @@ mod tests {
         hub.canopen_log.push("NMT Start".into());
         assert_eq!(hub.canopen_log.len(), 1);
     }
+    #[test]
+    fn sync_packet_parser_empty_templates() {
+        let mut hub = ProtocolHub::new();
+        hub.packet_templates.push(crate::models::PacketTemplate {
+            name: "T".into(),
+            header_hex: "AA".into(),
+            fields: vec![],
+            checksum_type: crate::models::packet::ChecksumType::Sum8,
+            tail_hex: "55".into(),
+            include_length: true,
+            description: String::new(),
+        });
+        hub.sync_packet_parser();
+        assert_eq!(hub.packet_parser.template_count(), 1);
+
+        // Clear and re-sync
+        hub.packet_templates.clear();
+        hub.sync_packet_parser();
+        assert_eq!(hub.packet_parser.template_count(), 0);
+    }
+
+    #[test]
+    fn modbus_frame_default() {
+        let hub = ProtocolHub::new();
+        assert_eq!(hub.modbus_frame.slave_id, 1);
+        assert_eq!(hub.modbus_frame.quantity, 10);
+        assert!(hub.modbus_frame.write_values.is_empty());
+    }
+
+    #[test]
+    fn canopen_pdo_configs_mutable() {
+        let mut hub = ProtocolHub::new();
+        hub.canopen_pdo_configs
+            .push(crate::models::canopen::PdoConfig::default());
+        assert_eq!(hub.canopen_pdo_configs.len(), 1);
+        assert_eq!(hub.canopen_pdo_configs[0].name, "PDO1");
+    }
+
+    #[test]
+    fn parsed_packets_mutable() {
+        let mut hub = ProtocolHub::new();
+        hub.parsed_packets.push(crate::models::ParsedPacket {
+            template_name: "Test".into(),
+            fields: vec![],
+            raw: vec![0xAA, 0x55],
+            checksum_ok: true,
+            timestamp: String::new(),
+        });
+        assert_eq!(hub.parsed_packets.len(), 1);
+    }
 }

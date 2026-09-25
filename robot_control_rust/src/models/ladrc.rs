@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 线性自抗扰控制器 (LADRC - Linear ADRC)
-// ═══════════════════════════════════════════════════════════════
 //
 // ADRC 的线性化简化版本（高志强, 2003）：
 // - 线性扩张状态观测器 (LESO)：用线性增益代替非线性 fal
@@ -38,7 +36,6 @@ pub struct LadrcController {
     /// 补偿增益 b0
     pub b0: f64,
 
-    // ── 内部状态 ──
     #[serde(skip)]
     pub z1: f64, // 状态估计 1
     #[serde(skip)]
@@ -290,9 +287,6 @@ mod tests {
         let restored: LadrcOrder = serde_json::from_str(&json).unwrap();
         assert_eq!(t, restored);
     }
-
-    // ── Deep: Industrial edge cases ──
-
     #[test]
     fn test_ladrc_zero_gains_produces_zero() {
         let mut c = LadrcController::new(10.0, 0.0, 0.0, 0.0);
@@ -342,5 +336,44 @@ mod tests {
         assert!(c.z1.is_finite(), "z1 should be finite");
         assert!(c.z2.is_finite(), "z2 should be finite");
         assert!(c.z3.is_finite(), "z3 should be finite");
+    }
+    #[test]
+    fn ladrc_name() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = LadrcController::default();
+        assert_eq!(c.name(), "LADRC");
+    }
+
+    #[test]
+    fn ladrc_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = LadrcController::default();
+        c.set_setpoint(55.0);
+        assert_eq!(c.setpoint(), 55.0);
+    }
+
+    #[test]
+    fn ladrc_default_params() {
+        let c = LadrcController::default();
+        assert!(c.omega_o > 0.0);
+        assert!(c.omega_c > 0.0);
+        assert!(c.b0 > 0.0);
+    }
+
+    #[test]
+    fn ladrc_serde_roundtrip() {
+        let c = LadrcController::new(10.0, 50.0, 100.0, 1.0);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: LadrcController = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.setpoint, 10.0);
+    }
+    #[test]
+    fn ladrc_output_finite_after_steps() {
+        let mut c = LadrcController::new(10.0, 50.0, 100.0, 1.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
     }
 }

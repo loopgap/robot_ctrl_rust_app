@@ -131,9 +131,6 @@ mod tests {
         assert!(s.emergency_stop);
         assert_eq!(s.encoder_count, 12345);
     }
-
-    // ── Deep: serialization preserves all fields ──
-
     #[test]
     fn test_serialization_preserves_all_fields() {
         let s = RobotState {
@@ -164,9 +161,6 @@ mod tests {
         assert_eq!(s2.pwm_duty, 75.5);
         assert_eq!(s2.encoder_count, 99999);
     }
-
-    // ── Deep: Debug format ──
-
     #[test]
     fn test_debug_format() {
         let s = RobotState::new(1.0, 2.0, 3.0, 4.0);
@@ -180,9 +174,6 @@ mod tests {
             "Debug should contain field names"
         );
     }
-
-    // ── Deep: Clone ──
-
     #[test]
     fn test_clone() {
         let s = RobotState::new(10.0, 20.0, 30.0, 40.0);
@@ -191,9 +182,6 @@ mod tests {
         assert_eq!(s.velocity, s2.velocity);
         assert_eq!(s.emergency_stop, s2.emergency_stop);
     }
-
-    // ── Deep: new() defaults unused fields to zero ──
-
     #[test]
     fn test_new_defaults_unused_fields() {
         let s = RobotState::new(1.0, 2.0, 3.0, 4.0);

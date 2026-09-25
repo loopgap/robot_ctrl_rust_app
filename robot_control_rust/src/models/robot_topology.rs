@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// ═══════════════════════════════════════════════════════════════
 // 底盘类型
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChassisType {
@@ -94,9 +92,7 @@ impl std::fmt::Display for ChassisType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 执行器类型
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActuatorType {
@@ -137,9 +133,7 @@ impl std::fmt::Display for ActuatorType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 电机/关节配置
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MotorConfig {
@@ -177,9 +171,7 @@ impl Default for MotorConfig {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 拓扑配置
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TopologyConfig {
@@ -374,5 +366,97 @@ mod tests {
         let cfg2: TopologyConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(cfg.chassis_type, cfg2.chassis_type);
         assert_eq!(cfg.motors.len(), cfg2.motors.len());
+    }
+    #[test]
+    fn builtin_list_non_empty() {
+        let list = TopologyConfig::builtin_list();
+        assert!(
+            !list.is_empty(),
+            "Should have at least one builtin topology"
+        );
+    }
+
+    #[test]
+    fn builtin_list_unique_names() {
+        let list = TopologyConfig::builtin_list();
+        let names: Vec<&str> = list.iter().map(|c| c.name.as_str()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len(), "Builtin names should be unique");
+    }
+
+    #[test]
+    fn builtin_list_valid_configs() {
+        let list = TopologyConfig::builtin_list();
+        for cfg in &list {
+            assert!(!cfg.name.is_empty());
+            assert!(!cfg.motors.is_empty(), "{} should have motors", cfg.name);
+        }
+    }
+
+    #[test]
+    fn builtin_list_chassis_types_are_valid() {
+        let list = TopologyConfig::builtin_list();
+        for cfg in &list {
+            // ChassisType is an enum, just verify it's Debug-printable
+            let debug = format!("{:?}", cfg.chassis_type);
+            assert!(!debug.is_empty());
+        }
+    }
+    #[test]
+    fn builtin_list_nonempty() {
+        let list = TopologyConfig::builtin_list();
+        assert!(!list.is_empty());
+    }
+
+    #[test]
+    fn builtin_list_names_unique() {
+        let list = TopologyConfig::builtin_list();
+        let names: Vec<&str> = list.iter().map(|c| c.name.as_str()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len());
+    }
+
+    #[test]
+    fn builtin_list_all_have_motors() {
+        let list = TopologyConfig::builtin_list();
+        for cfg in &list {
+            assert!(!cfg.motors.is_empty(), "{} should have motors", cfg.name);
+        }
+    }
+
+    #[test]
+    fn topology_config_serde_roundtrip() {
+        let list = TopologyConfig::builtin_list();
+        if let Some(cfg) = list.first() {
+            let json = serde_json::to_string(cfg).unwrap();
+            let restored: TopologyConfig = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored.name, cfg.name);
+        }
+    }
+
+    #[test]
+    fn motor_config_default() {
+        let m = MotorConfig::default();
+        assert!(!m.name.is_empty());
+    }
+    #[test]
+    fn topology_config_default() {
+        let cfg = TopologyConfig::default();
+        assert!(!cfg.name.is_empty());
+    }
+
+    #[test]
+    fn chassis_type_debug_format() {
+        let types = [
+            ChassisType::Differential,
+            ChassisType::Mecanum,
+            ChassisType::Omni3,
+            ChassisType::Omni4,
+            ChassisType::Ackermann,
+        ];
+        for t in &types {
+            let debug = format!("{:?}", t);
+            assert!(!debug.is_empty());
+        }
     }
 }

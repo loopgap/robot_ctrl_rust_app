@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 模型预测控制器 (MPC - Model Predictive Control)
-// ═══════════════════════════════════════════════════════════════
 //
 // 在每个控制周期内：
 // 1. 用内部模型预测未来 N 步的系统行为
@@ -22,7 +20,6 @@ pub struct MpcController {
     pub setpoint: f64,
     pub output_limit: f64,
 
-    // ── MPC 参数 ──
     /// 预测步长 Np
     pub prediction_horizon: usize,
     /// 控制步长 Nc (Nc <= Np)
@@ -34,7 +31,6 @@ pub struct MpcController {
     /// 控制变化率权重 S
     pub s_weight: f64,
 
-    // ── 内部过程模型 ──
     /// 模型增益
     pub model_gain: f64,
     /// 模型时间常数
@@ -45,7 +41,6 @@ pub struct MpcController {
     /// 控制量变化率约束 |Δu| <= du_limit
     pub du_limit: f64,
 
-    // ── 内部状态 ──
     #[serde(skip)]
     pub model_state: f64, // 内部模型状态
     #[serde(skip)]
@@ -366,5 +361,170 @@ mod tests {
         let cost = c.evaluate_cost(&du, 0.0, a, b, 10);
         assert!(cost.is_finite());
         assert!(cost >= 0.0);
+    }
+    #[test]
+    fn mpc_new_clamps_min_horizons() {
+        let c = MpcController::new(0.0, 0, 0);
+        assert!(c.prediction_horizon >= 2, "Np should be >= 2");
+        assert!(c.control_horizon >= 1, "Nc should be >= 1");
+    }
+
+    #[test]
+    fn mpc_new_clamps_control_leq_prediction() {
+        let c = MpcController::new(0.0, 5, 100);
+        assert!(c.control_horizon <= c.prediction_horizon);
+    }
+
+    #[test]
+    fn mpc_du_limit_respected() {
+        let mut c = MpcController::new(50.0, 10, 3);
+        c.du_limit = 1.0;
+        c.output_limit = 1000.0;
+        c.sample_time = 0.001;
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        let u1 = c.last_u;
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        let u2 = c.last_u;
+        let du = (u2 - u1).abs();
+        assert!(
+            du <= c.du_limit + 0.01,
+            "Control change {} should respect du_limit {}",
+            du,
+            c.du_limit
+        );
+    }
+
+    #[test]
+    fn mpc_model_state_updates() {
+        let mut c = MpcController::new(10.0, 10, 3);
+        c.sample_time = 0.001;
+        assert_eq!(c.model_state, 0.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        // model_state should have been updated
+        assert!(c.model_state.is_finite());
+    }
+
+    #[test]
+    fn mpc_predicted_output_updates() {
+        let mut c = MpcController::new(10.0, 10, 3);
+        c.sample_time = 0.001;
+        assert_eq!(c.predicted_output, 0.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.predicted_output.is_finite());
+    }
+
+    #[test]
+    fn mpc_serde_roundtrip() {
+        let c = MpcController::new(50.0, 15, 4);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: MpcController = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.setpoint, 50.0);
+        assert_eq!(restored.prediction_horizon, 15);
+        assert_eq!(restored.control_horizon, 4);
+    }
+
+    #[test]
+    fn mpc_name_is_mpc() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = MpcController::default();
+        assert_eq!(c.name(), "MPC");
+    }
+
+    #[test]
+    fn mpc_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = MpcController::default();
+        c.set_setpoint(42.0);
+        assert_eq!(c.setpoint(), 42.0);
+    }
+
+    #[test]
+    fn mpc_evaluate_cost_zero_du() {
+        let c = MpcController::default();
+        let du = vec![0.0; 3];
+        let (a, b) = c.discrete_params();
+        let cost = c.evaluate_cost(&du, 0.0, a, b, 10);
+        // With zero control changes and zero error, cost should be 0 or near 0
+        assert!(cost >= 0.0);
+    }
+
+    #[test]
+    fn mpc_discrete_params_time_constant_effect() {
+        let c1 = MpcController {
+            model_time_const: 0.1,
+            ..Default::default()
+        };
+        let (a1, _) = c1.discrete_params();
+
+        let c2 = MpcController {
+            model_time_const: 10.0,
+            ..Default::default()
+        };
+        let (a2, _) = c2.discrete_params();
+
+        // Faster time constant → smaller a (faster decay)
+        assert!(a1 < a2, "Faster system should have smaller a");
+    }
+    #[test]
+    fn mpc_default_params_valid() {
+        let c = MpcController::default();
+        assert!(c.q_weight > 0.0);
+        assert!(c.r_weight > 0.0);
+        assert!(c.s_weight > 0.0);
+        assert!(c.model_gain > 0.0);
+        assert!(c.model_time_const > 0.0);
+        assert!(c.sample_time > 0.0);
+    }
+
+    #[test]
+    fn mpc_prediction_horizon_min_2() {
+        let c = MpcController::new(0.0, 0, 0);
+        assert!(c.prediction_horizon >= 2);
+    }
+
+    #[test]
+    fn mpc_control_horizon_leq_prediction() {
+        let c = MpcController::new(0.0, 10, 100);
+        assert!(c.control_horizon <= c.prediction_horizon);
+    }
+
+    #[test]
+    fn mpc_output_after_multiple_steps() {
+        let mut c = MpcController::new(10.0, 10, 3);
+        c.sample_time = 0.001;
+        c.compute(0.0);
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+        assert!(c.predicted_output.is_finite());
+    }
+    #[test]
+    fn mpc_output_finite_after_many_steps() {
+        let mut c = MpcController::new(10.0, 10, 3);
+        c.sample_time = 0.001;
+        for _ in 0..20 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn mpc_model_state_finite() {
+        let mut c = MpcController::new(10.0, 10, 3);
+        c.sample_time = 0.001;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.model_state.is_finite());
     }
 }

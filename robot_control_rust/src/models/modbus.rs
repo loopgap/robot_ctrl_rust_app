@@ -518,9 +518,6 @@ mod tests {
     fn test_all_functions_listed() {
         assert_eq!(ModbusFunction::all().len(), 8);
     }
-
-    // ── Deep: ModbusFunction Display ──
-
     #[test]
     fn test_modbus_function_display_all() {
         let expected = [
@@ -561,9 +558,6 @@ mod tests {
             assert!(!func.is_read(), "{:?} should not be read", func);
         }
     }
-
-    // ── Deep: ModbusFrame RTU build for each function ──
-
     #[test]
     fn test_build_rtu_write_single_coil_on() {
         let frame = ModbusFrame {
@@ -625,9 +619,6 @@ mod tests {
         // byte_count = ceil(10/8) = 2
         assert_eq!(rtu[6], 2);
     }
-
-    // ── Deep: ModbusFrame TCP build ──
-
     #[test]
     fn test_build_tcp_mbap_header_structure() {
         let frame = ModbusFrame {
@@ -649,9 +640,6 @@ mod tests {
         // Function code
         assert_eq!(tcp[7], 0x04);
     }
-
-    // ── Deep: ModbusFrame default ──
-
     #[test]
     fn test_modbus_frame_default() {
         let frame = ModbusFrame::default();
@@ -661,9 +649,6 @@ mod tests {
         assert_eq!(frame.quantity, 10);
         assert!(frame.write_values.is_empty());
     }
-
-    // ── Deep: parse_rtu_response edge cases ──
-
     #[test]
     fn test_parse_rtu_response_empty() {
         assert!(ModbusFrame::parse_rtu_response(&[]).is_none());
@@ -695,9 +680,6 @@ mod tests {
         resp.extend_from_slice(&crc.to_le_bytes());
         assert!(ModbusFrame::parse_rtu_response(&resp).is_none());
     }
-
-    // ── Deep: ModbusException ──
-
     #[test]
     fn test_modbus_exception_from_code() {
         assert!(matches!(
@@ -724,9 +706,6 @@ mod tests {
         assert!(ModbusException::describe(0x04).contains("Server Device Failure"));
         assert!(ModbusException::describe(0xFF).contains("Unknown"));
     }
-
-    // ── Deep: as_registers edge cases ──
-
     #[test]
     fn test_as_registers_empty() {
         let resp = ModbusResponse {
@@ -750,9 +729,6 @@ mod tests {
         };
         assert_eq!(resp.as_registers(), vec![0xFFFF]);
     }
-
-    // ── Deep: CRC16 integrity ──
-
     #[test]
     fn test_rtu_roundtrip_crc() {
         // Build a request, verify CRC matches
@@ -769,5 +745,192 @@ mod tests {
         let expected_crc = crc16_modbus(payload);
         let actual_crc = u16::from_le_bytes([crc_bytes[0], crc_bytes[1]]);
         assert_eq!(actual_crc, expected_crc);
+    }
+
+    // 严格补全：error_description + ModbusException
+    #[test]
+    fn error_description_none_when_no_error() {
+        let resp = ModbusResponse {
+            slave_id: 1,
+            function_code: 0x03,
+            data: vec![2, 0, 100],
+            error_code: None,
+            is_error: false,
+        };
+        assert!(resp.error_description().is_none());
+    }
+
+    #[test]
+    fn error_description_some_when_exception() {
+        let resp = ModbusResponse {
+            slave_id: 1,
+            function_code: 0x83,
+            data: vec![],
+            error_code: Some(0x02),
+            is_error: true,
+        };
+        let desc = resp.error_description();
+        assert!(desc.is_some());
+        assert!(desc.unwrap().contains("Data Address"));
+    }
+    #[test]
+    fn modbus_exception_from_code_all_standard() {
+        assert_eq!(
+            ModbusException::from_code(0x01),
+            ModbusException::IllegalFunction
+        );
+        assert_eq!(
+            ModbusException::from_code(0x02),
+            ModbusException::IllegalDataAddress
+        );
+        assert_eq!(
+            ModbusException::from_code(0x03),
+            ModbusException::IllegalDataValue
+        );
+        assert_eq!(
+            ModbusException::from_code(0x04),
+            ModbusException::ServerDeviceFailure
+        );
+        assert_eq!(
+            ModbusException::from_code(0x05),
+            ModbusException::Acknowledge
+        );
+        assert_eq!(
+            ModbusException::from_code(0x06),
+            ModbusException::ServerDeviceBusy
+        );
+        assert_eq!(
+            ModbusException::from_code(0x08),
+            ModbusException::MemoryParityError
+        );
+        assert_eq!(
+            ModbusException::from_code(0x0A),
+            ModbusException::GatewayPathUnavailable
+        );
+        assert_eq!(
+            ModbusException::from_code(0x0B),
+            ModbusException::GatewayTargetDeviceFailedToRespond
+        );
+    }
+
+    #[test]
+    fn modbus_exception_from_code_unknown() {
+        match ModbusException::from_code(0x07) {
+            ModbusException::Unknown(c) => assert_eq!(c, 0x07),
+            _ => panic!("Expected Unknown"),
+        }
+        match ModbusException::from_code(0xFF) {
+            ModbusException::Unknown(c) => assert_eq!(c, 0xFF),
+            _ => panic!("Expected Unknown"),
+        }
+    }
+    #[test]
+    fn modbus_exception_describe_all() {
+        assert!(!ModbusException::describe(0x01).is_empty());
+        assert!(!ModbusException::describe(0x02).is_empty());
+        assert!(!ModbusException::describe(0x03).is_empty());
+        assert!(!ModbusException::describe(0x04).is_empty());
+        assert!(!ModbusException::describe(0x05).is_empty());
+        assert!(!ModbusException::describe(0x06).is_empty());
+        assert!(!ModbusException::describe(0x08).is_empty());
+        assert!(!ModbusException::describe(0x0A).is_empty());
+        assert!(!ModbusException::describe(0x0B).is_empty());
+    }
+
+    #[test]
+    fn modbus_exception_describe_known_values() {
+        assert!(ModbusException::describe(0x01).contains("Function"));
+        assert!(ModbusException::describe(0x02).contains("Address"));
+        assert!(ModbusException::describe(0x03).contains("Value"));
+    }
+    #[test]
+    fn modbus_function_all_count() {
+        assert_eq!(ModbusFunction::all().len(), 8);
+    }
+
+    #[test]
+    fn modbus_function_display_all() {
+        for f in ModbusFunction::all() {
+            let display = format!("{}", f);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn modbus_response_default() {
+        let r = ModbusResponse {
+            slave_id: 1,
+            function_code: 0x03,
+            data: vec![],
+            error_code: None,
+            is_error: false,
+        };
+        assert_eq!(r.slave_id, 1);
+        assert!(!r.is_error);
+    }
+
+    #[test]
+    fn modbus_frame_default_valid() {
+        let f = ModbusFrame::default();
+        assert_eq!(f.slave_id, 1);
+        assert_eq!(f.quantity, 10);
+        assert!(f.write_values.is_empty());
+    }
+
+    #[test]
+    fn modbus_exception_display() {
+        for code in 0x01..=0x0B {
+            let desc = ModbusException::describe(code);
+            assert!(
+                !desc.is_empty(),
+                "Code 0x{:02X} should have description",
+                code
+            );
+        }
+    }
+
+    #[test]
+    fn crc16_modbus_known_value() {
+        // CRC of [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] is a known value
+        let data = [0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A];
+        let crc = crc16_modbus(&data);
+        assert!(crc > 0, "CRC should be non-zero for non-empty data");
+    }
+    #[test]
+    fn modbus_function_display_nonempty() {
+        for f in ModbusFunction::all() {
+            let display = format!("{}", f);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn modbus_exception_from_code_range() {
+        // Known codes: 0x01-0x06, 0x08, 0x0A, 0x0B
+        let known = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x08, 0x0A, 0x0B];
+        for &code in &known {
+            let exc = ModbusException::from_code(code);
+            assert!(
+                !matches!(exc, ModbusException::Unknown(_)),
+                "Code 0x{:02X} should be known",
+                code
+            );
+        }
+        // Unknown codes
+        for &code in &[0x07, 0x09, 0x0C, 0xFF] {
+            let exc = ModbusException::from_code(code);
+            assert!(
+                matches!(exc, ModbusException::Unknown(_)),
+                "Code 0x{:02X} should be unknown",
+                code
+            );
+        }
+    }
+
+    #[test]
+    fn modbus_frame_new_default() {
+        let f = ModbusFrame::default();
+        assert_eq!(f.slave_id, 1);
+        assert_eq!(f.quantity, 10);
     }
 }

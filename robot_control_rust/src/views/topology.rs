@@ -6,11 +6,9 @@ use egui::{self, Color32, RichText, ScrollArea, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_topology(lang), "topology");
 
-    // ─── 预置拓扑 ────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
@@ -26,7 +24,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 底盘类型选择 ─────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::chassis_type(lang)).size(15.0).strong());
         ui.add_space(8.0);
@@ -62,7 +59,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
         ui.add_space(12.0);
 
-        // ─── 几何参数 ────────────────────────────────────────
         ui.label(RichText::new(Tr::geometry_params(lang)).size(15.0).strong());
         ui.add_space(8.0);
 
@@ -117,7 +113,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 电机/关节配置 ────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.label(
@@ -239,24 +234,23 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 拓扑可视化 ───────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::topology_viz(lang)).size(15.0).strong());
         ui.add_space(8.0);
         let art = chassis_ascii_art(state.control.topology.chassis_type);
-        ui.label(
-            RichText::new(art)
-                .size(12.0)
-                .monospace()
-                .color(state.anim.animate_color(
-                    "topology_1".into(),
-                    theme.accent_green,
-                    theme.accent_green,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )),
-        );
+        egui::Frame::canvas(ui.style())
+            .fill(theme.bg_input)
+            .stroke(egui::Stroke::new(1.0_f32, theme.border))
+            .corner_radius(egui::CornerRadius::same(6))
+            .inner_margin(egui::Margin::same(12))
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(art)
+                        .size(12.0)
+                        .monospace()
+                        .color(theme.accent_green),
+                );
+            });
     });
 }
 

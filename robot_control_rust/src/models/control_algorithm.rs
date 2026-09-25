@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 控制算法统一接口与枚举
-// ═══════════════════════════════════════════════════════════════
 
 use serde::{Deserialize, Serialize};
 
@@ -188,9 +186,6 @@ mod tests {
         let restored: ControlAlgorithmType = serde_json::from_str(&json).unwrap();
         assert_eq!(t, restored);
     }
-
-    // ── Deep: index/from_index roundtrip ──
-
     #[test]
     fn test_index_from_index_roundtrip() {
         for (i, algo) in ControlAlgorithmType::all().iter().enumerate() {
@@ -210,9 +205,6 @@ mod tests {
         assert!(ControlAlgorithmType::from_index(100).is_none());
         assert!(ControlAlgorithmType::from_index(usize::MAX).is_none());
     }
-
-    // ── Deep: all names unique ──
-
     #[test]
     fn test_en_names_unique() {
         let names: std::collections::HashSet<&str> = ControlAlgorithmType::all()
@@ -241,9 +233,6 @@ mod tests {
             );
         }
     }
-
-    // ── Deep: serialization roundtrip for all types ──
-
     #[test]
     fn test_serialization_roundtrip_all() {
         for algo in ControlAlgorithmType::all() {
@@ -252,9 +241,6 @@ mod tests {
             assert_eq!(*algo, restored, "roundtrip failed for {:?}", algo);
         }
     }
-
-    // ── Deep: index values are sequential 0..9 ──
-
     #[test]
     fn test_indices_are_sequential() {
         let indices: Vec<usize> = ControlAlgorithmType::all()
@@ -262,5 +248,80 @@ mod tests {
             .map(|t| t.index())
             .collect();
         assert_eq!(indices, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+    #[test]
+    fn all_algorithm_names_unique() {
+        let algos: Vec<Box<dyn crate::models::ControlAlgorithm>> = vec![
+            Box::new(crate::models::PidController::default()),
+            Box::new(crate::models::IncrementalPidController::default()),
+            Box::new(crate::models::BangBangController::default()),
+            Box::new(crate::models::FuzzyPidController::default()),
+            Box::new(crate::models::CascadePidController::default()),
+            Box::new(crate::models::SmithPredictorController::default()),
+            Box::new(crate::models::AdrcController::default()),
+            Box::new(crate::models::LadrcController::default()),
+            Box::new(crate::models::LqrController::default()),
+            Box::new(crate::models::MpcController::default()),
+        ];
+        let names: Vec<&str> = algos.iter().map(|a| a.name()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len());
+    }
+
+    #[test]
+    fn all_algorithms_default_setpoint_zero() {
+        let algos: Vec<Box<dyn crate::models::ControlAlgorithm>> = vec![
+            Box::new(crate::models::PidController::default()),
+            Box::new(crate::models::IncrementalPidController::default()),
+            Box::new(crate::models::BangBangController::default()),
+            Box::new(crate::models::FuzzyPidController::default()),
+            Box::new(crate::models::CascadePidController::default()),
+            Box::new(crate::models::SmithPredictorController::default()),
+            Box::new(crate::models::AdrcController::default()),
+            Box::new(crate::models::LadrcController::default()),
+            Box::new(crate::models::LqrController::default()),
+            Box::new(crate::models::MpcController::default()),
+        ];
+        for a in &algos {
+            assert_eq!(a.setpoint(), 0.0, "{} default setpoint", a.name());
+        }
+    }
+
+    #[test]
+    fn all_algorithms_default_output_zero() {
+        let algos: Vec<Box<dyn crate::models::ControlAlgorithm>> = vec![
+            Box::new(crate::models::PidController::default()),
+            Box::new(crate::models::IncrementalPidController::default()),
+            Box::new(crate::models::BangBangController::default()),
+            Box::new(crate::models::FuzzyPidController::default()),
+            Box::new(crate::models::CascadePidController::default()),
+            Box::new(crate::models::SmithPredictorController::default()),
+            Box::new(crate::models::AdrcController::default()),
+            Box::new(crate::models::LadrcController::default()),
+            Box::new(crate::models::LqrController::default()),
+            Box::new(crate::models::MpcController::default()),
+        ];
+        for a in &algos {
+            assert_eq!(a.output(), 0.0, "{} default output", a.name());
+        }
+    }
+    #[test]
+    fn control_algorithm_type_all_count() {
+        assert_eq!(ControlAlgorithmType::all().len(), 10);
+    }
+
+    #[test]
+    fn control_algorithm_type_display() {
+        for t in ControlAlgorithmType::all() {
+            let display = format!("{}", t);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn control_algorithm_type_index_range() {
+        for t in ControlAlgorithmType::all() {
+            assert!(t.index() < 10, "{} index out of range", t);
+        }
     }
 }

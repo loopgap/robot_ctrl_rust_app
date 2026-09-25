@@ -447,4 +447,79 @@ mod tests {
         state.cancel_tx = Some(tx);
         assert!(state.can_cancel());
     }
+    #[test]
+    fn export_csv_text_empty_when_no_result() {
+        let state = SimulationLabState::new();
+        assert!(state.export_csv_text().is_empty());
+    }
+
+    #[test]
+    fn export_json_text_empty_when_no_result() {
+        let state = SimulationLabState::new();
+        assert!(state.export_json_text().is_empty());
+    }
+    #[test]
+    fn poll_does_not_panic_on_idle() {
+        let mut state = SimulationLabState::new();
+        state.poll(); // Should not panic when idle
+        assert!(!state.running);
+    }
+    #[test]
+    fn parse_finite_valid() {
+        assert!((parse_finite("3.25", "test").unwrap() - 3.25).abs() < 0.01);
+        assert!((parse_finite("-1.0", "test").unwrap() - (-1.0)).abs() < 0.01);
+        assert!((parse_finite("0", "test").unwrap()).abs() < 0.01);
+    }
+
+    #[test]
+    fn parse_finite_invalid() {
+        assert!(parse_finite("abc", "test").is_err());
+        assert!(parse_finite("inf", "test").is_err());
+        assert!(parse_finite("nan", "test").is_err());
+    }
+
+    #[test]
+    fn parse_finite_whitespace() {
+        assert!((parse_finite("  42.0  ", "test").unwrap() - 42.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn parse_finite_positive_valid() {
+        assert!((parse_finite_positive("1.0", "test").unwrap() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn parse_finite_positive_rejects_negative() {
+        assert!(parse_finite_positive("-1.0", "test").is_err());
+    }
+
+    #[test]
+    fn parse_finite_positive_rejects_zero_v2() {
+        assert!(parse_finite_positive("0.0", "test").is_err());
+    }
+    #[test]
+    fn start_scan_rejects_when_running() {
+        let mut state = SimulationLabState::new();
+        state.running = true;
+        let result = state.start_scan();
+        assert!(result.is_err());
+    }
+    #[test]
+    fn selected_scan_param_returns_string() {
+        let state = SimulationLabState::new();
+        let param = state.selected_scan_param();
+        assert!(!param.is_empty());
+    }
+
+    #[test]
+    fn sync_config_from_text_valid_default() {
+        let mut state = SimulationLabState::new();
+        // Default config_text should be valid JSON
+        let result = state.sync_config_from_text();
+        assert!(
+            result.is_ok(),
+            "Default config should parse: {:?}",
+            result.err()
+        );
+    }
 }

@@ -624,9 +624,6 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
-
-    // ── Deep: Stability — scratch buffer pre-allocation ──
-
     #[test]
     fn test_scratch_buffer_pre_allocated() {
         let service = SerialService::default();
@@ -635,9 +632,6 @@ mod tests {
             "scratch buffer should be pre-allocated to 8192"
         );
     }
-
-    // ── Deep: Stability — rx_buffer pre-allocation ──
-
     #[test]
     fn test_rx_buffer_pre_allocated() {
         let service = SerialService::default();
@@ -646,33 +640,21 @@ mod tests {
             "rx_buffer should be pre-allocated to 4096"
         );
     }
-
-    // ── Deep: Stability — rx_read_pos starts at zero ──
-
     #[test]
     fn test_rx_read_pos_starts_at_zero() {
         let service = SerialService::default();
         assert_eq!(service.rx_read_pos, 0);
     }
-
-    // ── Deep: Stability — stop_flag is false by default ──
-
     #[test]
     fn test_stop_flag_false_by_default() {
         let service = SerialService::default();
         assert!(!service.stop_flag.load(Ordering::Acquire));
     }
-
-    // ── Deep: Stability — worker_errored is false by default ──
-
     #[test]
     fn test_worker_errored_false_by_default() {
         let service = SerialService::default();
         assert!(!service.worker_errored.load(Ordering::Acquire));
     }
-
-    // ── Deep: Stability — multiple disconnect calls safe ──
-
     #[test]
     fn test_multiple_disconnect_calls_safe() {
         let mut service = SerialService::default();
@@ -681,9 +663,6 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
-
-    // ── Deep: Stability — default config values ──
-
     #[test]
     fn test_default_config_industrial() {
         let service = SerialService::default();
@@ -695,9 +674,6 @@ mod tests {
             "data bits should be 5-8"
         );
     }
-
-    // ── Deep: Stability — encode_packet structure ──
-
     #[test]
     fn test_encode_packet_header_tail() {
         let pkt = SerialService::encode_packet(0xFF, &[0x00, 0xFF, 0x55]);
@@ -706,13 +682,106 @@ mod tests {
         assert_eq!(pkt[1], 0xFF, "command");
         assert_eq!(pkt[2], 3, "data length");
     }
-
-    // ── Deep: Stability — try_read_raw returns empty when disconnected ──
-
     #[test]
     fn test_try_read_raw_empty_when_disconnected() {
         let mut service = SerialService::default();
         let data = service.try_read_raw();
         assert!(data.is_empty());
+    }
+
+    // 提标: serial_service 补全
+
+    #[test]
+    fn serial_service_default_state() {
+        let s = SerialService::default();
+        assert_eq!(s.status, ConnectionStatus::Disconnected);
+        assert!(!s.is_connected());
+    }
+
+    #[test]
+    fn serial_service_send_when_disconnected() {
+        let mut s = SerialService::default();
+        let result = s.send_data(b"hello");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn serial_service_disconnect_when_already_disconnected() {
+        let mut s = SerialService::default();
+        s.disconnect();
+        assert_eq!(s.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn serial_service_bytes_counters_default() {
+        let s = SerialService::default();
+        assert_eq!(s.bytes_sent, 0);
+        assert_eq!(s.bytes_received, 0);
+    }
+
+    #[test]
+    fn serial_service_reset_counters() {
+        let mut s = SerialService {
+            bytes_sent: 100,
+            bytes_received: 200,
+            ..Default::default()
+        };
+        s.bytes_sent = 0;
+        s.bytes_received = 0;
+        assert_eq!(s.bytes_sent, 0);
+    }
+
+    #[test]
+    fn serial_service_worker_error_blocks_send() {
+        let mut s = SerialService::default();
+        s.worker_errored.store(true, Ordering::Release);
+        let _ = s.send_data(b"test");
+        assert_eq!(s.status, ConnectionStatus::HardwareFault);
+    }
+
+    #[test]
+    fn serial_service_try_read_after_worker_error() {
+        let mut s = SerialService::default();
+        s.worker_errored.store(true, Ordering::Release);
+        let data = s.try_read_raw();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn serial_service_get_port_info_empty() {
+        let info = SerialService::get_port_info("");
+        assert!(!info.is_empty()); // Should return some message
+    }
+
+    #[test]
+    fn serial_service_get_port_info_unknown() {
+        let info = SerialService::get_port_info("NONEXISTENT_PORT_12345");
+        assert!(!info.is_empty());
+    }
+    #[test]
+    fn serial_service_default_config() {
+        let s = SerialService::default();
+        assert_eq!(s.config.baud_rate, 115200);
+        assert_eq!(s.config.data_bits, 8);
+    }
+
+    #[test]
+    fn serial_service_is_connected_false_default() {
+        let s = SerialService::default();
+        assert!(!s.is_connected());
+    }
+
+    #[test]
+    fn serial_service_try_read_returns_empty_default() {
+        let mut s = SerialService::default();
+        let data = s.try_read_raw();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn serial_service_status_display() {
+        let s = SerialService::default();
+        let display = format!("{}", s.status);
+        assert!(!display.is_empty());
     }
 }

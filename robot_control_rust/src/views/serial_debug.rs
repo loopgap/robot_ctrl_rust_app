@@ -9,7 +9,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
     page_header(ui, Tr::tab_terminal(lang), "terminal");
 
-    // ─── 工具栏 ──────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
@@ -49,7 +48,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 接收区域 ────────────────────────────────────────
     let available = ui.available_height() - 140.0;
     let log_height = available.max(120.0);
 
@@ -72,27 +70,49 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 }
 
                 for entry in &state.log.log_entries {
-                    let (prefix, color) = match entry.direction {
-                        LogDirection::Tx => ("TX", theme.status_info),
-                        LogDirection::Rx => ("RX", theme.status_ok),
-                        LogDirection::Info => ("INFO", theme.status_warn),
+                    let (prefix, color, bg_chip) = match entry.direction {
+                        LogDirection::Tx => {
+                            ("TX", theme.tx_color, theme.tx_color.gamma_multiply(0.18))
+                        }
+                        LogDirection::Rx => {
+                            ("RX", theme.rx_color, theme.rx_color.gamma_multiply(0.18))
+                        }
+                        LogDirection::Info => (
+                            "INFO",
+                            theme.info_color,
+                            theme.info_color.gamma_multiply(0.18),
+                        ),
                     };
 
                     let formatted = format_data_with_mode(&entry.data, state.ui.display_mode);
 
                     ui.horizontal_wrapped(|ui| {
-                        ui.spacing_mut().item_spacing.x = 6.0;
+                        ui.spacing_mut().item_spacing.x = 8.0;
                         ui.label(
                             RichText::new(&entry.timestamp)
-                                .size(11.5)
-                                .color(theme.text_muted),
+                                .size(11.0)
+                                .color(theme.text_muted)
+                                .monospace(),
                         );
                         ui.label(
                             RichText::new(format!("[{}]", entry.channel))
-                                .size(11.5)
-                                .color(theme.text_muted),
+                                .size(11.0)
+                                .color(theme.text_label),
                         );
-                        ui.label(RichText::new(prefix).size(11.5).color(color).strong());
+                        egui::Frame::NONE
+                            .fill(bg_chip)
+                            .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.6)))
+                            .corner_radius(3.0)
+                            .inner_margin(egui::Margin::symmetric(5, 1))
+                            .show(ui, |ui| {
+                                ui.label(
+                                    RichText::new(prefix)
+                                        .size(10.5)
+                                        .color(color)
+                                        .strong()
+                                        .monospace(),
+                                );
+                            });
                         ui.label(
                             RichText::new(&formatted)
                                 .size(12.5)
@@ -106,7 +126,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 发送配置行 ──────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
@@ -127,7 +146,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
         ui.add_space(6.0);
 
-        // ─── 发送输入行 ──────────────────────────────────────
         ui.horizontal_wrapped(|ui| {
             let hint = if state.ui.send_hex {
                 Tr::hex_hint(lang)
@@ -288,7 +306,7 @@ fn format_data_with_mode(data: &[u8], mode: DisplayMode) -> String {
     buf
 }
 
-fn format_bytes_short(bytes: u64) -> String {
+pub(crate) fn format_bytes_short(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{}B", bytes)
     } else if bytes < 1024 * 1024 {

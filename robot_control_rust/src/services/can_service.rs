@@ -539,4 +539,86 @@ mod tests {
         }
         assert_eq!(svc.bus_state_label(), "Bus Off");
     }
+    #[test]
+    fn is_bus_off_false_by_default() {
+        let state = CanBusState::from_counters(0, 0);
+        assert!(!state.is_bus_off());
+    }
+
+    #[test]
+    fn is_bus_off_true_when_tec_over_255() {
+        let state = CanBusState::from_counters(256, 0);
+        assert!(state.is_bus_off());
+    }
+
+    #[test]
+    fn is_bus_off_false_at_boundary() {
+        let state = CanBusState::from_counters(255, 0);
+        assert!(!state.is_bus_off());
+    }
+
+    #[test]
+    fn is_bus_off_true_at_exact_threshold() {
+        let state = CanBusState::from_counters(300, 100);
+        assert!(state.is_bus_off());
+    }
+    #[test]
+    fn can_frame_id_str_standard() {
+        let f = CanFrame {
+            id: 0x123,
+            data: vec![0xAA],
+            extended: false,
+            fd: false,
+            brs: false,
+            rtr: false,
+            timestamp: Local::now(),
+            direction: FrameDirection::Rx,
+        };
+        assert_eq!(f.id_str(), "0x123");
+    }
+
+    #[test]
+    fn can_frame_data_hex() {
+        let f = CanFrame {
+            id: 0x100,
+            data: vec![0xAA, 0xBB, 0xCC],
+            extended: false,
+            fd: false,
+            brs: false,
+            rtr: false,
+            timestamp: Local::now(),
+            direction: FrameDirection::Rx,
+        };
+        assert_eq!(f.data_hex(), "AA BB CC");
+    }
+
+    #[test]
+    fn can_frame_max_data_len_standard() {
+        let f = CanFrame {
+            id: 0,
+            data: vec![],
+            extended: false,
+            fd: false,
+            brs: false,
+            rtr: false,
+            timestamp: Local::now(),
+            direction: FrameDirection::Rx,
+        };
+        assert_eq!(f.max_data_len(), 8);
+    }
+
+    #[test]
+    fn can_frame_max_data_len_fd() {
+        let f = CanFrame {
+            id: 0,
+            data: vec![],
+            extended: false,
+            fd: true,
+            brs: false,
+            rtr: false,
+            timestamp: Local::now(),
+            direction: FrameDirection::Rx,
+        };
+        assert_eq!(f.max_data_len(), 64);
+    }
 }

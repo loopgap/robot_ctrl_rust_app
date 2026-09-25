@@ -164,9 +164,6 @@ mod tests {
         assert_eq!(deserialized.name, "Ser");
         assert_eq!(deserialized.kp, 1.0);
     }
-
-    // ── Deep: default presets have distinct values ──
-
     #[test]
     fn test_defaults_have_distinct_kp() {
         let presets = Preset::defaults();
@@ -193,9 +190,6 @@ mod tests {
             );
         }
     }
-
-    // ── Deep: from_controller captures all fields ──
-
     #[test]
     fn test_from_controller_captures_limits() {
         let pid = PidController::with_limits(1.0, 0.1, 0.01, 50.0, 200.0, 100.0);
@@ -203,9 +197,6 @@ mod tests {
         assert_eq!(preset.output_limit, 200.0);
         assert_eq!(preset.integral_limit, 100.0);
     }
-
-    // ── Deep: apply_to overwrites previous values ──
-
     #[test]
     fn test_apply_to_overwrites() {
         let mut pid = PidController::new(99.0, 99.0, 99.0, 99.0);
@@ -215,9 +206,6 @@ mod tests {
         assert_eq!(pid.ki, 0.1, "ki should be overwritten");
         assert_eq!(pid.kd, 0.01, "kd should be overwritten");
     }
-
-    // ── Deep: serialization preserves all fields ──
-
     #[test]
     fn test_serialization_all_fields() {
         let preset = Preset::new("Full", "all fields", 2.5, 0.25, 0.025, 15.0, 300.0, 150.0);
@@ -232,9 +220,6 @@ mod tests {
         assert_eq!(d.output_limit, 300.0);
         assert_eq!(d.integral_limit, 150.0);
     }
-
-    // ── Deep: new() accepts string types ──
-
     #[test]
     fn test_new_accepts_string_and_str() {
         let p1 = Preset::new("name", "desc", 1.0, 0.1, 0.01, 0.0, 100.0, 50.0);
@@ -251,9 +236,6 @@ mod tests {
         assert_eq!(p1.name, p2.name);
         assert_eq!(p1.description, p2.description);
     }
-
-    // ── Deep: default presets have positive gains ──
-
     #[test]
     fn test_defaults_have_positive_gains() {
         for preset in Preset::defaults() {
@@ -274,5 +256,29 @@ mod tests {
                 preset.name
             );
         }
+    }
+    #[test]
+    fn preset_list_unique_names() {
+        let list = Preset::defaults();
+        let names: Vec<&str> = list.iter().map(|p| p.name.as_str()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len());
+    }
+
+    #[test]
+    fn preset_apply_sets_params() {
+        let list = Preset::defaults();
+        if let Some(preset) = list.first() {
+            let mut pid = crate::models::PidController::default();
+            preset.apply_to(&mut pid);
+            assert!(pid.kp.is_finite());
+            assert!(pid.ki.is_finite());
+            assert!(pid.kd.is_finite());
+        }
+    }
+    #[test]
+    fn preset_defaults_count() {
+        let list = Preset::defaults();
+        assert!(!list.is_empty());
     }
 }

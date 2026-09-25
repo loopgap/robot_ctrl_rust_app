@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 线性二次调节器 (LQR - Linear Quadratic Regulator)
-// ═══════════════════════════════════════════════════════════════
 //
 // 最优控制方法，最小化代价函数：
 //   J = ∫ (x^T Q x + u^T R u) dt
@@ -23,7 +21,6 @@ pub struct LqrController {
     pub setpoint: f64,
     pub output_limit: f64,
 
-    // ── 状态空间参数 ──
     /// Q 矩阵对角元素 [q1, q2] - 状态权重
     pub q1: f64, // 位置误差权重
     pub q2: f64, // 速度误差权重
@@ -32,7 +29,6 @@ pub struct LqrController {
     /// 等效惯量 (影响 B 矩阵)
     pub mass: f64,
 
-    // ── 计算得到的增益 ──
     #[serde(skip)]
     pub k1: f64, // 位置增益
     #[serde(skip)]
@@ -40,7 +36,6 @@ pub struct LqrController {
     #[serde(skip)]
     gains_valid: bool,
 
-    // ── 状态估计 ──
     #[serde(skip)]
     last_position: f64,
     #[serde(skip)]
@@ -48,7 +43,6 @@ pub struct LqrController {
     /// 速度估计滤波系数 (0-1, 越小越平滑)
     pub velocity_filter: f64,
 
-    // ── 积分项 (消除稳态误差) ──
     pub enable_integral: bool,
     pub ki: f64,
     #[serde(skip)]
@@ -371,5 +365,175 @@ mod tests {
         thread::sleep(Duration::from_millis(10));
         let out = c.compute(0.0);
         assert!(out < 0.0, "Should output negative, got {}", out);
+    }
+    #[test]
+    fn lqr_name_is_lqr() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = LqrController::default();
+        assert_eq!(c.name(), "LQR");
+    }
+
+    #[test]
+    fn lqr_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = LqrController::default();
+        c.set_setpoint(99.0);
+        assert_eq!(c.setpoint(), 99.0);
+    }
+
+    #[test]
+    fn lqr_output_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = LqrController::default();
+        assert_eq!(c.output(), 0.0);
+    }
+
+    #[test]
+    fn lqr_serde_roundtrip() {
+        let c = LqrController::new(50.0, 200.0, 20.0, 2.0);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: LqrController = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.setpoint, 50.0);
+        // k1 is #[serde(skip)] — computed from weights, so verify weights roundtrip
+        assert!((restored.q1 - 200.0).abs() < 1e-10);
+        assert!((restored.q2 - 20.0).abs() < 1e-10);
+        assert!((restored.r_weight - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn lqr_velocity_feedback_damps_output() {
+        let mut c = LqrController::new(10.0, 100.0, 10.0, 1.0);
+        c.compute_with_velocity(0.0, 0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out_no_vel = c.compute_with_velocity(0.0, 0.0);
+
+        c.reset();
+        c.compute_with_velocity(0.0, 0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out_with_vel = c.compute_with_velocity(0.0, 5.0); // positive velocity
+
+        // With positive velocity (moving toward setpoint), output should be less
+        assert!(
+            out_with_vel <= out_no_vel,
+            "Velocity feedback should damp: no_vel={}, with_vel={}",
+            out_no_vel,
+            out_with_vel
+        );
+    }
+
+    #[test]
+    fn lqr_gains_valid_default() {
+        let c = LqrController::default();
+        assert!(c.gains_valid);
+        assert!(c.k1.is_finite());
+        assert!(c.k2.is_finite());
+    }
+    #[test]
+    fn lqr_higher_r_weight_reduces_gains() {
+        let c1 = LqrController::new(0.0, 100.0, 10.0, 1.0);
+        let c2 = LqrController::new(0.0, 100.0, 10.0, 10.0);
+        // Higher R should produce smaller gains (less aggressive control)
+        assert!(c2.k1 <= c1.k1, "Higher R should reduce K1");
+    }
+    #[test]
+    fn lqr_higher_q2_increases_k2() {
+        let c1 = LqrController::new(0.0, 100.0, 10.0, 1.0);
+        let c2 = LqrController::new(0.0, 100.0, 40.0, 1.0);
+        assert!(c2.k2 >= c1.k2, "Higher Q2 should increase K2");
+    }
+    #[test]
+    fn lqr_default_params() {
+        let c = LqrController::default();
+        assert_eq!(c.setpoint, 0.0);
+        assert_eq!(c.output, 0.0);
+        assert!(c.k1 > 0.0);
+        assert!(c.k2 > 0.0);
+    }
+
+    #[test]
+    fn lqr_output_limit_symmetric() {
+        let mut c = LqrController::new(100.0, 1000.0, 100.0, 0.1);
+        c.output_limit = 30.0;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute(0.0);
+        assert!(
+            (-30.0..=30.0).contains(&out),
+            "Output should be symmetrically clamped"
+        );
+    }
+
+    #[test]
+    fn lqr_integral_action_increases_output() {
+        let mut c = LqrController::new(10.0, 100.0, 10.0, 1.0);
+        c.enable_integral = true;
+        c.ki = 5.0;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out1 = c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out2 = c.compute(0.0);
+        assert!(out2 >= out1, "Integral should increase output over time");
+    }
+
+    #[test]
+    fn lqr_velocity_feedback_reduces_output() {
+        let mut c = LqrController::new(10.0, 100.0, 10.0, 1.0);
+        c.compute_with_velocity(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out_no_vel = c.compute_with_velocity(0.0, 0.0);
+        c.reset();
+        c.compute_with_velocity(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out_with_vel = c.compute_with_velocity(0.0, 10.0);
+        assert!(
+            out_with_vel <= out_no_vel,
+            "Velocity feedback should reduce output"
+        );
+    }
+
+    #[test]
+    fn lqr_reset_clears_all() {
+        let mut c = LqrController::new(10.0, 100.0, 10.0, 1.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0);
+        c.reset();
+        assert_eq!(c.output, 0.0);
+        assert_eq!(c.integral, 0.0);
+        assert!(c.last_update.is_none());
+    }
+    #[test]
+    fn lqr_output_finite_after_steps() {
+        let mut c = LqrController::new(10.0, 100.0, 10.0, 1.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn lqr_k1_k2_positive() {
+        let c = LqrController::default();
+        assert!(c.k1 > 0.0);
+        assert!(c.k2 > 0.0);
+    }
+
+    #[test]
+    fn lqr_enable_integral_toggle() {
+        let mut c = LqrController {
+            enable_integral: false,
+            ..Default::default()
+        };
+        assert!(!c.enable_integral);
+        c.enable_integral = true;
+        assert!(c.enable_integral);
+    }
+
+    #[test]
+    fn lqr_default_enable_integral_true() {
+        let c = LqrController::default();
+        assert!(c.enable_integral);
     }
 }

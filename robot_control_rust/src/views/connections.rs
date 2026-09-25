@@ -10,7 +10,6 @@ const CONN_INPUT_WIDTH: f32 = 240.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_connections(lang), "connections");
 
@@ -66,47 +65,30 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             if state.ui.mcp_running {
                 if ui
-                    .button(
-                        RichText::new(Tr::stop_mcp(lang)).color(state.anim.animate_color(
-                            "connections_1".into(),
-                            theme.status_error,
-                            theme.status_error,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        )),
-                    )
+                    .button(RichText::new(Tr::stop_mcp(lang)).color(theme.status_error))
                     .clicked()
                 {
                     state.stop_mcp_server();
                 }
-                ui.label(
-                    RichText::new(Tr::running_label(lang)).color(state.anim.animate_color(
-                        "connections_1".into(),
-                        theme.status_ok,
-                        theme.status_ok,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    )),
-                );
+                ui.horizontal(|ui| {
+                    ui.colored_label(theme.status_ok, "●");
+                    ui.label(
+                        RichText::new(Tr::running_label(lang))
+                            .color(theme.status_ok)
+                            .strong(),
+                    );
+                });
             } else {
                 if ui
-                    .button(
-                        RichText::new(Tr::start_mcp(lang)).color(state.anim.animate_color(
-                            "connections_2".into(),
-                            theme.status_ok,
-                            theme.status_ok,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        )),
-                    )
+                    .button(RichText::new(Tr::start_mcp(lang)).color(theme.status_ok))
                     .clicked()
                 {
                     state.start_mcp_server();
                 }
-                ui.label(RichText::new(Tr::stopped_label(lang)).color(Color32::GRAY));
+                ui.horizontal(|ui| {
+                    ui.colored_label(theme.disconnected_color, "○");
+                    ui.label(RichText::new(Tr::stopped_label(lang)).color(theme.text_muted));
+                });
             }
         });
     });
@@ -119,16 +101,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             ui.spacing_mut().item_spacing.x = 16.0;
             if connected {
                 if ui
-                    .button(RichText::new(Tr::disconnect(lang)).size(15.0).color(
-                        state.anim.animate_color(
-                            "connections_2".into(),
-                            theme.status_error,
-                            theme.status_error,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        ),
-                    ))
+                    .button(
+                        RichText::new(Tr::disconnect(lang))
+                            .size(15.0)
+                            .color(theme.status_error),
+                    )
                     .clicked()
                 {
                     state.disconnect_active();
@@ -136,22 +113,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         format!("{} {}", state.conn.active_conn, Tr::disconnected(lang));
                 }
                 let (r, g, b) = state.active_status().color_rgb();
-                ui.label(
-                    RichText::new(format!("{}", state.active_status()))
-                        .color(Color32::from_rgb(r, g, b)),
-                );
+                ui.horizontal(|ui| {
+                    ui.colored_label(Color32::from_rgb(r, g, b), "●");
+                    ui.label(
+                        RichText::new(format!("{}", state.active_status()))
+                            .color(Color32::from_rgb(r, g, b))
+                            .strong(),
+                    );
+                });
             } else {
                 if ui
-                    .button(RichText::new(Tr::connect(lang)).size(15.0).color(
-                        state.anim.animate_color(
-                            "connections_3".into(),
-                            theme.status_ok,
-                            theme.status_ok,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        ),
-                    ))
+                    .button(
+                        RichText::new(Tr::connect(lang))
+                            .size(15.0)
+                            .color(theme.accent_blue),
+                    )
                     .clicked()
                 {
                     match state.connect_active() {
@@ -162,7 +138,10 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         Err(e) => state.report_error(format!("{}: {}", Tr::error_label(lang), e)),
                     }
                 }
-                ui.label(RichText::new(Tr::disconnected(lang)).color(Color32::GRAY));
+                ui.horizontal(|ui| {
+                    ui.colored_label(theme.disconnected_color, "○");
+                    ui.label(RichText::new(Tr::disconnected(lang)).color(theme.text_muted));
+                });
             }
 
             ui.separator();
@@ -480,7 +459,6 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
     );
     ui.add_space(10.0);
 
-    // ─── 仲裁段波特率 ────────────────────────────────────
     ui.horizontal(|ui| {
         ui.add_sized(
             [CONN_LABEL_WIDTH, 20.0],
@@ -508,7 +486,6 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(4.0);
 
-    // ─── 仲裁段采样点 ────────────────────────────────────
     ui.horizontal_wrapped(|ui| {
         ui.add_sized(
             [CONN_LABEL_WIDTH, 20.0],
@@ -552,13 +529,11 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(8.0);
 
-    // ─── CAN FD 启用 ─────────────────────────────────────
     ui.checkbox(&mut state.conn.can.fd_enabled, Tr::enable_can_fd(lang));
 
     if state.conn.can.fd_enabled {
         ui.add_space(6.0);
 
-        // ─── 数据段波特率 ────────────────────────────────
         ui.horizontal(|ui| {
             ui.add_sized(
                 [CONN_LABEL_WIDTH, 20.0],
@@ -586,7 +561,6 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
 
         ui.add_space(4.0);
 
-        // ─── 数据段采样点 + SJW ──────────────────────────
         ui.horizontal_wrapped(|ui| {
             ui.add_sized(
                 [CONN_LABEL_WIDTH, 20.0],
@@ -629,7 +603,6 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 高级选项 ────────────────────────────────────────
     ui.collapsing(Tr::advanced_options(lang), |ui| {
         ui.add_space(4.0);
         ui.checkbox(
@@ -653,7 +626,6 @@ fn show_can_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 运行状态 ────────────────────────────────────────
     ui.horizontal(|ui| {
         ui.label(format!(
             "TX: {}  |  RX: {}  |  Bus Load: {:.1}%",
@@ -678,7 +650,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
     ui.label(RichText::new(Tr::usb_config(lang)).size(15.0).strong());
     ui.add_space(10.0);
 
-    // ─── USB 协议选择 ────────────────────────────────────
     ui.horizontal_wrapped(|ui| {
         ui.label(RichText::new(format!("{}:", Tr::usb_protocol_label(lang))).strong());
         let protocols = UsbProtocol::all();
@@ -720,7 +691,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── USB 速度 ────────────────────────────────────────
     ui.horizontal_wrapped(|ui| {
         ui.label(format!("{}:", Tr::usb_speed_label(lang)));
         let speeds = UsbSpeed::all();
@@ -745,7 +715,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── VID / PID ───────────────────────────────────────
     egui::Grid::new("usb_vid_pid_grid")
         .num_columns(4)
         .spacing([12.0, 6.0])
@@ -767,7 +736,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 端点与包大小 ────────────────────────────────────
     ui.collapsing(Tr::usb_endpoint_config(lang), |ui| {
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
@@ -796,7 +764,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
         ));
     });
 
-    // ─── 典型速度提示 ────────────────────────────────────
     ui.add_space(8.0);
     let speeds = selected_proto.typical_speeds();
     if !speeds.is_empty() {
@@ -807,7 +774,6 @@ fn show_usb_config(ui: &mut Ui, state: &mut AppState) {
         });
     }
 
-    // ─── 底层仍复用串口连接（CDC ACM模式下） ─────────────
     if selected_proto == UsbProtocol::CdcAcm {
         ui.add_space(8.0);
         ui.separator();

@@ -46,5 +46,8 @@ colored = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true, optional = true }
 aws-lc-rs = { workspace = true, optional = true }
 
+[target.'cfg(windows)'.build-dependencies]
+winres = { workspace = true }
+
 [lints]
 workspace = true

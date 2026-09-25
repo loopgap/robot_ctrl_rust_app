@@ -5,6 +5,7 @@ pub mod external_services;
 pub mod log_manager;
 pub mod protocol_hub;
 pub mod simulation_lab;
+pub mod types;
 pub mod visualization_store;
 
 use connection_manager::ConnectionManager;
@@ -30,9 +31,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
-// ──────────────────────────────────────────────────────────────────────
 // 导航标签
-// ──────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActiveTab {
@@ -85,11 +84,26 @@ impl ActiveTab {
             Self::CanopenTools,
         ]
     }
+
+    pub fn icon_kind(&self) -> crate::views::ui_kit::IconKind {
+        match self {
+            Self::Dashboard => crate::views::ui_kit::IconKind::Dashboard,
+            Self::Connections => crate::views::ui_kit::IconKind::Connections,
+            Self::SerialDebug => crate::views::ui_kit::IconKind::Terminal,
+            Self::ProtocolAnalysis => crate::views::ui_kit::IconKind::Packet,
+            Self::PacketBuilder => crate::views::ui_kit::IconKind::Packet,
+            Self::Topology => crate::views::ui_kit::IconKind::Topology,
+            Self::PidControl => crate::views::ui_kit::IconKind::Pid,
+            Self::NnTuning => crate::views::ui_kit::IconKind::Neural,
+            Self::DataViz => crate::views::ui_kit::IconKind::Visualization,
+            Self::SimulationLab => crate::views::ui_kit::IconKind::Simulation,
+            Self::ModbusTools => crate::views::ui_kit::IconKind::Modbus,
+            Self::CanopenTools => crate::views::ui_kit::IconKind::Canopen,
+        }
+    }
 }
 
-// ──────────────────────────────────────────────────────────────────────
 // 日志条目
-// ──────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -156,9 +170,7 @@ impl LogEntry {
     }
 }
 
-// ──────────────────────────────────────────────────────────────────────
 // UI 状态
-// ──────────────────────────────────────────────────────────────────────
 
 pub struct UiState {
     // PID 文本框
@@ -563,286 +575,16 @@ impl PerformanceProfile {
         }
     }
 }
-const DEFAULT_UPDATE_DOC_URL: &str =
-    "https://github.com/loopgap/robot_ctrl_rust_app/blob/main/docs/src/README.md";
-const DEFAULT_UPDATE_MANIFEST_URL: &str =
-    "https://raw.githubusercontent.com/example/robot_control_rust/main/update-manifest.json";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct VersionTriplet {
-    major: u64,
-    minor: u64,
-    patch: u64,
-}
-
-#[derive(Debug, Clone, serde::Deserialize, Default)]
-#[serde(default)]
-struct UpdateManifest {
-    latest_version: String,
-    channel: String,
-    notes_url: String,
-    min_supported_version: String,
-}
-
-fn parse_version_triplet(text: &str) -> Option<VersionTriplet> {
-    let normalized = text
-        .trim()
-        .trim_start_matches('v')
-        .split('-')
-        .next()
-        .unwrap_or_default();
-    let mut parts = normalized.split('.');
-    let major = parts.next()?.parse::<u64>().ok()?;
-    let minor = parts.next()?.parse::<u64>().ok()?;
-    let patch = parts.next()?.parse::<u64>().ok()?;
-    Some(VersionTriplet {
-        major,
-        minor,
-        patch,
-    })
-}
-
-fn path_to_file_url(path: &Path) -> String {
-    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let mut raw = canonical.to_string_lossy().replace('\\', "/");
-    if let Some(stripped) = raw.strip_prefix("//?/") {
-        raw = stripped.to_string();
-    }
-    if !raw.starts_with('/') {
-        raw = format!("/{raw}");
-    }
-    let escaped = raw
-        .replace('%', "%25")
-        .replace(' ', "%20")
-        .replace('#', "%23")
-        .replace('?', "%3F");
-    format!("file://{escaped}")
-}
-
-fn resolve_local_help_url() -> Option<String> {
-    let mut candidates: Vec<PathBuf> = Vec::new();
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            candidates.push(exe_dir.join("help_index.html"));
-            candidates.push(exe_dir.join("help").join("index.html"));
-            candidates.push(exe_dir.join("docs").join("index.html"));
-            for ancestor in exe_dir.ancestors().take(4) {
-                candidates.push(ancestor.join("help_index.html"));
-                candidates.push(ancestor.join("docs").join("help").join("index.html"));
-                candidates.push(ancestor.join("docs").join("index.html"));
-                candidates.push(ancestor.join("docs").join("book").join("index.html"));
-                candidates.push(ancestor.join("docs").join("site").join("index.html"));
-            }
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/help_index.html"));
-        candidates.push(PathBuf::from("/usr/share/rust-tools-suite/docs/index.html"));
-        candidates.push(PathBuf::from(
-            "/usr/share/rust-tools-suite/docs/book/index.html",
-        ));
-        candidates.push(PathBuf::from(
-            "/usr/share/doc/rust-tools-suite/help_index.html",
-        ));
-        candidates.push(PathBuf::from(
-            "/usr/share/doc/rust-tools-suite/docs/index.html",
-        ));
-        candidates.push(PathBuf::from(
-            "/usr/share/doc/rust-tools-suite/docs/book/index.html",
-        ));
-    }
-
-    candidates.push(PathBuf::from("help_index.html"));
-    candidates.push(PathBuf::from("docs").join("help").join("index.html"));
-    candidates.push(PathBuf::from("docs").join("index.html"));
-    candidates.push(PathBuf::from("docs").join("book").join("index.html"));
-    candidates.push(PathBuf::from("docs").join("site").join("index.html"));
-
-    candidates
-        .into_iter()
-        .find(|path| path.exists())
-        .map(|path| path_to_file_url(&path))
-}
-
-fn valid_http_url(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        Some(trimmed.to_string())
-    } else {
-        None
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct AppMetrics {
-    pub connect_attempts: u64,
-    pub connect_failures: u64,
-    pub llm_requests: u64,
-    pub llm_success: u64,
-    pub llm_failures: u64,
-    pub mcp_startups: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct SystemCheckItem {
-    pub name: String,
-    pub ok: bool,
-    pub detail: String,
-}
-
-fn parse_port(text: &str, label: &str) -> Result<u16, String> {
-    let port: u16 = text
-        .trim()
-        .parse()
-        .map_err(|_| format!("{} must be 1-65535", label))?;
-    if port == 0 {
-        return Err(format!("{} must be 1-65535", label));
-    }
-    Ok(port)
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(default)]
-struct UserPreferences {
-    schema_version: u32,
-    language: Language,
-    dark_mode: bool,
-    #[serde(default)]
-    high_contrast: bool,
-    sidebar_expanded: bool,
-    motion_level_idx: usize,
-    active_tab_idx: usize,
-    parser_auto_parse: bool,
-    display_mode: DisplayMode,
-    llm_api_url: String,
-    llm_model_name: String,
-    mcp_port_text: String,
-    mcp_token_text: String,
-    active_conn: ConnectionType,
-    serial_config: SerialConfig,
-    tcp_host: String,
-    tcp_port_text: String,
-    tcp_is_server: bool,
-    udp_local_port_text: String,
-    udp_remote_host: String,
-    udp_remote_port_text: String,
-    auto_newline: bool,
-    auto_reconnect_enabled: bool,
-    auto_reconnect_interval_ms: u32,
-    quick_cmd_1: String,
-    quick_cmd_2: String,
-    quick_cmd_3: String,
-    send_hex: bool,
-    auto_scroll: bool,
-    send_with_newline: bool,
-    newline_type: String,
-    repeat_send: bool,
-    repeat_interval_ms: u32,
-    can_id_text: String,
-    can_data_text: String,
-    can_extended: bool,
-    can_fd: bool,
-    can_bitrate_idx: usize,
-    can_data_bitrate_idx: usize,
-    can_sample_point_idx: usize,
-    can_data_sample_point_idx: usize,
-    can_sjw_idx: usize,
-    can_data_sjw_idx: usize,
-    usb_protocol_idx: usize,
-    usb_speed_idx: usize,
-    usb_vid_text: String,
-    usb_pid_text: String,
-    packet_template_idx: usize,
-    parser_enabled: bool,
-    parser_template_idx: usize,
-    packet_builder_tab: usize,
-    analysis_protocol_idx: usize,
-    analysis_filter_tx: bool,
-    analysis_filter_rx: bool,
-    analysis_filter_info: bool,
-    llm_temperature_text: String,
-    ui_scale_percent: u32,
-    prefs_autosave_interval_sec: u32,
-    update_channel: String,
-    update_manifest_url: String,
-    update_check_timeout_ms: u32,
-}
-
-impl Default for UserPreferences {
-    fn default() -> Self {
-        Self {
-            schema_version: 2,
-            language: Language::Chinese,
-            dark_mode: true,
-            high_contrast: false,
-            sidebar_expanded: true,
-            motion_level_idx: 2,
-            active_tab_idx: 0,
-            parser_auto_parse: true,
-            display_mode: DisplayMode::Hex,
-            llm_api_url: "https://api.openai.com/v1/chat/completions".into(),
-            llm_model_name: "gpt-4o-mini".into(),
-            mcp_port_text: "3000".into(),
-            mcp_token_text: String::new(),
-            active_conn: ConnectionType::Serial,
-            serial_config: SerialConfig::default(),
-            tcp_host: "127.0.0.1".into(),
-            tcp_port_text: "8080".into(),
-            tcp_is_server: false,
-            udp_local_port_text: "9000".into(),
-            udp_remote_host: "127.0.0.1".into(),
-            udp_remote_port_text: "9001".into(),
-            auto_newline: false,
-            auto_reconnect_enabled: false,
-            auto_reconnect_interval_ms: 2000,
-            quick_cmd_1: "status".into(),
-            quick_cmd_2: "help".into(),
-            quick_cmd_3: "reboot".into(),
-            send_hex: false,
-            auto_scroll: true,
-            send_with_newline: true,
-            newline_type: "\\r\\n".into(),
-            repeat_send: false,
-            repeat_interval_ms: 1000,
-            can_id_text: "0x123".into(),
-            can_data_text: "01 02 03 04".into(),
-            can_extended: false,
-            can_fd: false,
-            can_bitrate_idx: 5,
-            can_data_bitrate_idx: 2,
-            can_sample_point_idx: 2,
-            can_data_sample_point_idx: 2,
-            can_sjw_idx: 0,
-            can_data_sjw_idx: 0,
-            usb_protocol_idx: 0,
-            usb_speed_idx: 2,
-            usb_vid_text: "0x0483".into(),
-            usb_pid_text: "0x5740".into(),
-            packet_template_idx: 0,
-            parser_enabled: false,
-            parser_template_idx: 0,
-            packet_builder_tab: 0,
-            analysis_protocol_idx: 0,
-            analysis_filter_tx: true,
-            analysis_filter_rx: true,
-            analysis_filter_info: false,
-            llm_temperature_text: "0.7".into(),
-            ui_scale_percent: 150,
-            prefs_autosave_interval_sec: 3,
-            update_channel: "stable-0.1".into(),
-            update_manifest_url: String::new(),
-            update_check_timeout_ms: 1500,
-        }
-    }
-}
+// Re-export types from types module
+pub use types::{
+    parse_port, parse_version_triplet, resolve_local_help_url, valid_http_url, AppMetrics,
+    SystemCheckItem, UpdateManifest, UserPreferences, VersionTriplet, DEFAULT_UPDATE_DOC_URL,
+    DEFAULT_UPDATE_MANIFEST_URL,
+};
 
 impl AppState {
-    // ──────────────────────────────────────────────────────────────────────
     // 初始化与配置
-    // ──────────────────────────────────────────────────────────────────────
     pub fn new() -> Self {
         let control = ControlEngine::new();
         let pid = control.algorithms[0]
@@ -1139,9 +881,7 @@ impl AppState {
         });
     }
 
-    // ──────────────────────────────────────────────────────────────────────
     // 错误报告与系统检查
-    // ──────────────────────────────────────────────────────────────────────
     pub fn run_system_check(&mut self) {
         self.system_checks.clear();
 
@@ -1407,9 +1147,7 @@ impl AppState {
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────────
     // 用户偏好设置
-    // ──────────────────────────────────────────────────────────────────────
     fn to_user_preferences(&self) -> UserPreferences {
         let active_tab_idx = ActiveTab::all()
             .iter()
@@ -1710,9 +1448,7 @@ impl AppState {
         Ok(file_path)
     }
 
-    // ──────────────────────────────────────────────────────────────────────
     // 连接管理与通信
-    // ──────────────────────────────────────────────────────────────────────
     pub fn refresh_ports(&mut self) {
         if self.conn.port_scan_in_progress {
             return;
@@ -2681,7 +2417,6 @@ impl AppState {
             }
         }
 
-        // ── Connection Watchdog ──────────────────────────────────────────
         // IEC 61784: Detect stale connections (half-open TCP, dead serial).
         // If connected but no RX for >10s, auto-disconnect and log warning.
         const STALE_RX_TIMEOUT: Duration = Duration::from_secs(10);
@@ -3173,9 +2908,6 @@ mod tests {
         let result = parse_version_triplet("abc");
         assert!(result.is_none());
     }
-
-    // ── Deep: LogEntry::format_data ──
-
     #[test]
     fn test_log_entry_hex_mode() {
         let entry = LogEntry {
@@ -3276,9 +3008,6 @@ mod tests {
         entry.format_data_to(&mut buf);
         assert_eq!(buf, "TestTest");
     }
-
-    // ── Deep: LogDirection ──
-
     #[test]
     fn test_log_direction_variants() {
         assert_ne!(LogDirection::Tx, LogDirection::Rx);
@@ -3292,9 +3021,6 @@ mod tests {
         let d2 = d;
         assert_eq!(d, d2); // Copy, not move
     }
-
-    // ── Deep: DisplayMode ──
-
     #[test]
     fn test_display_mode_variants() {
         assert_ne!(DisplayMode::Hex, DisplayMode::Ascii);
@@ -3318,9 +3044,6 @@ mod tests {
             assert_eq!(*mode, restored);
         }
     }
-
-    // ── Deep: LogEntry clone and debug ──
-
     #[test]
     fn test_log_entry_clone() {
         let entry = LogEntry {

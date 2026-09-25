@@ -15,7 +15,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
     page_header(ui, "CAN 多协议工具 / Multi-Protocol CAN Tools", "canopen");
 
-    // ═══ 协议选择器 ═══
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new("协议 / Protocol").strong().size(13.0));
@@ -73,9 +72,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // CAN FD 专用页面
-// ═══════════════════════════════════════════════════════════════
 fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
     let theme = state.theme.clone();
@@ -230,9 +227,7 @@ fn show_can_fd(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
 // EtherCAT CoE 专用页面
-// ═══════════════════════════════════════════════════════════════
 fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
     let theme = state.theme.clone();
@@ -501,9 +496,7 @@ fn show_ethercat_coe(ui: &mut Ui, state: &mut AppState) {
     show_od_browser(ui, state);
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 标准 CANopen (CAN 2.0) 页面
-// ═══════════════════════════════════════════════════════════════
 fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
     let theme = state.theme.clone();
@@ -878,9 +871,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(8.0);
 
-    // ═══════════════════════════════════════════════════════════════
     // PDO 映射管理器
-    // ═══════════════════════════════════════════════════════════════
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_pdo_mapper(state.lang()))
@@ -1141,9 +1132,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(8.0);
 
-    // ═══════════════════════════════════════════════════════════════
     // PDO 数据解码器
-    // ═══════════════════════════════════════════════════════════════
     if !state.protocol.canopen_pdo_configs.is_empty() {
         settings_card(ui, |ui| {
             ui.label(
@@ -1210,9 +1199,7 @@ fn show_canopen_standard(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(8.0);
     }
 
-    // ═══════════════════════════════════════════════════════════════
     // CANopen 帧深度分析器
-    // ═══════════════════════════════════════════════════════════════
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::canopen_frame_analyzer(state.lang()))
@@ -1732,5 +1719,138 @@ mod tests {
     #[test]
     fn test_parse_u32_hex() {
         assert_eq!(parse_u32_text("0xFFFFFFFF"), Some(0xFFFFFFFF));
+    }
+    #[test]
+    fn parse_u8_zero() {
+        assert_eq!(parse_u8_text("0"), Some(0));
+    }
+
+    #[test]
+    fn parse_u8_hex_lowercase() {
+        assert_eq!(parse_u8_text("0xff"), Some(255));
+    }
+
+    #[test]
+    fn parse_u8_hex_uppercase_prefix() {
+        assert_eq!(parse_u8_text("0XAB"), Some(0xAB));
+    }
+
+    #[test]
+    fn parse_u8_empty_string() {
+        assert_eq!(parse_u8_text(""), None);
+    }
+
+    #[test]
+    fn parse_u8_whitespace() {
+        assert_eq!(parse_u8_text("  42  "), Some(42));
+    }
+
+    #[test]
+    fn parse_u8_overflow() {
+        assert_eq!(parse_u8_text("256"), None);
+    }
+
+    #[test]
+    fn parse_u8_negative() {
+        assert_eq!(parse_u8_text("-1"), None);
+    }
+
+    #[test]
+    fn parse_u8_hex_no_prefix() {
+        // "FF" without 0x prefix should fail decimal parse
+        assert_eq!(parse_u8_text("FF"), None);
+    }
+    #[test]
+    fn parse_u16_zero() {
+        assert_eq!(parse_u16_text("0"), Some(0));
+    }
+
+    #[test]
+    fn parse_u16_hex_lowercase() {
+        assert_eq!(parse_u16_text("0xffff"), Some(0xFFFF));
+    }
+
+    #[test]
+    fn parse_u16_hex_uppercase_prefix() {
+        assert_eq!(parse_u16_text("0X1234"), Some(0x1234));
+    }
+
+    #[test]
+    fn parse_u16_empty() {
+        assert_eq!(parse_u16_text(""), None);
+    }
+
+    #[test]
+    fn parse_u16_whitespace() {
+        assert_eq!(parse_u16_text("  1000  "), Some(1000));
+    }
+
+    #[test]
+    fn parse_u16_overflow() {
+        assert_eq!(parse_u16_text("65536"), None);
+    }
+
+    #[test]
+    fn parse_u16_negative() {
+        assert_eq!(parse_u16_text("-1"), None);
+    }
+
+    #[test]
+    fn parse_u16_hex_medium() {
+        assert_eq!(parse_u16_text("0x1018"), Some(0x1018));
+    }
+    #[test]
+    fn parse_u32_zero() {
+        assert_eq!(parse_u32_text("0"), Some(0));
+    }
+
+    #[test]
+    fn parse_u32_hex_lowercase() {
+        assert_eq!(parse_u32_text("0xffffffff"), Some(0xFFFFFFFF));
+    }
+
+    #[test]
+    fn parse_u32_decimal() {
+        assert_eq!(parse_u32_text("1000000"), Some(1000000));
+    }
+
+    #[test]
+    fn parse_u32_empty() {
+        assert_eq!(parse_u32_text(""), None);
+    }
+
+    #[test]
+    fn parse_u32_whitespace() {
+        assert_eq!(parse_u32_text("  12345  "), Some(12345));
+    }
+
+    #[test]
+    fn parse_u32_overflow() {
+        assert_eq!(parse_u32_text("4294967296"), None);
+    }
+
+    #[test]
+    fn parse_u32_hex_medium() {
+        assert_eq!(parse_u32_text("0x60400001"), Some(0x60400001));
+    }
+    #[test]
+    fn parse_hex_decimal_equivalence() {
+        assert_eq!(parse_u8_text("0x0A"), parse_u8_text("10"));
+        assert_eq!(parse_u16_text("0x03E8"), parse_u16_text("1000"));
+        assert_eq!(parse_u32_text("0x000F4240"), parse_u32_text("1000000"));
+    }
+
+    #[test]
+    fn parse_all_types_zero() {
+        assert_eq!(parse_u8_text("0"), Some(0));
+        assert_eq!(parse_u16_text("0"), Some(0));
+        assert_eq!(parse_u32_text("0"), Some(0));
+    }
+
+    #[test]
+    fn parse_all_types_max() {
+        assert_eq!(parse_u8_text("255"), Some(255));
+        assert_eq!(parse_u16_text("65535"), Some(65535));
+        assert_eq!(parse_u32_text("4294967295"), Some(4294967295));
     }
 }

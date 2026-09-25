@@ -224,4 +224,45 @@ mod tests {
         let (_, _, info) = lm.counts();
         assert_eq!(info, 0);
     }
+    #[test]
+    fn max_log_constant() {
+        assert_eq!(LogManager::MAX_LOG, 5000);
+    }
+
+    #[test]
+    fn display_mode_variants() {
+        let modes = [DisplayMode::Hex, DisplayMode::Ascii, DisplayMode::Mixed];
+        assert_eq!(modes.len(), 3);
+    }
+
+    #[test]
+    fn log_direction_variants() {
+        let dirs = [LogDirection::Tx, LogDirection::Rx, LogDirection::Info];
+        assert_eq!(dirs.len(), 3);
+    }
+
+    #[test]
+    fn len_empty_after_new() {
+        let lm = LogManager::new();
+        assert_eq!(lm.len(), 0);
+    }
+
+    #[test]
+    fn export_csv_with_newlines() {
+        let mut lm = LogManager::new();
+        lm.add_info_log("line1\nline2");
+        let csv = lm.export_csv().unwrap();
+        // Should handle newlines in CSV
+        assert!(csv.contains("line1"));
+    }
+
+    #[test]
+    fn add_log_with_different_channels() {
+        let mut lm = LogManager::new();
+        lm.add_log_with_display_mode(LogDirection::Tx, "a", DisplayMode::Hex, "Serial");
+        lm.add_log_with_display_mode(LogDirection::Rx, "b", DisplayMode::Ascii, "TCP");
+        assert_eq!(lm.len(), 2);
+        assert_eq!(lm.log_entries[0].channel, "Serial");
+        assert_eq!(lm.log_entries[1].channel, "TCP");
+    }
 }

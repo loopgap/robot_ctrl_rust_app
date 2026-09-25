@@ -3,15 +3,13 @@ use crate::i18n::Tr;
 use crate::models::modbus::ModbusFunction;
 use crate::models::packet::bytes_to_hex;
 use crate::views::ui_kit::{page_header, settings_card};
-use egui::{self, Color32, RichText, ScrollArea, Ui};
+use egui::{self, RichText, ScrollArea, Ui};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_modbus(lang), "modbus");
 
-    // ─── 帧构造参数 ──────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::request_builder(lang)).size(15.0).strong());
         ui.add_space(8.0);
@@ -88,7 +86,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 帧预览 ─────────────────────────────────────────
     let rtu_frame = state.protocol.modbus_frame.build_rtu_request();
     let tcp_frame = state.protocol.modbus_frame.build_tcp_request(1);
 
@@ -99,64 +96,39 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             RichText::new("RTU:")
                 .size(12.0)
                 .strong()
-                .color(state.anim.animate_color(
-                    "modbus_view_1".into(),
-                    theme.accent_orange,
-                    theme.accent_orange,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )),
+                .color(theme.accent_orange),
         );
-        ui.label(RichText::new(bytes_to_hex(&rtu_frame)).monospace().color(
-            state.anim.animate_color(
-                "modbus_view_1".into(),
-                theme.accent_green,
-                theme.accent_green,
-                0.3,
-                crate::app::animation::Easing::EaseOut,
-                current_time,
-            ),
-        ));
+        ui.label(
+            RichText::new(bytes_to_hex(&rtu_frame))
+                .monospace()
+                .color(theme.accent_green),
+        );
         ui.label(
             RichText::new(format!("{} bytes", rtu_frame.len()))
                 .size(11.5)
-                .color(Color32::GRAY),
+                .color(theme.text_muted),
         );
         ui.add_space(6.0);
         ui.label(
             RichText::new("TCP (MBAP):")
                 .size(12.0)
                 .strong()
-                .color(state.anim.animate_color(
-                    "modbus_view_1".into(),
-                    theme.status_info,
-                    theme.status_info,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )),
+                .color(theme.status_info),
         );
-        ui.label(RichText::new(bytes_to_hex(&tcp_frame)).monospace().color(
-            state.anim.animate_color(
-                "modbus_view_2".into(),
-                theme.accent_green,
-                theme.accent_green,
-                0.3,
-                crate::app::animation::Easing::EaseOut,
-                current_time,
-            ),
-        ));
+        ui.label(
+            RichText::new(bytes_to_hex(&tcp_frame))
+                .monospace()
+                .color(theme.accent_green),
+        );
         ui.label(
             RichText::new(format!("{} bytes", tcp_frame.len()))
                 .size(11.5)
-                .color(Color32::GRAY),
+                .color(theme.text_muted),
         );
     });
 
     ui.add_space(10.0);
 
-    // ─── 发送按钮 ────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 12.0;
@@ -207,7 +179,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 模拟寄存器表 ────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(Tr::register_table(lang)).size(15.0).strong());
@@ -254,16 +225,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                                 let text = format!("{:5}", state.protocol.modbus_registers[addr]);
                                 let rt = RichText::new(text).monospace().size(11.5);
                                 if in_range {
-                                    ui.label(rt.color(state.anim.animate_color(
-                                        "modbus_view_1".into(),
-                                        theme.status_ok,
-                                        theme.status_ok,
-                                        0.3,
-                                        crate::app::animation::Easing::EaseOut,
-                                        current_time,
-                                    )));
+                                    ui.label(rt.color(theme.status_ok));
                                 } else {
-                                    ui.label(rt.color(Color32::GRAY));
+                                    ui.label(rt.color(theme.text_muted));
                                 }
                             } else {
                                 ui.label("  -  ");
@@ -275,7 +239,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     });
 
-    // ─── 日志 ────────────────────────────────────────────
     if !state.protocol.modbus_response_log.is_empty() {
         ui.add_space(10.0);
         settings_card(ui, |ui| {

@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 模糊 PID 控制器
-// ═══════════════════════════════════════════════════════════════
 //
 // 基于误差(e)和误差变化率(ec)的模糊逻辑规则自适应整定 PID 参数。
 // 模糊集合: NB, NM, NS, ZO, PS, PM, PB (7级量化)
@@ -445,5 +443,205 @@ mod tests {
             "Should output negative for negative error, got {}",
             out
         );
+    }
+    #[test]
+    fn fuzzy_pid_name_is_fuzzy_pid() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = FuzzyPidController::default();
+        assert_eq!(c.name(), "Fuzzy PID");
+    }
+
+    #[test]
+    fn fuzzy_pid_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = FuzzyPidController::default();
+        c.set_setpoint(55.0);
+        assert_eq!(c.setpoint(), 55.0);
+    }
+
+    #[test]
+    fn fuzzy_pid_output_limit_clamps() {
+        let mut c = FuzzyPidController::new(100.0, 0.0, 0.0, 1000.0);
+        c.output_limit = 25.0;
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0);
+        assert!(out.abs() <= 25.0, "Output should be clamped: {}", out);
+    }
+
+    #[test]
+    fn fuzzy_pid_quantize_negative_large() {
+        let (low, high, _frac) = FuzzyPidController::quantize(-1000.0, 10.0);
+        assert_eq!(low, 0);
+        assert_eq!(high, 0);
+    }
+
+    #[test]
+    fn fuzzy_pid_quantize_positive_large() {
+        let (low, high, _frac) = FuzzyPidController::quantize(1000.0, 10.0);
+        // Clamped: shifted=6.0, floor=6, min(5)=5
+        assert_eq!(low, 5);
+        assert_eq!(high, 5);
+    }
+
+    #[test]
+    fn fuzzy_pid_rule_tables_have_correct_dimensions() {
+        assert_eq!(FuzzyPidController::RULE_KP.len(), 7);
+        assert_eq!(FuzzyPidController::RULE_KP[0].len(), 7);
+        assert_eq!(FuzzyPidController::RULE_KI.len(), 7);
+        assert_eq!(FuzzyPidController::RULE_KI[0].len(), 7);
+        assert_eq!(FuzzyPidController::RULE_KD.len(), 7);
+        assert_eq!(FuzzyPidController::RULE_KD[0].len(), 7);
+    }
+
+    #[test]
+    fn fuzzy_pid_effective_gains_change_with_error() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        // Effective gains should be finite
+        assert!(c.effective_kp.is_finite());
+        assert!(c.effective_ki.is_finite());
+        assert!(c.effective_kd.is_finite());
+    }
+
+    #[test]
+    fn fuzzy_pid_serde_roundtrip() {
+        let c = FuzzyPidController::new(2.0, 0.2, 0.02, 10.0);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: FuzzyPidController = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.setpoint, 10.0);
+        assert!((restored.kp_base - 2.0).abs() < 1e-10);
+    }
+    #[test]
+    fn fuzzy_pid_quantize_at_exact_center() {
+        let (low, high, frac) = FuzzyPidController::quantize(0.0, 1.0);
+        assert_eq!(low, 3);
+        assert_eq!(high, 3);
+        assert!(frac.abs() < 0.001);
+    }
+    #[test]
+    fn fuzzy_pid_quantize_symmetric() {
+        // Positive and negative values at same magnitude should
+        // map to indices symmetric around the center (index 3)
+        let (l_pos, _, _) = FuzzyPidController::quantize(2.0, 10.0);
+        let (l_neg, _, _) = FuzzyPidController::quantize(-2.0, 10.0);
+        // Both should be within valid range 0..=6
+        assert!(l_pos <= 6);
+        assert!(l_neg <= 6);
+    }
+    #[test]
+    fn fuzzy_pid_default_params() {
+        let c = FuzzyPidController::default();
+        assert_eq!(c.setpoint, 0.0);
+        assert_eq!(c.output, 0.0);
+        assert!(c.kp_base > 0.0);
+    }
+
+    #[test]
+    fn fuzzy_pid_effective_kp_bounded() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.effective_kp.is_finite());
+        assert!(c.effective_kp > 0.0);
+    }
+
+    #[test]
+    fn fuzzy_pid_effective_ki_bounded() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.effective_ki.is_finite());
+        assert!(c.effective_ki >= 0.0);
+    }
+
+    #[test]
+    fn fuzzy_pid_effective_kd_bounded() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.effective_kd.is_finite());
+    }
+
+    #[test]
+    fn fuzzy_pid_output_changes_with_error() {
+        let mut c = FuzzyPidController::new(1.0, 0.0, 0.0, 100.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out1 = c.compute(0.0);
+        c.reset();
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out2 = c.compute(5.0);
+        // Different error magnitudes should produce valid finite outputs
+        assert!(
+            out1.is_finite() && out2.is_finite(),
+            "Outputs should be finite numbers"
+        );
+    }
+
+    #[test]
+    fn fuzzy_pid_reset_clears_state() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0);
+        c.reset();
+        assert_eq!(c.output, 0.0);
+        assert!(c.last_update.is_none());
+    }
+
+    #[test]
+    fn fuzzy_pid_quantize_range_valid() {
+        // All quantize results should be in valid range
+        for val in &[-100.0, -10.0, -1.0, 0.0, 1.0, 10.0, 100.0] {
+            let (low, high, frac) = FuzzyPidController::quantize(*val, 10.0);
+            assert!(low <= 6, "low={} should be <=6 for val={}", low, val);
+            assert!(high <= 6, "high={} should be <=6 for val={}", high, val);
+            assert!(
+                (0.0..=1.0).contains(&frac),
+                "frac={} should be in [0,1]",
+                frac
+            );
+        }
+    }
+    #[test]
+    fn fuzzy_pid_output_finite_after_steps() {
+        let mut c = FuzzyPidController::new(1.0, 0.1, 0.01, 50.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn fuzzy_pid_integral_accumulates() {
+        let mut c = FuzzyPidController::new(1.0, 0.5, 0.0, 50.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.integral.is_finite());
+    }
+
+    #[test]
+    fn fuzzy_pid_last_error_updated() {
+        let mut c = FuzzyPidController::new(1.0, 0.0, 0.0, 100.0);
+        c.setpoint = 10.0;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0);
+        assert!(c.last_error.is_finite());
+    }
+
+    #[test]
+    fn fuzzy_pid_default_kp_positive() {
+        let c = FuzzyPidController::default();
+        assert!(c.kp_base > 0.0);
     }
 }

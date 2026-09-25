@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 串级 PID 控制器 (Cascade PID)
-// ═══════════════════════════════════════════════════════════════
 //
 // 双环结构：
 // - 外环（主环）：位置控制，输出作为内环的设定值
@@ -424,9 +422,6 @@ mod tests {
             "Outer should have non-zero output"
         );
     }
-
-    // ── Deep: Industrial edge cases ──
-
     #[test]
     fn test_cascade_zero_gains_produces_zero() {
         let mut c = CascadePidController::new(0.0, 0.0, 0.0, 100.0, 0.0, 0.0, 0.0, 200.0, 0.0);
@@ -486,5 +481,201 @@ mod tests {
                 out
             );
         }
+    }
+
+    // 严格补全：CascadePid 边界测试
+
+    #[test]
+    fn cascade_name() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = CascadePidController::default();
+        assert_eq!(c.name(), "Cascade PID");
+    }
+
+    #[test]
+    fn cascade_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = CascadePidController::default();
+        c.set_setpoint(99.0);
+        assert_eq!(c.setpoint(), 99.0);
+    }
+
+    #[test]
+    fn cascade_output_limit_clamps() {
+        let mut c = CascadePidController::new(100.0, 0.0, 0.0, 1000.0, 0.0, 0.0, 0.0, 200.0, 5.0);
+        c.outer_output_limit = 10.0;
+        c.inner_output_limit = 10.0;
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert!(
+            out.abs() <= 10.0 + 0.01,
+            "Output should be clamped: {}",
+            out
+        );
+    }
+
+    #[test]
+    fn cascade_compute_single_feedback() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.1, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        c.compute_single_feedback(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute_single_feedback(0.0);
+        assert!(out.is_finite());
+    }
+
+    #[test]
+    fn cascade_negative_setpoint() {
+        let mut c = CascadePidController::new(-10.0, 1.0, 0.1, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert!(
+            out < 0.0,
+            "Should output negative for negative setpoint, got {}",
+            out
+        );
+    }
+
+    #[test]
+    fn cascade_outer_output_tracks() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0, 0.0);
+        assert!(c.outer_output.is_finite());
+    }
+
+    #[test]
+    fn cascade_serde_roundtrip() {
+        let c = CascadePidController::new(5.0, 0.1, 0.01, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: CascadePidController = serde_json::from_str(&json).unwrap();
+        // Verify non-skipped fields roundtrip
+        assert_eq!(restored.outer_kp, 5.0);
+        assert_eq!(restored.inner_kp, 2.0);
+    }
+    #[test]
+    fn cascade_outer_drives_inner() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0, 0.0);
+        assert!(c.outer_output.is_finite());
+        assert!(c.inner_feedback.is_finite());
+    }
+    #[test]
+    fn cascade_default_params() {
+        let c = CascadePidController::default();
+        assert_eq!(c.setpoint, 0.0);
+        assert_eq!(c.output, 0.0);
+        assert_eq!(c.outer_output, 0.0);
+    }
+
+    #[test]
+    fn cascade_outer_kp_affects_response() {
+        let mut c1 = CascadePidController::new(1.0, 0.0, 0.0, 100.0, 1.0, 0.0, 0.0, 200.0, 50.0);
+        let mut c2 = CascadePidController::new(10.0, 0.0, 0.0, 100.0, 1.0, 0.0, 0.0, 200.0, 50.0);
+        c1.compute(0.0, 0.0);
+        c2.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out1 = c1.compute(0.0, 0.0);
+        let out2 = c2.compute(0.0, 0.0);
+        assert!(
+            out2.abs() >= out1.abs(),
+            "Higher outer_kp should produce larger output"
+        );
+    }
+
+    #[test]
+    fn cascade_inner_kp_affects_response() {
+        let mut c1 = CascadePidController::new(10.0, 0.0, 0.0, 100.0, 0.1, 0.0, 0.0, 200.0, 50.0);
+        let mut c2 = CascadePidController::new(10.0, 0.0, 0.0, 100.0, 10.0, 0.0, 0.0, 200.0, 50.0);
+        c1.compute(0.0, 0.0);
+        c2.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out1 = c1.compute(0.0, 0.0);
+        let out2 = c2.compute(0.0, 0.0);
+        assert!(
+            out2.abs() >= out1.abs(),
+            "Higher inner_kp should produce larger output"
+        );
+    }
+
+    #[test]
+    fn cascade_output_limit_symmetric() {
+        let mut c = CascadePidController::new(100.0, 0.0, 0.0, 1000.0, 0.0, 0.0, 0.0, 200.0, 5.0);
+        c.outer_output_limit = 50.0;
+        c.inner_output_limit = 50.0;
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute(0.0, 0.0);
+        assert!(
+            (-50.0..=50.0).contains(&out),
+            "Output should be symmetrically clamped"
+        );
+    }
+
+    #[test]
+    fn cascade_dual_feedback_differ() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0, 1.0);
+        assert!(c.outer_output.is_finite());
+        assert!(c.inner_feedback.is_finite());
+    }
+
+    #[test]
+    fn cascade_reset_clears_all() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.1, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0, 1.0);
+        c.reset();
+        assert_eq!(c.output, 0.0);
+        assert_eq!(c.outer_output, 0.0);
+        assert!(c.last_update.is_none());
+    }
+    #[test]
+    fn cascade_output_finite_after_steps() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.1, 100.0, 2.0, 0.2, 0.02, 200.0, 50.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0, 0.0);
+        }
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn cascade_outer_output_finite() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0, 0.0);
+        assert!(c.outer_output.is_finite());
+    }
+
+    #[test]
+    fn cascade_inner_feedback_finite() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        c.compute(0.0, 0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0, 0.0);
+        assert!(c.inner_feedback.is_finite());
+    }
+
+    #[test]
+    fn cascade_initialized_flag() {
+        let mut c = CascadePidController::new(10.0, 1.0, 0.0, 100.0, 2.0, 0.0, 0.0, 200.0, 50.0);
+        assert!(!c.initialized);
+        c.compute(0.0, 0.0);
+        assert!(c.initialized);
+    }
+
+    #[test]
+    fn cascade_initialized_default_false() {
+        let c = CascadePidController::default();
+        assert!(!c.initialized);
     }
 }

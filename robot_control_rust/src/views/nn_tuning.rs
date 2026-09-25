@@ -8,7 +8,6 @@ const NN_LABEL_WIDTH: f32 = 120.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_nn_tuning(lang), "nn");
 
@@ -50,7 +49,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 训练控制 ────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::training_controls(lang))
@@ -113,7 +111,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── Loss 曲线 ───────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::training_loss(lang)).size(15.0).strong());
         ui.add_space(8.0);
@@ -130,14 +127,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             let loss_line = Line::new(loss_points)
                 .name(Tr::loss_label(lang))
-                .color(state.anim.animate_color(
-                    "nn_tuning_1".into(),
-                    theme.accent_orange,
-                    theme.accent_orange,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                ))
+                .color(theme.accent_orange)
                 .width(1.5_f32);
 
             Plot::new("loss_plot")
@@ -157,14 +147,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                     state.control.nn.loss_history.last().unwrap_or(&0.0)
                 ))
                 .size(12.0)
-                .color(state.anim.animate_color(
-                    "nn_tuning_2".into(),
-                    theme.accent_orange,
-                    theme.accent_orange,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )),
+                .color(theme.accent_orange),
             );
         } else {
             ui.add_space(8.0);
@@ -180,7 +163,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 建议参数 ────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.label(
             RichText::new(Tr::suggested_params(lang))
@@ -200,16 +182,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
 
             if ui
-                .button(RichText::new(Tr::apply_suggested(lang)).size(14.0).color(
-                    state.anim.animate_color(
-                        "nn_tuning_1".into(),
-                        theme.status_ok,
-                        theme.status_ok,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ),
-                ))
+                .button(
+                    RichText::new(Tr::apply_suggested(lang))
+                        .size(14.0)
+                        .color(theme.status_ok),
+                )
                 .clicked()
             {
                 state.apply_nn_params();
@@ -224,16 +201,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .show(ui, |ui| {
                 ui.label(RichText::new(Tr::parameter(lang)).strong());
                 ui.label(RichText::new(Tr::current(lang)).strong());
-                ui.label(RichText::new(Tr::suggested(lang)).strong().color(
-                    state.anim.animate_color(
-                        "nn_tuning_1".into(),
-                        theme.status_info,
-                        theme.status_info,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ),
-                ));
+                ui.label(
+                    RichText::new(Tr::suggested(lang))
+                        .strong()
+                        .color(theme.status_info),
+                );
                 ui.label(RichText::new(Tr::delta(lang)).strong());
                 ui.end_row();
 
@@ -315,35 +287,25 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             }
         });
 
-        if !state.ui.llm_last_response.is_empty() {
-            ui.add_space(6.0);
-            if state.ui.llm_loading {
-                crate::views::ui_kit::loading_spinner(
-                    ui,
-                    &mut state.anim,
-                    current_time,
-                    "llm_loading",
-                    Tr::llm_loading_text(lang),
-                    &theme,
-                );
-            }
-            ui.label(RichText::new(Tr::llm_analysis_label(lang)).strong());
+        if state.ui.llm_loading {
+            ui.add_space(8.0);
             ui.label(
-                RichText::new(&state.ui.llm_last_response).color(state.anim.animate_color(
-                    "nn_tuning_2".into(),
-                    theme.status_info,
-                    theme.status_info,
-                    0.3,
-                    crate::app::animation::Easing::EaseOut,
-                    current_time,
-                )),
+                RichText::new(Tr::llm_loading_text(lang))
+                    .size(12.0)
+                    .italics()
+                    .color(theme.text_secondary),
             );
+            let time = ui.ctx().input(|i| i.time);
+            crate::views::ui_kit::skeleton_lines(ui, 3, &theme, time);
+        } else if !state.ui.llm_last_response.is_empty() {
+            ui.add_space(8.0);
+            ui.label(RichText::new(Tr::llm_analysis_label(lang)).strong());
+            ui.label(RichText::new(&state.ui.llm_last_response).color(theme.status_info));
         }
     });
 
     ui.add_space(12.0);
 
-    // ─── 特征预览 ────────────────────────────────────────
     if state.control.state_history.len() >= 10 {
         ui.collapsing(Tr::input_features(lang), |ui| {
             ui.add_space(4.0);

@@ -448,9 +448,7 @@ pub fn object_dict_name(index: u16, sub_index: u8) -> &'static str {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // PDO 映射与外部数据结构
-// ═══════════════════════════════════════════════════════════════
 
 /// PDO 方向
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -994,9 +992,7 @@ pub fn analyze_canopen_frame(cob_id: u16, data: &[u8]) -> CanopenFrameAnalysis {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // CAN / CAN FD 标准帧抽象
-// ═══════════════════════════════════════════════════════════════
 
 /// CAN 协议类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1103,9 +1099,7 @@ pub fn is_fd_valid_len(len: usize) -> bool {
     matches!(len, 0..=8 | 12 | 16 | 20 | 24 | 32 | 48 | 64)
 }
 
-// ═══════════════════════════════════════════════════════════════
 // EtherCAT CoE (CAN-over-EtherCAT) 支持
-// ═══════════════════════════════════════════════════════════════
 
 /// EtherCAT 状态机状态
 pub fn ecat_state_name(state: u8) -> &'static str {
@@ -1307,9 +1301,7 @@ pub fn analyze_ecat_coe_frame(data: &[u8]) -> EcatCoeAnalysis {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 多协议帧联合体
-// ═══════════════════════════════════════════════════════════════
 
 /// 统一多协议帧
 #[derive(Debug, Clone)]
@@ -1432,7 +1424,6 @@ mod tests {
         assert_eq!(canopen_id_role(0x705), "Heartbeat");
     }
 
-    // ── CAN / CAN FD 标准帧测试 ──
     #[test]
     fn test_can_std_frame_build() {
         let f = CanStdFrame::new(0x123, &[0xAA, 0xBB], false);
@@ -1459,7 +1450,6 @@ mod tests {
         assert_eq!(fd_dlc_to_len(7), 7);
     }
 
-    // ── EtherCAT CoE 测试 ──
     #[test]
     fn test_ecat_coe_sdo_build() {
         let sdo = EcatCoeSdoRequest {
@@ -1515,5 +1505,1538 @@ mod tests {
         let f2 = MultiProtocolFrame::can_fd_pdo(0x181, &payload);
         assert_eq!(f2.protocol, CanProtocolType::Fd);
         assert_eq!(f2.frame.data.len(), 16);
+    }
+    #[test]
+    fn decode_heartbeat_all_states() {
+        assert_eq!(decode_heartbeat_state(0x00), "Boot-up");
+        assert_eq!(decode_heartbeat_state(0x04), "Stopped");
+        assert_eq!(decode_heartbeat_state(0x05), "Operational");
+        assert_eq!(decode_heartbeat_state(0x7F), "Pre-operational");
+        assert_eq!(decode_heartbeat_state(0x01), "Unknown");
+        assert_eq!(decode_heartbeat_state(0xFF), "Unknown");
+    }
+    #[test]
+    fn decode_emcy_too_short_returns_none() {
+        assert!(decode_emcy(&[]).is_none());
+        assert!(decode_emcy(&[0x00]).is_none());
+        assert!(decode_emcy(&[0x00, 0x01]).is_none());
+    }
+
+    #[test]
+    fn decode_emcy_all_error_classes() {
+        let cases: &[(u16, &str)] = &[
+            (0x1000, "Generic Error"),
+            (0x20FF, "Current"),
+            (0x3000, "Voltage"),
+            (0x4000, "Temperature"),
+            (0x5000, "Hardware"),
+            (0x6000, "Software"),
+            (0x7000, "Additional Modules"),
+            (0x8000, "Monitoring"),
+            (0x9000, "External Error"),
+            (0xF000, "Additional Functions"),
+            (0xABCD, "Manufacturer Specific"),
+        ];
+        for &(err_code, expected_class) in cases {
+            let bytes = err_code.to_le_bytes();
+            let data = [bytes[0], bytes[1], 0x01, 0, 0, 0, 0, 0];
+            let out = decode_emcy(&data).unwrap();
+            assert_eq!(out.0, err_code);
+            assert_eq!(out.2, expected_class, "err=0x{:04X}", err_code);
+        }
+    }
+
+    #[test]
+    fn decode_emcy_error_register_preserved() {
+        let data = [0x00, 0x20, 0xFF, 0, 0, 0, 0, 0];
+        let out = decode_emcy(&data).unwrap();
+        assert_eq!(out.1, 0xFF);
+    }
+    #[test]
+    fn canopen_id_role_all_pdo_ranges() {
+        assert_eq!(canopen_id_role(0x181), "TPDO1");
+        assert_eq!(canopen_id_role(0x1FF), "TPDO1");
+        assert_eq!(canopen_id_role(0x201), "RPDO1");
+        assert_eq!(canopen_id_role(0x281), "TPDO2");
+        assert_eq!(canopen_id_role(0x301), "RPDO2");
+        assert_eq!(canopen_id_role(0x381), "TPDO3");
+        assert_eq!(canopen_id_role(0x401), "RPDO3");
+        assert_eq!(canopen_id_role(0x481), "TPDO4");
+        assert_eq!(canopen_id_role(0x501), "RPDO4");
+    }
+
+    #[test]
+    fn canopen_id_role_sdo_and_heartbeat() {
+        assert_eq!(canopen_id_role(0x581), "TSDO");
+        assert_eq!(canopen_id_role(0x5FF), "TSDO");
+        assert_eq!(canopen_id_role(0x601), "RSDO");
+        assert_eq!(canopen_id_role(0x67F), "RSDO");
+        assert_eq!(canopen_id_role(0x701), "Heartbeat");
+        assert_eq!(canopen_id_role(0x77F), "Heartbeat");
+    }
+
+    #[test]
+    fn canopen_id_role_special_ids() {
+        assert_eq!(canopen_id_role(0x000), "NMT");
+        assert_eq!(canopen_id_role(0x080), "SYNC");
+        assert_eq!(canopen_id_role(0x081), "EMCY");
+        assert_eq!(canopen_id_role(0x0FF), "EMCY");
+        assert_eq!(canopen_id_role(0x101), "TIME/Reserved");
+    }
+
+    #[test]
+    fn canopen_id_role_non_standard() {
+        assert_eq!(canopen_id_role(0x780), "Non-Standard");
+        assert_eq!(canopen_id_role(0xFFF), "Non-Standard");
+    }
+    #[test]
+    fn object_dict_name_communication_objects() {
+        assert_eq!(object_dict_name(0x1000, 0), "Device Type");
+        assert_eq!(object_dict_name(0x1001, 0), "Error Register");
+        assert_eq!(object_dict_name(0x1005, 0), "SYNC COB-ID");
+        assert_eq!(object_dict_name(0x1017, 0), "Producer Heartbeat Time");
+        assert_eq!(object_dict_name(0x1018, 1), "Vendor ID");
+        assert_eq!(object_dict_name(0x1018, 4), "Serial Number");
+    }
+
+    #[test]
+    fn object_dict_name_pdo_objects() {
+        assert_eq!(object_dict_name(0x1400, 0), "RPDO1 Communication");
+        assert_eq!(object_dict_name(0x1600, 0), "RPDO1 Mapping");
+        assert_eq!(object_dict_name(0x1800, 1), "TPDO1 COB-ID");
+        assert_eq!(object_dict_name(0x1A00, 0), "TPDO1 Mapping Entries");
+    }
+
+    #[test]
+    fn object_dict_name_device_profile() {
+        assert_eq!(object_dict_name(0x6000, 0), "Device Profile Input");
+        assert_eq!(object_dict_name(0x6800, 0), "Device Profile Output");
+        assert_eq!(object_dict_name(0xFFFF, 0), "Custom Object");
+    }
+    #[test]
+    fn pdo_data_type_bit_sizes() {
+        assert_eq!(PdoDataType::Bool.bit_size(), 1);
+        assert_eq!(PdoDataType::U8.bit_size(), 8);
+        assert_eq!(PdoDataType::I8.bit_size(), 8);
+        assert_eq!(PdoDataType::U16.bit_size(), 16);
+        assert_eq!(PdoDataType::I16.bit_size(), 16);
+        assert_eq!(PdoDataType::U32.bit_size(), 32);
+        assert_eq!(PdoDataType::I32.bit_size(), 32);
+        assert_eq!(PdoDataType::F32.bit_size(), 32);
+    }
+
+    #[test]
+    fn pdo_data_type_byte_sizes() {
+        assert_eq!(PdoDataType::Bool.byte_size(), 1); // ceil(1/8)
+        assert_eq!(PdoDataType::U8.byte_size(), 1);
+        assert_eq!(PdoDataType::U16.byte_size(), 2);
+        assert_eq!(PdoDataType::U32.byte_size(), 4);
+        assert_eq!(PdoDataType::F32.byte_size(), 4);
+    }
+
+    #[test]
+    fn pdo_data_type_display() {
+        assert_eq!(format!("{}", PdoDataType::Bool), "Bool");
+        assert_eq!(format!("{}", PdoDataType::U16), "U16");
+        assert_eq!(format!("{}", PdoDataType::F32), "F32");
+    }
+    #[test]
+    fn pdo_direction_display() {
+        assert_eq!(format!("{}", PdoDirection::Transmit), "TPDO");
+        assert_eq!(format!("{}", PdoDirection::Receive), "RPDO");
+    }
+
+    #[test]
+    fn pdo_direction_not_equal() {
+        assert_ne!(PdoDirection::Transmit, PdoDirection::Receive);
+    }
+    #[test]
+    fn pdo_mapping_entry_default() {
+        let entry = PdoMappingEntry::default();
+        assert_eq!(entry.name, "Signal");
+        assert_eq!(entry.index, 0x6000);
+        assert_eq!(entry.sub_index, 0x01);
+        assert_eq!(entry.bit_length, 16);
+        assert_eq!(entry.data_type, PdoDataType::U16);
+    }
+    #[test]
+    fn pdo_config_default() {
+        let cfg = PdoConfig::default();
+        assert_eq!(cfg.name, "PDO1");
+        assert_eq!(cfg.direction, PdoDirection::Transmit);
+        assert_eq!(cfg.cob_id, 0x181);
+        assert_eq!(cfg.node_id, 1);
+        assert!(cfg.enabled);
+        assert_eq!(cfg.mappings.len(), 1);
+    }
+
+    #[test]
+    fn pdo_config_total_bits_single_mapping() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                bit_length: 16,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        assert_eq!(cfg.total_bits(), 16);
+        assert_eq!(cfg.total_bytes(), 2);
+    }
+
+    #[test]
+    fn pdo_config_total_bits_multiple_mappings() {
+        let cfg = PdoConfig {
+            mappings: vec![
+                PdoMappingEntry {
+                    bit_length: 8,
+                    ..Default::default()
+                },
+                PdoMappingEntry {
+                    bit_length: 16,
+                    ..Default::default()
+                },
+                PdoMappingEntry {
+                    bit_length: 1,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        assert_eq!(cfg.total_bits(), 25);
+        assert_eq!(cfg.total_bytes(), 4); // ceil(25/8)
+    }
+
+    #[test]
+    fn pdo_config_build_u16_values() {
+        let cfg = PdoConfig {
+            mappings: vec![
+                PdoMappingEntry {
+                    name: "Speed".into(),
+                    index: 0x6000,
+                    sub_index: 1,
+                    bit_length: 16,
+                    data_type: PdoDataType::U16,
+                },
+                PdoMappingEntry {
+                    name: "Torque".into(),
+                    index: 0x6000,
+                    sub_index: 2,
+                    bit_length: 16,
+                    data_type: PdoDataType::U16,
+                },
+            ],
+            ..Default::default()
+        };
+        let frame = cfg.build_from_values(&[1000.0, 2000.0]);
+        // First U16 (1000 = 0x03E8) at offset 0
+        assert_eq!(frame.data[0], 0xE8);
+        assert_eq!(frame.data[1], 0x03);
+        // Second U16 (2000 = 0x07D0) at offset 2
+        assert_eq!(frame.data[2], 0xD0);
+        assert_eq!(frame.data[3], 0x07);
+    }
+
+    #[test]
+    fn pdo_config_build_missing_values_default_zero() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                bit_length: 16,
+                data_type: PdoDataType::U16,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let frame = cfg.build_from_values(&[]);
+        assert_eq!(frame.data[0], 0);
+        assert_eq!(frame.data[1], 0);
+    }
+    #[test]
+    fn fd_dlc_to_len_standard_range() {
+        for dlc in 0u8..=8 {
+            assert_eq!(fd_dlc_to_len(dlc), dlc as usize);
+        }
+    }
+
+    #[test]
+    fn fd_dlc_to_len_extended_range() {
+        assert_eq!(fd_dlc_to_len(9), 12);
+        assert_eq!(fd_dlc_to_len(10), 16);
+        assert_eq!(fd_dlc_to_len(11), 20);
+        assert_eq!(fd_dlc_to_len(12), 24);
+        assert_eq!(fd_dlc_to_len(13), 32);
+        assert_eq!(fd_dlc_to_len(14), 48);
+        assert_eq!(fd_dlc_to_len(15), 64);
+    }
+    #[test]
+    fn ecat_state_name_all_known() {
+        assert_eq!(ecat_state_name(1), "Init");
+        assert_eq!(ecat_state_name(2), "Pre-Operational");
+        assert_eq!(ecat_state_name(3), "Bootstrap");
+        assert_eq!(ecat_state_name(4), "Safe-Operational");
+        assert_eq!(ecat_state_name(8), "Operational");
+    }
+
+    #[test]
+    fn ecat_state_name_unknown_values() {
+        assert_eq!(ecat_state_name(0), "Unknown");
+        assert_eq!(ecat_state_name(255), "Unknown");
+    }
+    #[test]
+    fn can_protocol_type_all_labels() {
+        assert_eq!(CanProtocolType::Standard.label(), "CAN 2.0");
+        assert_eq!(CanProtocolType::Fd.label(), "CAN FD");
+        assert_eq!(CanProtocolType::EtherCatCoE.label(), "EtherCAT CoE");
+    }
+
+    #[test]
+    fn can_protocol_type_display() {
+        assert_eq!(format!("{}", CanProtocolType::Standard), "CAN 2.0");
+        assert_eq!(format!("{}", CanProtocolType::Fd), "CAN FD");
+    }
+    #[test]
+    fn nmt_command_all_variants_compile() {
+        let _ = NmtCommand::StartRemoteNode;
+        let _ = NmtCommand::StopRemoteNode;
+        let _ = NmtCommand::EnterPreOperational;
+        let _ = NmtCommand::ResetNode;
+        let _ = NmtCommand::ResetCommunication;
+    }
+
+    #[test]
+    fn build_nmt_different_commands() {
+        let f1 = build_nmt(1, NmtCommand::StartRemoteNode);
+        assert_eq!(f1.data[0], 0x01);
+
+        let f2 = build_nmt(2, NmtCommand::StopRemoteNode);
+        assert_eq!(f2.data[0], 0x02);
+        assert_eq!(f2.data[1], 0x02);
+    }
+    #[test]
+    fn sdo_download_4byte_expedited() {
+        let r = CanopenSdoRequest {
+            node_id: 1,
+            action: SdoAction::DownloadExpedited,
+            index: 0x6040,
+            sub_index: 0,
+            payload: vec![0x06, 0x00, 0x00, 0x00],
+        };
+        let f = r.build();
+        // 4-byte expedited: ccs=1, e=1, s=1, n=0 → 0x23
+        assert_eq!(f.data[0], 0x23);
+    }
+
+    #[test]
+    fn sdo_upload_request_node_id_affects_cob_id() {
+        let r1 = CanopenSdoRequest {
+            node_id: 1,
+            action: SdoAction::UploadRequest,
+            index: 0x1000,
+            sub_index: 0,
+            payload: vec![],
+        };
+        let r2 = CanopenSdoRequest {
+            node_id: 127,
+            action: SdoAction::UploadRequest,
+            index: 0x1000,
+            sub_index: 0,
+            payload: vec![],
+        };
+        assert_eq!(r1.build().cob_id, 0x601);
+        assert_eq!(r2.build().cob_id, 0x67F);
+    }
+    #[test]
+    fn multi_protocol_frame_to_bytes_standard() {
+        let f = MultiProtocolFrame::can_fd_pdo(0x181, &[0xAA; 8]);
+        let bytes = f.to_bytes();
+        assert!(!bytes.is_empty());
+        // First 4 bytes: can_id (le)
+        let id = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        assert_eq!(id, 0x181);
+    }
+    #[test]
+    fn can_std_frame_extended_id() {
+        let f = CanStdFrame::new(0x1FFFFFF, &[], true);
+        assert!(f.is_extended);
+        assert_eq!(f.can_id, 0x1FFFFFF);
+        assert_eq!(f.dlc(), 0);
+    }
+
+    #[test]
+    fn can_std_frame_empty_data() {
+        let f = CanStdFrame::new(0x100, &[], false);
+        assert_eq!(f.data.len(), 0);
+        assert_eq!(f.dlc(), 0);
+    }
+
+    #[test]
+    fn can_std_frame_max_data_8_bytes() {
+        let f = CanStdFrame::new(0x100, &[0xFF; 8], false);
+        assert_eq!(f.data.len(), 8);
+        assert_eq!(f.dlc(), 8);
+    }
+
+    #[test]
+    fn can_fd_frame_max_64_bytes() {
+        let f = CanStdFrame::new_fd(0x100, &[0xAA; 64], false);
+        assert_eq!(f.data.len(), 64);
+        assert_eq!(f.dlc(), 64);
+    }
+    #[test]
+    fn analyze_ecat_coe_frame_short_data() {
+        let analysis = analyze_ecat_coe_frame(&[0x01, 0x02]);
+        // Too short for full analysis
+        assert!(!analysis.valid || analysis.fields.is_empty());
+    }
+
+    #[test]
+    fn analyze_ecat_coe_frame_valid_coe() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 1,
+            index: 0x6040,
+            sub_index: 0,
+            data: vec![0x06, 0x00],
+            is_write: true,
+        };
+        let frame = sdo.build_coe_frame();
+        let mut combined = frame.mailbox_header.clone();
+        combined.extend_from_slice(&frame.coe_data);
+        let analysis = analyze_ecat_coe_frame(&combined);
+        assert!(analysis.valid);
+        assert!(!analysis.summary.is_empty());
+        // Should have MBX Length, MBX Address, MBX Type + SDO fields
+        assert!(analysis.fields.len() >= 3);
+    }
+
+    #[test]
+    fn analyze_ecat_coe_frame_read_request() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 5,
+            index: 0x1018,
+            sub_index: 1,
+            data: vec![],
+            is_write: false,
+        };
+        let frame = sdo.build_coe_frame();
+        let mut combined = frame.mailbox_header.clone();
+        combined.extend_from_slice(&frame.coe_data);
+        let analysis = analyze_ecat_coe_frame(&combined);
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Upload Init"));
+    }
+
+    #[test]
+    fn ecat_coe_frame_summary_format() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 3,
+            index: 0x1017,
+            sub_index: 0,
+            data: vec![0xE8, 0x03],
+            is_write: true,
+        };
+        let frame = sdo.build_coe_frame();
+        assert!(frame.summary.contains("Write"));
+        assert!(frame.summary.contains("Slave=3"));
+        assert!(frame.summary.contains("0x1017"));
+    }
+
+    #[test]
+    fn ecat_coe_frame_mailbox_header_length() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 1,
+            index: 0x6040,
+            sub_index: 0,
+            data: vec![0x06, 0x00],
+            is_write: true,
+        };
+        let frame = sdo.build_coe_frame();
+        // Mailbox header should be 6 bytes
+        assert_eq!(frame.mailbox_header.len(), 6);
+        // Last byte should be 0x03 (CoE type)
+        assert_eq!(frame.mailbox_header[5], 0x03);
+    }
+
+    #[test]
+    fn ecat_coe_frame_empty_data_read() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 1,
+            index: 0x1000,
+            sub_index: 0,
+            data: vec![],
+            is_write: false,
+        };
+        let frame = sdo.build_coe_frame();
+        assert!(!frame.coe_data.is_empty());
+        // Upload request command byte should be 0x40
+        assert_eq!(frame.coe_data[2], 0x40);
+    }
+    #[test]
+    fn sdo_request_cob_id_range() {
+        for node_id in 1..=127u8 {
+            let r = CanopenSdoRequest {
+                node_id,
+                action: SdoAction::UploadRequest,
+                index: 0x1000,
+                sub_index: 0,
+                payload: vec![],
+            };
+            let f = r.build();
+            // RSDO cob_id = 0x600 + node_id
+            assert_eq!(f.cob_id, 0x600 + node_id as u16);
+        }
+    }
+
+    #[test]
+    fn sdo_download_cob_id_matches_upload() {
+        let upload = CanopenSdoRequest {
+            node_id: 5,
+            action: SdoAction::UploadRequest,
+            index: 0x1000,
+            sub_index: 0,
+            payload: vec![],
+        };
+        let download = CanopenSdoRequest {
+            node_id: 5,
+            action: SdoAction::DownloadExpedited,
+            index: 0x1000,
+            sub_index: 0,
+            payload: vec![0x01],
+        };
+        // Both use same cob_id (RSDO)
+        assert_eq!(upload.build().cob_id, download.build().cob_id);
+    }
+    #[test]
+    fn nmt_reset_node_command() {
+        let f = build_nmt(1, NmtCommand::ResetNode);
+        assert_eq!(f.cob_id, 0x000);
+        assert_eq!(f.data[0], 0x81);
+        assert_eq!(f.data[1], 0x01);
+    }
+
+    #[test]
+    fn nmt_reset_communication_command() {
+        let f = build_nmt(1, NmtCommand::ResetCommunication);
+        assert_eq!(f.cob_id, 0x000);
+        assert_eq!(f.data[0], 0x82);
+    }
+
+    #[test]
+    fn nmt_enter_pre_operational() {
+        let f = build_nmt(1, NmtCommand::EnterPreOperational);
+        assert_eq!(f.data[0], 0x80);
+    }
+    #[test]
+    fn pdo_config_build_bool_values() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Enable".into(),
+                index: 0x6000,
+                sub_index: 1,
+                bit_length: 1,
+                data_type: PdoDataType::Bool,
+            }],
+            ..Default::default()
+        };
+        let frame_on = cfg.build_from_values(&[1.0]);
+        assert_ne!(frame_on.data[0] & 0x01, 0);
+
+        let frame_off = cfg.build_from_values(&[0.0]);
+        assert_eq!(frame_off.data[0] & 0x01, 0);
+    }
+
+    #[test]
+    fn pdo_config_build_u8_value() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Speed".into(),
+                index: 0x6000,
+                sub_index: 1,
+                bit_length: 8,
+                data_type: PdoDataType::U8,
+            }],
+            ..Default::default()
+        };
+        let frame = cfg.build_from_values(&[200.0]);
+        assert_eq!(frame.data[0], 200);
+    }
+    #[test]
+    fn canopen_frame_fields() {
+        let f = CanopenFrame {
+            cob_id: 0x185,
+            data: vec![0x01, 0x02, 0x03],
+        };
+        assert_eq!(f.cob_id, 0x185);
+        assert_eq!(f.data.len(), 3);
+    }
+    #[test]
+    fn object_dict_name_store_restore() {
+        assert_eq!(object_dict_name(0x1010, 0), "Store Parameters");
+        assert_eq!(object_dict_name(0x1010, 1), "Store Parameters");
+        assert_eq!(object_dict_name(0x1011, 0), "Restore Default Parameters");
+    }
+
+    #[test]
+    fn object_dict_name_emcy_objects() {
+        assert_eq!(object_dict_name(0x1014, 0), "EMCY COB-ID");
+        assert_eq!(object_dict_name(0x1015, 0), "EMCY Inhibit Time");
+    }
+
+    #[test]
+    fn object_dict_name_heartbeat_objects() {
+        assert_eq!(object_dict_name(0x1016, 0), "Consumer Heartbeat Time");
+        assert_eq!(object_dict_name(0x1017, 0), "Producer Heartbeat Time");
+    }
+
+    // ECC (EtherCAT CoE + CiA 301) Full Closure Tests
+    #[test]
+    fn nmt_state_from_heartbeat_all_codes() {
+        assert_eq!(
+            NmtState::from_heartbeat_code(0x00),
+            Some(NmtState::Initializing)
+        );
+        assert_eq!(NmtState::from_heartbeat_code(0x04), Some(NmtState::Stopped));
+        assert_eq!(
+            NmtState::from_heartbeat_code(0x05),
+            Some(NmtState::Operational)
+        );
+        assert_eq!(
+            NmtState::from_heartbeat_code(0x7F),
+            Some(NmtState::PreOperational)
+        );
+    }
+
+    #[test]
+    fn nmt_state_from_heartbeat_invalid() {
+        assert_eq!(NmtState::from_heartbeat_code(0x01), None);
+        assert_eq!(NmtState::from_heartbeat_code(0x02), None);
+        assert_eq!(NmtState::from_heartbeat_code(0x03), None);
+        assert_eq!(NmtState::from_heartbeat_code(0xFF), None);
+    }
+
+    #[test]
+    fn nmt_state_heartbeat_code_roundtrip() {
+        for state in [
+            NmtState::Initializing,
+            NmtState::Stopped,
+            NmtState::Operational,
+            NmtState::PreOperational,
+        ] {
+            let code = state.heartbeat_code();
+            let decoded = NmtState::from_heartbeat_code(code);
+            assert_eq!(decoded, Some(state), "roundtrip failed for {:?}", state);
+        }
+    }
+
+    #[test]
+    fn nmt_state_display() {
+        assert_eq!(format!("{}", NmtState::Initializing), "Initializing");
+        assert_eq!(format!("{}", NmtState::PreOperational), "Pre-Operational");
+        assert_eq!(format!("{}", NmtState::Operational), "Operational");
+        assert_eq!(format!("{}", NmtState::Stopped), "Stopped");
+    }
+
+    #[test]
+    fn nmt_state_default_is_initializing() {
+        assert_eq!(NmtState::default(), NmtState::Initializing);
+    }
+
+    #[test]
+    fn nmt_state_serde_roundtrip() {
+        for state in [
+            NmtState::Initializing,
+            NmtState::PreOperational,
+            NmtState::Operational,
+            NmtState::Stopped,
+        ] {
+            let json = serde_json::to_string(&state).unwrap();
+            let restored: NmtState = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, state);
+        }
+    }
+    #[test]
+    fn emcy_error_register_default_no_errors() {
+        let r = EmcyErrorRegister::default();
+        assert_eq!(r.bits, 0);
+        assert!(!r.generic_error());
+        assert!(!r.current_error());
+        assert!(!r.voltage_error());
+        assert!(!r.temperature_error());
+        assert!(!r.communication_error());
+        assert!(!r.device_profile_error());
+        assert!(!r.manufacturer_error());
+    }
+
+    #[test]
+    fn emcy_error_register_each_bit() {
+        let tests: &[(u8, fn(&EmcyErrorRegister) -> bool, &str)] = &[
+            (0x01, |r| r.generic_error(), "generic"),
+            (0x02, |r| r.current_error(), "current"),
+            (0x04, |r| r.voltage_error(), "voltage"),
+            (0x08, |r| r.temperature_error(), "temperature"),
+            (0x10, |r| r.communication_error(), "communication"),
+            (0x20, |r| r.device_profile_error(), "device_profile"),
+            (0x80, |r| r.manufacturer_error(), "manufacturer"),
+        ];
+        for &(bit, checker, name) in tests {
+            let r = EmcyErrorRegister { bits: bit };
+            assert!(checker(&r), "bit 0x{:02X} ({}) should be set", bit, name);
+            // All other bits should be unset
+            let others = EmcyErrorRegister { bits: !bit & 0x7F };
+            assert!(
+                !checker(&others),
+                "bit 0x{:02X} ({}) should not be set on others",
+                bit,
+                name
+            );
+        }
+    }
+
+    #[test]
+    fn emcy_error_register_describe_no_error() {
+        let r = EmcyErrorRegister { bits: 0 };
+        let desc = r.describe();
+        assert_eq!(desc, vec!["No Error"]);
+    }
+
+    #[test]
+    fn emcy_error_register_describe_multiple() {
+        let r = EmcyErrorRegister { bits: 0x03 }; // generic + current
+        let desc = r.describe();
+        assert_eq!(desc, vec!["Generic Error", "Current Error"]);
+    }
+
+    #[test]
+    fn emcy_error_register_describe_all_bits() {
+        let r = EmcyErrorRegister { bits: 0xFF };
+        let desc = r.describe();
+        assert_eq!(desc.len(), 7);
+        assert!(desc.contains(&"Generic Error"));
+        assert!(desc.contains(&"Manufacturer Error"));
+    }
+
+    #[test]
+    fn emcy_error_register_serde_roundtrip() {
+        let r = EmcyErrorRegister { bits: 0x15 };
+        let json = serde_json::to_string(&r).unwrap();
+        let restored: EmcyErrorRegister = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.bits, 0x15);
+    }
+    #[test]
+    fn emcy_error_class_from_code_all_classes() {
+        assert_eq!(
+            EmcyErrorClass::from_code(0x1000),
+            EmcyErrorClass::GenericError
+        );
+        assert_eq!(
+            EmcyErrorClass::from_code(0x1FFF),
+            EmcyErrorClass::GenericError
+        );
+        assert_eq!(EmcyErrorClass::from_code(0x2000), EmcyErrorClass::Current);
+        assert_eq!(EmcyErrorClass::from_code(0x2FFF), EmcyErrorClass::Current);
+        assert_eq!(EmcyErrorClass::from_code(0x3000), EmcyErrorClass::Voltage);
+        assert_eq!(
+            EmcyErrorClass::from_code(0x4000),
+            EmcyErrorClass::Temperature
+        );
+        assert_eq!(
+            EmcyErrorClass::from_code(0x5000),
+            EmcyErrorClass::DeviceHardware
+        );
+        assert_eq!(
+            EmcyErrorClass::from_code(0x6000),
+            EmcyErrorClass::DeviceSoftware
+        );
+        assert_eq!(
+            EmcyErrorClass::from_code(0x7000),
+            EmcyErrorClass::Monitoring
+        );
+        assert_eq!(EmcyErrorClass::from_code(0x8000), EmcyErrorClass::External);
+        assert_eq!(
+            EmcyErrorClass::from_code(0xF000),
+            EmcyErrorClass::AdditionalHardware
+        );
+        assert_eq!(
+            EmcyErrorClass::from_code(0xFF00),
+            EmcyErrorClass::DeviceSpecific
+        );
+    }
+
+    #[test]
+    fn emcy_error_class_from_code_unknown() {
+        match EmcyErrorClass::from_code(0x0042) {
+            EmcyErrorClass::Unknown(c) => assert_eq!(c, 0x0042),
+            other => panic!("Expected Unknown, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn emcy_error_class_display() {
+        assert_eq!(format!("{}", EmcyErrorClass::GenericError), "Generic Error");
+        assert_eq!(format!("{}", EmcyErrorClass::Current), "Current");
+        assert_eq!(format!("{}", EmcyErrorClass::Voltage), "Voltage");
+        assert_eq!(format!("{}", EmcyErrorClass::Temperature), "Temperature");
+        assert_eq!(
+            format!("{}", EmcyErrorClass::DeviceHardware),
+            "Device Hardware"
+        );
+        assert_eq!(
+            format!("{}", EmcyErrorClass::DeviceSoftware),
+            "Device Software"
+        );
+        assert_eq!(format!("{}", EmcyErrorClass::Monitoring), "Monitoring");
+        assert_eq!(format!("{}", EmcyErrorClass::External), "External");
+        assert_eq!(
+            format!("{}", EmcyErrorClass::AdditionalHardware),
+            "Additional Hardware"
+        );
+        assert_eq!(
+            format!("{}", EmcyErrorClass::DeviceSpecific),
+            "Device-Specific"
+        );
+        assert_eq!(
+            format!("{}", EmcyErrorClass::Unknown(0x42)),
+            "Unknown(0x0042)"
+        );
+    }
+
+    #[test]
+    fn emcy_describe_code_known_codes() {
+        assert_eq!(
+            EmcyErrorClass::describe_code(0x1000),
+            "Error Reset / No Error"
+        );
+        assert_eq!(EmcyErrorClass::describe_code(0x1001), "Generic Error");
+        assert_eq!(
+            EmcyErrorClass::describe_code(0x2110),
+            "CAN overrun (objects lost)"
+        );
+        assert_eq!(
+            EmcyErrorClass::describe_code(0x3100),
+            "Input voltage too high"
+        );
+        assert_eq!(
+            EmcyErrorClass::describe_code(0x4210),
+            "Ambient temperature too high"
+        );
+        assert_eq!(EmcyErrorClass::describe_code(0x5100), "Power supply fault");
+        assert_eq!(
+            EmcyErrorClass::describe_code(0x6100),
+            "Software reset (watchdog)"
+        );
+        assert_eq!(EmcyErrorClass::describe_code(0x7100), "Sensor fault");
+        assert_eq!(EmcyErrorClass::describe_code(0x8100), "CAN bus off");
+        assert_eq!(
+            EmcyErrorClass::describe_code(0xFF01),
+            "Manufacturer-specific: motor stall detected"
+        );
+    }
+
+    #[test]
+    fn emcy_describe_code_unknown() {
+        assert_eq!(
+            EmcyErrorClass::describe_code(0xAAAA),
+            "Unknown EMCY error code"
+        );
+    }
+    #[test]
+    fn nmt_command_all_count() {
+        assert_eq!(NmtCommand::all().len(), 5);
+    }
+
+    #[test]
+    fn nmt_command_code_values() {
+        assert_eq!(NmtCommand::StartRemoteNode.code(), 0x01);
+        assert_eq!(NmtCommand::StopRemoteNode.code(), 0x02);
+        assert_eq!(NmtCommand::EnterPreOperational.code(), 0x80);
+        assert_eq!(NmtCommand::ResetNode.code(), 0x81);
+        assert_eq!(NmtCommand::ResetCommunication.code(), 0x82);
+    }
+
+    #[test]
+    fn nmt_command_display() {
+        assert_eq!(
+            format!("{}", NmtCommand::StartRemoteNode),
+            "Start Remote Node (0x01)"
+        );
+        assert_eq!(
+            format!("{}", NmtCommand::StopRemoteNode),
+            "Stop Remote Node (0x02)"
+        );
+        assert_eq!(
+            format!("{}", NmtCommand::EnterPreOperational),
+            "Enter Pre-Operational (0x80)"
+        );
+        assert_eq!(format!("{}", NmtCommand::ResetNode), "Reset Node (0x81)");
+        assert_eq!(
+            format!("{}", NmtCommand::ResetCommunication),
+            "Reset Communication (0x82)"
+        );
+    }
+
+    #[test]
+    fn nmt_command_serde_roundtrip() {
+        for cmd in NmtCommand::all() {
+            let json = serde_json::to_string(cmd).unwrap();
+            let restored: NmtCommand = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, *cmd);
+        }
+    }
+    #[test]
+    fn sdo_action_all_count() {
+        assert_eq!(SdoAction::all().len(), 2);
+    }
+
+    #[test]
+    fn sdo_action_display() {
+        assert_eq!(
+            format!("{}", SdoAction::UploadRequest),
+            "Upload Request (Read)"
+        );
+        assert_eq!(
+            format!("{}", SdoAction::DownloadExpedited),
+            "Download Expedited (Write)"
+        );
+    }
+
+    #[test]
+    fn sdo_action_serde_roundtrip() {
+        for action in SdoAction::all() {
+            let json = serde_json::to_string(action).unwrap();
+            let restored: SdoAction = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, *action);
+        }
+    }
+    #[test]
+    fn build_heartbeat_producer_sdo_cob_id() {
+        let f = build_heartbeat_producer_sdo(5, 1000);
+        // RSDO cob_id = 0x600 + node_id
+        assert_eq!(f.cob_id, 0x605);
+    }
+
+    #[test]
+    fn build_heartbeat_producer_sdo_index() {
+        let f = build_heartbeat_producer_sdo(1, 500);
+        // Index 0x1017 = Producer Heartbeat Time
+        assert_eq!(f.data[1], 0x17);
+        assert_eq!(f.data[2], 0x10);
+    }
+
+    #[test]
+    fn build_heartbeat_producer_sdo_payload() {
+        let f = build_heartbeat_producer_sdo(1, 1000);
+        // 1000 = 0x03E8, little-endian
+        assert_eq!(f.data[4], 0xE8);
+        assert_eq!(f.data[5], 0x03);
+    }
+    #[test]
+    fn build_pdo_basic() {
+        let f = build_pdo(0x181, &[0x01, 0x02, 0x03, 0x04]);
+        assert_eq!(f.cob_id, 0x181);
+        assert_eq!(f.data, vec![0x01, 0x02, 0x03, 0x04]);
+    }
+
+    #[test]
+    fn build_pdo_truncates_to_8_bytes() {
+        let data = vec![0xAA; 20];
+        let f = build_pdo(0x281, &data);
+        assert_eq!(f.data.len(), 8, "PDO data should be truncated to 8 bytes");
+    }
+
+    #[test]
+    fn build_pdo_empty_data() {
+        let f = build_pdo(0x181, &[]);
+        assert!(f.data.is_empty());
+    }
+    #[test]
+    fn decode_values_u16() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Speed".into(),
+                bit_length: 16,
+                data_type: PdoDataType::U16,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (1000u16).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0, "Speed");
+        assert_eq!(results[0].2, 1000.0);
+    }
+
+    #[test]
+    fn decode_values_i16_negative() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Torque".into(),
+                bit_length: 16,
+                data_type: PdoDataType::I16,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (-500i16).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        assert_eq!(results[0].2, -500.0);
+    }
+
+    #[test]
+    fn decode_values_u8() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Mode".into(),
+                bit_length: 8,
+                data_type: PdoDataType::U8,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let results = cfg.decode_values(&[200]);
+        assert_eq!(results[0].2, 200.0);
+    }
+
+    #[test]
+    fn decode_values_i8_negative() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Offset".into(),
+                bit_length: 8,
+                data_type: PdoDataType::I8,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let results = cfg.decode_values(&[0xFE]); // -2 as i8
+        assert_eq!(results[0].2, -2.0);
+    }
+
+    #[test]
+    fn decode_values_u32() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Position".into(),
+                bit_length: 32,
+                data_type: PdoDataType::U32,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (100000u32).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        assert_eq!(results[0].2, 100000.0);
+    }
+
+    #[test]
+    fn decode_values_i32_negative() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Error".into(),
+                bit_length: 32,
+                data_type: PdoDataType::I32,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (-12345i32).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        assert_eq!(results[0].2, -12345.0);
+    }
+
+    #[test]
+    fn decode_values_f32() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Current".into(),
+                bit_length: 32,
+                data_type: PdoDataType::F32,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (3.25f32).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        assert!((results[0].2 - 3.25).abs() < 0.01);
+    }
+
+    #[test]
+    fn decode_values_bool() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Enable".into(),
+                bit_length: 1,
+                data_type: PdoDataType::Bool,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let results_on = cfg.decode_values(&[0x01]);
+        assert_eq!(results_on[0].2, 1.0);
+        assert_eq!(results_on[0].1, "TRUE");
+
+        let results_off = cfg.decode_values(&[0x00]);
+        assert_eq!(results_off[0].2, 0.0);
+        assert_eq!(results_off[0].1, "FALSE");
+    }
+
+    #[test]
+    fn decode_values_insufficient_data_returns_zero() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Big".into(),
+                bit_length: 32,
+                data_type: PdoDataType::U32,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        // Only 2 bytes available, need 4
+        let results = cfg.decode_values(&[0x01, 0x02]);
+        assert_eq!(results[0].2, 0.0);
+    }
+
+    #[test]
+    fn decode_values_multiple_mappings() {
+        let cfg = PdoConfig {
+            mappings: vec![
+                PdoMappingEntry {
+                    name: "Speed".into(),
+                    bit_length: 16,
+                    data_type: PdoDataType::U16,
+                    ..Default::default()
+                },
+                PdoMappingEntry {
+                    name: "Torque".into(),
+                    bit_length: 16,
+                    data_type: PdoDataType::I16,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        let mut data = Vec::new();
+        data.extend_from_slice(&500u16.to_le_bytes());
+        data.extend_from_slice(&(-100i16).to_le_bytes());
+        let results = cfg.decode_values(&data);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].2, 500.0);
+        assert_eq!(results[1].2, -100.0);
+    }
+
+    #[test]
+    fn decode_values_display_format() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "F32".into(),
+                bit_length: 32,
+                data_type: PdoDataType::F32,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let data = (1.2345f32).to_le_bytes();
+        let results = cfg.decode_values(&data);
+        // F32 should show 4 decimal places
+        assert!(
+            results[0].1.contains('.'),
+            "F32 display should have decimal: {}",
+            results[0].1
+        );
+    }
+    #[test]
+    fn sdo_download_1byte_expedited() {
+        let r = CanopenSdoRequest {
+            node_id: 1,
+            action: SdoAction::DownloadExpedited,
+            index: 0x6040,
+            sub_index: 0,
+            payload: vec![0x06],
+        };
+        let f = r.build();
+        // 1-byte: ccs=1, e=1, s=1, n=3 → 0x2F
+        assert_eq!(f.data[0], 0x2F);
+    }
+
+    #[test]
+    fn sdo_download_3byte_expedited() {
+        let r = CanopenSdoRequest {
+            node_id: 1,
+            action: SdoAction::DownloadExpedited,
+            index: 0x6040,
+            sub_index: 0,
+            payload: vec![0x01, 0x02, 0x03],
+        };
+        let f = r.build();
+        // 3-byte: ccs=1, e=1, s=1, n=1 → 0x27
+        assert_eq!(f.data[0], 0x27);
+    }
+    #[test]
+    fn build_nmt_all_commands_data_length() {
+        for cmd in NmtCommand::all() {
+            let f = build_nmt(1, *cmd);
+            assert_eq!(f.data.len(), 2, "NMT frame data should be 2 bytes");
+            assert_eq!(f.cob_id, 0x000, "NMT cob_id should be 0x000");
+        }
+    }
+    #[test]
+    fn pdo_direction_serde_roundtrip() {
+        for dir in [PdoDirection::Transmit, PdoDirection::Receive] {
+            let json = serde_json::to_string(&dir).unwrap();
+            let restored: PdoDirection = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, dir);
+        }
+    }
+
+    #[test]
+    fn pdo_data_type_serde_roundtrip() {
+        let types = [
+            PdoDataType::Bool,
+            PdoDataType::U8,
+            PdoDataType::I8,
+            PdoDataType::U16,
+            PdoDataType::I16,
+            PdoDataType::U32,
+            PdoDataType::I32,
+            PdoDataType::F32,
+        ];
+        for dt in types {
+            let json = serde_json::to_string(&dt).unwrap();
+            let restored: PdoDataType = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, dt);
+        }
+    }
+    #[test]
+    fn pdo_build_decode_roundtrip_u16() {
+        let cfg = PdoConfig {
+            mappings: vec![PdoMappingEntry {
+                name: "Val".into(),
+                bit_length: 16,
+                data_type: PdoDataType::U16,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let frame = cfg.build_from_values(&[12345.0]);
+        let decoded = cfg.decode_values(&frame.data);
+        assert_eq!(decoded[0].2, 12345.0);
+    }
+
+    #[test]
+    fn pdo_build_decode_roundtrip_multi() {
+        let cfg = PdoConfig {
+            mappings: vec![
+                PdoMappingEntry {
+                    name: "A".into(),
+                    bit_length: 16,
+                    data_type: PdoDataType::U16,
+                    ..Default::default()
+                },
+                PdoMappingEntry {
+                    name: "B".into(),
+                    bit_length: 8,
+                    data_type: PdoDataType::U8,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        let frame = cfg.build_from_values(&[500.0, 42.0]);
+        let decoded = cfg.decode_values(&frame.data);
+        assert_eq!(decoded[0].2, 500.0);
+        assert_eq!(decoded[1].2, 42.0);
+    }
+    #[test]
+    fn emcy_error_register_reserved_bit_6() {
+        let r = EmcyErrorRegister { bits: 0x40 };
+        // Bit 6 is not mapped to any named error
+        assert!(!r.generic_error());
+        assert!(!r.communication_error());
+        assert!(!r.manufacturer_error());
+    }
+    #[test]
+    fn analyze_nmt_frame() {
+        let f = build_nmt(1, NmtCommand::StartRemoteNode);
+        let analysis = analyze_canopen_frame(f.cob_id, &f.data);
+        assert_eq!(analysis.role, "NMT");
+        assert!(analysis.valid);
+        assert_eq!(analysis.node_id, 0);
+        assert!(analysis.summary.contains("Start"));
+        assert!(analysis.summary.contains("Node 1"));
+        assert!(analysis.fields.len() >= 2);
+    }
+
+    #[test]
+    fn analyze_nmt_insufficient_data() {
+        let analysis = analyze_canopen_frame(0x000, &[0x01]);
+        assert_eq!(analysis.role, "NMT");
+        assert!(!analysis.valid);
+    }
+
+    #[test]
+    fn analyze_rsdo_upload_request() {
+        let r = CanopenSdoRequest {
+            node_id: 5,
+            action: SdoAction::UploadRequest,
+            index: 0x1018,
+            sub_index: 1,
+            payload: vec![],
+        };
+        let f = r.build();
+        let analysis = analyze_canopen_frame(f.cob_id, &f.data);
+        assert_eq!(analysis.role, "RSDO");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Upload Init"));
+        assert!(analysis.summary.contains("0x1018"));
+    }
+
+    #[test]
+    fn analyze_rsdo_download() {
+        let r = CanopenSdoRequest {
+            node_id: 1,
+            action: SdoAction::DownloadExpedited,
+            index: 0x1017,
+            sub_index: 0,
+            payload: vec![0xE8, 0x03],
+        };
+        let f = r.build();
+        let analysis = analyze_canopen_frame(f.cob_id, &f.data);
+        assert_eq!(analysis.role, "RSDO");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Download Init"));
+    }
+
+    #[test]
+    fn analyze_sdo_insufficient_data() {
+        let analysis = analyze_canopen_frame(0x601, &[0x40]);
+        assert_eq!(analysis.role, "RSDO");
+        assert!(!analysis.valid);
+    }
+
+    #[test]
+    fn analyze_emcy_frame() {
+        let data = [0x00, 0x10, 0x01, 0, 0, 0, 0, 0];
+        let analysis = analyze_canopen_frame(0x081, &data);
+        assert_eq!(analysis.role, "EMCY");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("EMCY"));
+        assert!(analysis.summary.contains("Generic Error"));
+    }
+
+    #[test]
+    fn analyze_emcy_insufficient_data() {
+        let analysis = analyze_canopen_frame(0x081, &[0x00]);
+        assert_eq!(analysis.role, "EMCY");
+        assert!(!analysis.valid);
+    }
+
+    #[test]
+    fn analyze_heartbeat_operational() {
+        let analysis = analyze_canopen_frame(0x705, &[0x05]);
+        assert_eq!(analysis.role, "Heartbeat");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Operational"));
+        assert!(analysis.summary.contains("Node 5"));
+    }
+
+    #[test]
+    fn analyze_heartbeat_pre_operational() {
+        let analysis = analyze_canopen_frame(0x701, &[0x7F]);
+        assert_eq!(analysis.role, "Heartbeat");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Pre-operational"));
+    }
+
+    #[test]
+    fn analyze_heartbeat_boot_up() {
+        let analysis = analyze_canopen_frame(0x701, &[0x00]);
+        assert_eq!(analysis.role, "Heartbeat");
+        assert!(analysis.valid);
+        assert!(analysis.summary.contains("Boot-up"));
+    }
+
+    #[test]
+    fn analyze_heartbeat_no_data() {
+        let analysis = analyze_canopen_frame(0x701, &[]);
+        assert_eq!(analysis.role, "Heartbeat");
+        assert!(!analysis.valid);
+    }
+
+    #[test]
+    fn analyze_tpdo_frame() {
+        let analysis = analyze_canopen_frame(0x181, &[0x01, 0x02, 0x03]);
+        assert!(analysis.role.contains("PDO"));
+        assert!(analysis.valid);
+        assert_eq!(analysis.fields.len(), 3);
+    }
+
+    #[test]
+    fn analyze_rpdo_frame() {
+        let analysis = analyze_canopen_frame(0x201, &[0xAA, 0xBB]);
+        assert!(analysis.role.contains("PDO"));
+        assert!(analysis.valid);
+    }
+
+    #[test]
+    fn analyze_non_standard_frame() {
+        let analysis = analyze_canopen_frame(0x780, &[0x01, 0x02]);
+        assert_eq!(analysis.role, "Non-Standard");
+        assert!(analysis.valid);
+    }
+
+    #[test]
+    fn analyze_sync_frame() {
+        let analysis = analyze_canopen_frame(0x080, &[]);
+        assert_eq!(analysis.role, "SYNC");
+        assert!(analysis.valid);
+    }
+
+    #[test]
+    fn analyze_node_id_extraction() {
+        // node_id = cob_id & 0x7F
+        let analysis = analyze_canopen_frame(0x705, &[0x05]);
+        assert_eq!(analysis.node_id, 5);
+
+        let analysis2 = analyze_canopen_frame(0x181, &[0x01]);
+        assert_eq!(analysis2.node_id, 1);
+    }
+    #[test]
+    fn canopen_frame_analysis_fields() {
+        let f = build_nmt(1, NmtCommand::StartRemoteNode);
+        let analysis = analyze_canopen_frame(f.cob_id, &f.data);
+        // Check field info structure
+        assert!(!analysis.fields[0].name.is_empty());
+        assert!(!analysis.fields[0].raw_hex.is_empty());
+        assert!(!analysis.fields[0].decoded.is_empty());
+    }
+    #[test]
+    fn analyze_ecat_coe_write_has_sdo_fields() {
+        let sdo = EcatCoeSdoRequest {
+            slave_addr: 2,
+            index: 0x6040,
+            sub_index: 0,
+            data: vec![0x06, 0x00],
+            is_write: true,
+        };
+        let frame = sdo.build_coe_frame();
+        let mut combined = frame.mailbox_header.clone();
+        combined.extend_from_slice(&frame.coe_data);
+        let analysis = analyze_ecat_coe_frame(&combined);
+        assert!(analysis.valid);
+        // Should have MBX Length, MBX Address, MBX Type + CoE SDO Cmd + OD Index + SubIndex
+        assert!(
+            analysis.fields.len() >= 5,
+            "Expected >=5 fields, got {}",
+            analysis.fields.len()
+        );
+    }
+    #[test]
+    fn can_protocol_type_serde_roundtrip() {
+        for pt in [
+            CanProtocolType::Standard,
+            CanProtocolType::Fd,
+            CanProtocolType::EtherCatCoE,
+        ] {
+            let json = serde_json::to_string(&pt).unwrap();
+            let restored: CanProtocolType = serde_json::from_str(&json).unwrap();
+            assert_eq!(restored, pt);
+        }
+    }
+
+    // 严格补全：剩余未测试公共函数
+    #[test]
+    fn fd_len_to_dlc_standard_range() {
+        for len in 0..=8 {
+            assert_eq!(fd_len_to_dlc(len), len as u8);
+        }
+    }
+
+    #[test]
+    fn fd_len_to_dlc_extended() {
+        assert_eq!(fd_len_to_dlc(9), 9);
+        assert_eq!(fd_len_to_dlc(12), 9);
+        assert_eq!(fd_len_to_dlc(13), 10);
+        assert_eq!(fd_len_to_dlc(16), 10);
+        assert_eq!(fd_len_to_dlc(17), 11);
+        assert_eq!(fd_len_to_dlc(20), 11);
+        assert_eq!(fd_len_to_dlc(21), 12);
+        assert_eq!(fd_len_to_dlc(24), 12);
+        assert_eq!(fd_len_to_dlc(25), 13);
+        assert_eq!(fd_len_to_dlc(32), 13);
+        assert_eq!(fd_len_to_dlc(33), 14);
+        assert_eq!(fd_len_to_dlc(48), 14);
+        assert_eq!(fd_len_to_dlc(49), 15);
+        assert_eq!(fd_len_to_dlc(64), 15);
+        assert_eq!(fd_len_to_dlc(100), 15);
+    }
+    #[test]
+    fn is_fd_valid_len_standard() {
+        for len in 0..=8 {
+            assert!(is_fd_valid_len(len), "{} should be valid", len);
+        }
+    }
+
+    #[test]
+    fn is_fd_valid_len_extended() {
+        for len in [12, 16, 20, 24, 32, 48, 64] {
+            assert!(is_fd_valid_len(len), "{} should be valid", len);
+        }
+    }
+
+    #[test]
+    fn is_fd_valid_len_invalid() {
+        for len in [9, 10, 11, 13, 14, 15, 17, 25, 33, 50, 100] {
+            assert!(!is_fd_valid_len(len), "{} should be invalid", len);
+        }
+    }
+    #[test]
+    fn pdo_config_from_json_valid() {
+        let cfg = PdoConfig::default();
+        let json = serde_json::to_string(&cfg).unwrap();
+        let restored = PdoConfig::from_json(&json);
+        assert!(restored.is_some());
+        assert_eq!(restored.unwrap().name, "PDO1");
+    }
+
+    #[test]
+    fn pdo_config_from_json_invalid() {
+        assert!(PdoConfig::from_json("not json").is_none());
+        assert!(PdoConfig::from_json("").is_none());
+        // Empty object fails because required fields are missing
+        assert!(PdoConfig::from_json("{}").is_none());
+    }
+    #[test]
+    fn preset_pdo_configs_non_empty() {
+        let presets = preset_pdo_configs();
+        assert!(!presets.is_empty(), "Should have at least one preset");
+    }
+
+    #[test]
+    fn preset_pdo_configs_valid_structure() {
+        let presets = preset_pdo_configs();
+        for preset in &presets {
+            assert!(!preset.name.is_empty());
+            assert!(preset.cob_id > 0);
+            assert!(!preset.mappings.is_empty());
+        }
+    }
+
+    #[test]
+    fn preset_pdo_configs_unique_names() {
+        let presets = preset_pdo_configs();
+        let names: Vec<&str> = presets.iter().map(|p| p.name.as_str()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len(), "Preset names should be unique");
+    }
+    #[test]
+    fn fd_dlc_len_roundtrip_consistency() {
+        // fd_len_to_dlc(fd_dlc_to_len(dlc)) == dlc for valid DLC values
+        for dlc in 0..=15u8 {
+            let len = fd_dlc_to_len(dlc);
+            let back = fd_len_to_dlc(len);
+            assert_eq!(
+                back, dlc,
+                "roundtrip failed: dlc={} → len={} → dlc={}",
+                dlc, len, back
+            );
+        }
     }
 }

@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-// ═══════════════════════════════════════════════════════════════
 // 连接类型
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConnectionType {
@@ -47,9 +45,7 @@ impl fmt::Display for ConnectionType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 连接状态
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ConnectionStatus {
@@ -96,9 +92,7 @@ impl fmt::Display for ConnectionStatus {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 串口配置
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerialConfig {
@@ -150,11 +144,8 @@ impl SerialConfig {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // TCP 配置
-// ═══════════════════════════════════════════════════════════════
 // CAN 配置
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanConfig {
@@ -240,9 +231,7 @@ impl CanConfig {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // USB 协议类型
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UsbProtocol {
@@ -345,9 +334,7 @@ impl fmt::Display for UsbProtocol {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // USB 配置
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UsbConfig {
@@ -478,7 +465,6 @@ mod tests {
         assert_eq!(format!("{}", ConnectionStatus::Error), "Error");
     }
 
-    // ─── CAN 配置 ──────────────────────
     #[test]
     fn test_can_config_default() {
         let cfg = CanConfig::default();
@@ -524,7 +510,6 @@ mod tests {
         assert!(opts.contains(&4));
     }
 
-    // ─── USB 协议 ──────────────────────
     #[test]
     fn test_usb_protocol_all() {
         assert_eq!(UsbProtocol::all().len(), 12);
@@ -575,5 +560,98 @@ mod tests {
         for p in UsbProtocol::all() {
             assert!(!p.typical_speeds().is_empty(), "{:?} should have speeds", p);
         }
+    }
+    #[test]
+    fn connection_status_is_error_true_for_faults() {
+        let status = ConnectionStatus::HardwareFault;
+        assert!(status.is_error());
+    }
+
+    #[test]
+    fn connection_status_is_error_false_for_ok() {
+        assert!(!ConnectionStatus::Disconnected.is_error());
+        assert!(!ConnectionStatus::Connecting.is_error());
+        assert!(!ConnectionStatus::Connected.is_error());
+    }
+    #[test]
+    fn flow_control_options_non_empty() {
+        let opts = SerialConfig::flow_control_options();
+        assert!(!opts.is_empty());
+        assert!(opts.contains(&"None"));
+    }
+
+    #[test]
+    fn flow_control_options_unique() {
+        let opts = SerialConfig::flow_control_options();
+        let unique: std::collections::HashSet<&&str> = opts.iter().collect();
+        assert_eq!(opts.len(), unique.len());
+    }
+
+    // 提标: connection 边界测试 +7
+
+    #[test]
+    fn connection_type_all_count() {
+        assert_eq!(ConnectionType::all().len(), 8);
+    }
+
+    #[test]
+    fn connection_type_display() {
+        for ct in ConnectionType::all() {
+            let display = format!("{}", ct);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn connection_status_display() {
+        let statuses = [
+            ConnectionStatus::Disconnected,
+            ConnectionStatus::Connecting,
+            ConnectionStatus::Connected,
+            ConnectionStatus::HardwareFault,
+        ];
+        for s in &statuses {
+            let display = format!("{}", s);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn serial_config_baud_rates() {
+        let bauds = SerialConfig::baud_rates();
+        assert!(!bauds.is_empty());
+        assert!(bauds.contains(&115200));
+    }
+
+    #[test]
+    fn serial_config_data_bits_options() {
+        let opts = SerialConfig::data_bits_options();
+        assert!(!opts.is_empty());
+        assert!(opts.contains(&8));
+    }
+
+    #[test]
+    fn serial_config_stop_bits_options() {
+        let opts = SerialConfig::stop_bits_options();
+        assert!(!opts.is_empty());
+        assert!(opts.contains(&1));
+    }
+
+    #[test]
+    fn can_config_standard_bitrates() {
+        let rates = CanConfig::standard_bitrates();
+        assert!(!rates.is_empty());
+    }
+
+    #[test]
+    fn can_config_fd_data_bitrates() {
+        let rates = CanConfig::fd_data_bitrates();
+        assert!(!rates.is_empty());
+    }
+
+    #[test]
+    fn can_config_sjw_options() {
+        let opts = CanConfig::sjw_options();
+        assert!(!opts.is_empty());
     }
 }

@@ -331,4 +331,102 @@ mod tests {
             output
         );
     }
+    #[test]
+    fn with_limits_sets_output_and_integral() {
+        let c = PidController::with_limits(1.0, 0.1, 0.01, 50.0, 200.0, 100.0);
+        assert_eq!(c.setpoint, 50.0);
+        assert_eq!(c.output_limit, 200.0);
+        assert_eq!(c.integral_limit, 100.0);
+    }
+    #[test]
+    fn dead_zone_suppresses_small_errors() {
+        let mut c = PidController::new(10.0, 0.0, 0.0, 0.0);
+        c.dead_zone = 5.0;
+        c.setpoint = 100.0;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out = c.compute(97.0); // error=3 < dead_zone=5
+        assert_eq!(
+            c.last_error, 0.0,
+            "Error within dead_zone should be suppressed"
+        );
+        let _ = out;
+    }
+    #[test]
+    fn pid_name() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = PidController::default();
+        assert_eq!(c.name(), "Classic PID");
+    }
+
+    #[test]
+    fn pid_default_params() {
+        let c = PidController::default();
+        assert_eq!(c.setpoint, 0.0);
+        assert_eq!(c.output, 0.0);
+        assert_eq!(c.integral, 0.0);
+        assert_eq!(c.last_error, 0.0);
+    }
+
+    #[test]
+    fn pid_anti_windup_limits_integral() {
+        let mut c = PidController::new(10.0, 100.0, 0.0, 0.0);
+        c.anti_windup = true;
+        c.integral_limit = 5.0;
+        c.setpoint = 100.0;
+        for _ in 0..100 {
+            c.compute(0.0);
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(
+            c.integral.abs() <= 5.0 + 0.01,
+            "Integral should be clamped: {}",
+            c.integral
+        );
+    }
+
+    #[test]
+    fn pid_feedforward_adds_to_output() {
+        let mut c1 = PidController::new(0.0, 0.0, 0.0, 10.0);
+        c1.feedforward = 0.0;
+        let mut c2 = PidController::new(0.0, 0.0, 0.0, 10.0);
+        c2.feedforward = 1.0;
+        c1.compute(0.0);
+        c2.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let out1 = c1.compute(0.0);
+        let out2 = c2.compute(0.0);
+        assert!(out2 >= out1, "Feedforward should increase output");
+    }
+    #[test]
+    fn pid_output_finite_after_steps() {
+        let mut c = PidController::new(1.0, 0.1, 0.01, 0.0);
+        c.compute(0.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn pid_reset_clears_integral() {
+        let mut c = PidController::new(1.0, 1.0, 0.0, 0.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(5.0);
+        c.reset();
+        assert_eq!(c.integral, 0.0);
+        assert_eq!(c.last_error, 0.0);
+    }
+
+    #[test]
+    fn pid_derivative_filter_smooths() {
+        let mut c = PidController::new(0.0, 0.0, 1.0, 0.0);
+        c.derivative_filter = 0.5;
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(1.0);
+        assert!(c.derivative.is_finite());
+    }
 }

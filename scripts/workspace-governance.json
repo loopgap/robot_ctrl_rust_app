@@ -29,7 +29,9 @@
       "CONTRIBUTING.md",
       "clippy.toml",
       "rustfmt.toml",
-      ".clippy.toml"
+      ".clippy.toml",
+      "assets",
+      "verification_reports"
     ],
     "allowedRootRegex": [
       "^.+\\.code-workspace$"
@@ -85,6 +87,7 @@
       ".git",
       ".codegraph",
       ".github",
+      "assets",
       "docs",
       "integrations",
       "scripts",

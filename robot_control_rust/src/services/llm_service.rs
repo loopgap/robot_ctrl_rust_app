@@ -382,4 +382,86 @@ mod tests {
         let result = svc.suggest_pid_params(&params, &errors);
         assert!(result.is_err());
     }
+    #[test]
+    fn llm_service_new_stores_params() {
+        let svc = LlmService::new("http://api.test".into(), "key123".into(), "gpt-4".into());
+        assert_eq!(svc.api_url, "http://api.test");
+        assert_eq!(svc.api_key, "key123");
+        assert_eq!(svc.model, "gpt-4");
+    }
+
+    #[test]
+    fn pid_params_default_values() {
+        let p = PidParams {
+            kp: 1.0,
+            ki: 0.1,
+            kd: 0.01,
+            setpoint: 100.0,
+        };
+        assert_eq!(p.kp, 1.0);
+        assert_eq!(p.setpoint, 100.0);
+    }
+
+    #[test]
+    fn suggested_params_fields() {
+        let s = SuggestedParams {
+            kp: 2.0,
+            ki: 0.2,
+            kd: 0.02,
+            reasoning: "test".into(),
+        };
+        assert_eq!(s.kp, 2.0);
+        assert_eq!(s.reasoning, "test");
+    }
+
+    #[test]
+    fn suggest_pid_params_empty_errors() {
+        let svc = LlmService::new("http://localhost:1".into(), "k".into(), "m".into());
+        let params = PidParams {
+            kp: 1.0,
+            ki: 0.1,
+            kd: 0.01,
+            setpoint: 10.0,
+        };
+        let result = svc.suggest_pid_params(&params, &[]);
+        // Should either succeed or fail with connection error, not panic
+        let _ = result;
+    }
+    #[test]
+    fn llm_service_empty_url_fails_fast() {
+        let svc = LlmService::new("".into(), "k".into(), "m".into());
+        let params = PidParams {
+            kp: 1.0,
+            ki: 0.1,
+            kd: 0.01,
+            setpoint: 10.0,
+        };
+        let errors = vec![1.0; 10];
+        let result = svc.suggest_pid_params(&params, &errors);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn pid_params_clone() {
+        let p = PidParams {
+            kp: 1.0,
+            ki: 0.1,
+            kd: 0.01,
+            setpoint: 10.0,
+        };
+        let p2 = p.clone();
+        assert_eq!(p.kp, p2.kp);
+    }
+
+    #[test]
+    fn suggested_params_clone() {
+        let s = SuggestedParams {
+            kp: 2.0,
+            ki: 0.2,
+            kd: 0.02,
+            reasoning: "test".into(),
+        };
+        let s2 = s.clone();
+        assert_eq!(s.reasoning, s2.reasoning);
+    }
 }

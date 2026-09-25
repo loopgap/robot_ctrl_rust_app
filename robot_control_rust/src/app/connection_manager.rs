@@ -455,4 +455,44 @@ mod tests {
         cm.can.is_running = false;
         assert!(!cm.is_any_connected());
     }
+
+    // 提标: connection_manager 补全
+
+    #[test]
+    fn connection_manager_default_ports_empty() {
+        let cm = ConnectionManager::new();
+        assert!(cm.available_ports.is_empty());
+    }
+
+    #[test]
+    fn connection_manager_active_conn_default() {
+        let cm = ConnectionManager::new();
+        assert_eq!(cm.active_conn, ConnectionType::Serial);
+    }
+
+    #[test]
+    fn connection_manager_serial_status_default() {
+        let cm = ConnectionManager::new();
+        assert_eq!(cm.serial.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn connection_manager_tcp_status_default() {
+        let cm = ConnectionManager::new();
+        assert_eq!(cm.tcp.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn connection_manager_udp_status_default() {
+        let cm = ConnectionManager::new();
+        assert_eq!(cm.udp.status, ConnectionStatus::Disconnected);
+    }
+
+    #[test]
+    fn connection_manager_reset_counters() {
+        let mut cm = ConnectionManager::new();
+        cm.reset_counters();
+        assert_eq!(cm.total_bytes_sent(), 0);
+        assert_eq!(cm.total_bytes_received(), 0);
+    }
 }

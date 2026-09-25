@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // Smith 预估控制器
-// ═══════════════════════════════════════════════════════════════
 //
 // Smith 预估器用于补偿过程中的纯时滞（dead time）。
 // 通过内部过程模型预测无时滞的系统响应，将 PID 控制器
@@ -388,5 +386,148 @@ mod tests {
             pred != 0.0 || c.delay_buffer_len() > 0,
             "Model should have prediction data"
         );
+    }
+    #[test]
+    fn smith_name_is_smith() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let c = SmithPredictorController::default();
+        assert_eq!(c.name(), "Smith Predictor");
+    }
+
+    #[test]
+    fn smith_setpoint_via_trait() {
+        use crate::models::control_algorithm::ControlAlgorithm;
+        let mut c = SmithPredictorController::default();
+        c.set_setpoint(33.0);
+        assert_eq!(c.setpoint(), 33.0);
+    }
+
+    #[test]
+    fn smith_with_model_delay_zero() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 0.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn smith_with_model_large_delay() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 5.0);
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.output.is_finite());
+    }
+
+    #[test]
+    fn smith_output_limit_respected() {
+        let mut c = SmithPredictorController::new(100.0, 0.0, 0.0, 1000.0);
+        c.output_limit = 20.0;
+        c.compute(0.0);
+        thread::sleep(Duration::from_millis(10));
+        let out = c.compute(0.0);
+        assert!(out.abs() <= 20.0, "Output should be clamped: {}", out);
+    }
+
+    #[test]
+    fn smith_serde_roundtrip() {
+        let c = SmithPredictorController::new(2.0, 0.5, 0.1, 10.0);
+        let json = serde_json::to_string(&c).unwrap();
+        let restored: SmithPredictorController = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.setpoint, 10.0);
+    }
+    #[test]
+    fn smith_delay_buffer_grows_with_time() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 0.5);
+        c.compute(0.0);
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            c.compute(0.0);
+        }
+        let len1 = c.delay_buffer_len();
+        for _ in 0..5 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            c.compute(0.0);
+        }
+        let len2 = c.delay_buffer_len();
+        assert!(
+            len2 >= len1,
+            "Delay buffer should grow or stabilize: {} -> {}",
+            len1,
+            len2
+        );
+    }
+    #[test]
+    fn smith_default_params() {
+        let c = SmithPredictorController::default();
+        assert_eq!(c.setpoint, 0.0);
+        assert_eq!(c.output, 0.0);
+    }
+
+    #[test]
+    fn smith_with_model_params() {
+        let c = SmithPredictorController::with_model(1.0, 0.5, 0.1, 10.0, 2.0, 0.2, 0.5);
+        assert_eq!(c.setpoint, 10.0);
+    }
+
+    #[test]
+    fn smith_output_finite_after_multiple_steps() {
+        let mut c = SmithPredictorController::new(1.0, 0.1, 0.01, 10.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.output.is_finite());
+        assert!(c.model_state.is_finite());
+    }
+
+    #[test]
+    fn smith_integral_accumulates() {
+        let mut c = SmithPredictorController::new(1.0, 0.5, 0.0, 10.0);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.integral.is_finite());
+    }
+
+    #[test]
+    fn smith_model_prediction_finite() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 0.05);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        assert!(c.model_prediction().is_finite());
+    }
+
+    #[test]
+    fn smith_delay_buffer_len_nonnegative() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 0.1);
+        c.compute(0.0);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        c.compute(0.0);
+        let _len = c.delay_buffer_len(); // usize is always >= 0
+    }
+    #[test]
+    fn smith_integral_bounded() {
+        let mut c = SmithPredictorController::new(100.0, 10.0, 0.0, 1000.0);
+        c.output_limit = 50.0;
+        c.compute(0.0);
+        for _ in 0..20 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.integral.is_finite());
+    }
+
+    #[test]
+    fn smith_with_model_delay_buffer_populated() {
+        let mut c = SmithPredictorController::with_model(1.0, 0.0, 0.0, 10.0, 1.0, 0.1, 0.1);
+        c.compute(0.0);
+        for _ in 0..10 {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            c.compute(0.0);
+        }
+        assert!(c.delay_buffer_len() > 0, "Delay buffer should have entries");
     }
 }

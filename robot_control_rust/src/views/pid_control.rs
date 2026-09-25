@@ -9,7 +9,6 @@ const PARAM_INPUT_WIDTH: f32 = 96.0;
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_pid_control(lang), "pid");
 
@@ -17,40 +16,39 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 12.0;
 
-            let run_btn = if state.control.is_running {
-                RichText::new(Tr::stop_control(lang))
-                    .size(15.0)
-                    .color(state.anim.animate_color(
-                        "pid_control_1".into(),
-                        theme.status_error,
-                        theme.status_error,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ))
+            let (run_label, run_color) = if state.control.is_running {
+                (Tr::stop_control(lang), theme.status_error)
             } else {
-                RichText::new(Tr::start_control(lang))
-                    .size(15.0)
-                    .color(state.anim.animate_color(
-                        "pid_control_1".into(),
-                        theme.status_ok,
-                        theme.status_ok,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    ))
+                (Tr::start_control(lang), theme.status_ok)
             };
-            if ui.button(run_btn).clicked() {
+            if ui
+                .button(
+                    RichText::new(run_label)
+                        .size(15.0)
+                        .color(run_color)
+                        .strong(),
+                )
+                .clicked()
+            {
                 state.control.toggle_running();
             }
 
+            let estop_widget = egui::Button::new(
+                RichText::new(Tr::emergency_stop(lang))
+                    .size(14.0)
+                    .color(Color32::WHITE)
+                    .strong(),
+            )
+            .fill(theme.status_error)
+            .stroke(egui::Stroke::new(1.5_f32, Color32::from_rgb(255, 100, 100)))
+            .corner_radius(6.0);
             if ui
-                .button(
-                    RichText::new(Tr::emergency_stop(lang))
-                        .size(15.0)
-                        .color(Color32::RED)
-                        .strong(),
-                )
+                .add(estop_widget)
+                .on_hover_text(if lang == crate::i18n::Language::Chinese {
+                    "立即停止所有电机输出（安全急停）"
+                } else {
+                    "Immediately halt all motor output (safety E-stop)"
+                })
                 .clicked()
             {
                 state.control.emergency_stop();
@@ -58,21 +56,31 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
             ui.add_space(12.0);
 
+            let time = ui.ctx().input(|i| i.time);
             if state.control.is_running {
+                crate::views::ui_kit::status_dot(
+                    ui,
+                    &mut state.anim,
+                    time,
+                    "pid_run_status",
+                    true,
+                    &theme,
+                );
                 ui.label(
                     RichText::new(Tr::running(lang))
-                        .color(state.anim.animate_color(
-                            "pid_control_2".into(),
-                            theme.status_ok,
-                            theme.status_ok,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        ))
+                        .color(theme.status_ok)
                         .strong(),
                 );
             } else {
-                ui.label(RichText::new(Tr::stopped(lang)).color(Color32::GRAY));
+                crate::views::ui_kit::status_dot(
+                    ui,
+                    &mut state.anim,
+                    time,
+                    "pid_run_status",
+                    false,
+                    &theme,
+                );
+                ui.label(RichText::new(Tr::stopped(lang)).color(theme.text_muted));
             }
         });
     });
@@ -98,14 +106,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                 let btn = if selected {
                     RichText::new(name.to_string())
                         .strong()
-                        .color(state.anim.animate_color(
-                            "pid_control_1".into(),
-                            theme.accent_blue,
-                            theme.accent_blue,
-                            0.3,
-                            crate::app::animation::Easing::EaseOut,
-                            current_time,
-                        ))
+                        .color(theme.accent_blue)
                 } else {
                     RichText::new(name.to_string())
                 };
@@ -144,7 +145,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         }
     });
 
-    // ─── 预设管理（仅经典PID有预设） ─────────────────────
     if state.control.active_index == ControlAlgorithmType::ClassicPid.index() {
         ui.add_space(10.0);
         settings_card(ui, |ui| {
@@ -203,7 +203,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         });
     }
 
-    // ─── 当前状态 ────────────────────────────────────────
     ui.add_space(10.0);
     settings_card(ui, |ui| {
         ui.label(RichText::new(Tr::current_state(lang)).size(16.0).strong());
@@ -250,7 +249,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         }
     });
 
-    // ─── 底盘运动学代码示例 ──────────────────────────────
     ui.add_space(10.0);
     settings_card(ui, |ui| {
         ui.collapsing(
@@ -291,9 +289,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 各算法参数面板
-// ═══════════════════════════════════════════════════════════════
 
 fn show_classic_pid(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
@@ -995,9 +991,7 @@ fn show_smith_predictor(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
 // ADRC 参数面板
-// ═══════════════════════════════════════════════════════════════
 
 fn show_adrc(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
@@ -1112,9 +1106,7 @@ fn show_adrc(ui: &mut Ui, state: &mut AppState) {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
 // LADRC 参数面板
-// ═══════════════════════════════════════════════════════════════
 
 fn show_ladrc(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
@@ -1174,9 +1166,7 @@ fn show_ladrc(ui: &mut Ui, state: &mut AppState) {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
 // LQR 参数面板
-// ═══════════════════════════════════════════════════════════════
 
 fn show_lqr(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
@@ -1253,9 +1243,7 @@ fn show_lqr(ui: &mut Ui, state: &mut AppState) {
     ui.add(egui::Slider::new(&mut state.control.lqr_mut().output_limit, 1.0..=1000.0).step_by(1.0));
 }
 
-// ═══════════════════════════════════════════════════════════════
 // MPC 参数面板
-// ═══════════════════════════════════════════════════════════════
 
 fn show_mpc(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();

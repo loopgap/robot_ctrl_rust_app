@@ -101,8 +101,21 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
         ui.add_space(6.0);
         ui.label(tr_search(lang));
-        ui.text_edit_singleline(&mut state.ui.analysis_query)
-            .on_hover_text(tr_search_hint(lang));
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut state.ui.analysis_query)
+                .on_hover_text(tr_search_hint(lang));
+            if !state.ui.analysis_query.is_empty()
+                && ui
+                    .small_button(if lang == Language::Chinese {
+                        "清除"
+                    } else {
+                        "Clear"
+                    })
+                    .clicked()
+            {
+                state.ui.analysis_query.clear();
+            }
+        });
 
         ui.add_space(8.0);
         if ui.button(Tr::menu_export_log(lang)).clicked() {
@@ -137,26 +150,59 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             .collect();
 
         if filtered.is_empty() {
-            ui.label(RichText::new(tr_no_results(lang)).color(Color32::GRAY));
+            crate::views::ui_kit::empty_state(
+                ui,
+                "packet",
+                "No Matching Logs",
+                tr_no_results(lang),
+                &theme,
+            );
             return;
         }
 
         egui::ScrollArea::vertical()
             .max_height(420.0)
+            .auto_shrink([false, false])
             .show(ui, |ui| {
                 for entry in filtered {
-                    let line = format!(
-                        "[{}] [{}] [{}] {}",
-                        entry.timestamp,
-                        entry.channel,
-                        direction_label(entry.direction),
-                        entry.format_data()
-                    );
-                    ui.label(
-                        RichText::new(line)
-                            .monospace()
-                            .color(direction_color(entry.direction, &theme)),
-                    );
+                    let dir_label = direction_label(entry.direction);
+                    let dir_color = direction_color(entry.direction, &theme);
+                    let bg_chip = dir_color.gamma_multiply(0.18);
+
+                    ui.horizontal_wrapped(|ui| {
+                        ui.spacing_mut().item_spacing.x = 8.0;
+                        ui.label(
+                            RichText::new(&entry.timestamp)
+                                .size(11.0)
+                                .color(theme.text_muted)
+                                .monospace(),
+                        );
+                        ui.label(
+                            RichText::new(format!("[{}]", entry.channel))
+                                .size(11.0)
+                                .color(theme.text_label),
+                        );
+                        egui::Frame::NONE
+                            .fill(bg_chip)
+                            .stroke(egui::Stroke::new(1.0_f32, dir_color.gamma_multiply(0.6)))
+                            .corner_radius(3.0)
+                            .inner_margin(egui::Margin::symmetric(5, 1))
+                            .show(ui, |ui| {
+                                ui.label(
+                                    RichText::new(dir_label)
+                                        .size(10.5)
+                                        .color(dir_color)
+                                        .strong()
+                                        .monospace(),
+                                );
+                            });
+                        ui.label(
+                            RichText::new(entry.format_data())
+                                .size(12.0)
+                                .color(theme.text_primary)
+                                .monospace(),
+                        );
+                    });
                 }
             });
     });

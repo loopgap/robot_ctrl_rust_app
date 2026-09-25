@@ -7,11 +7,9 @@ use egui_plot::{Bar, BarChart, Line, Plot, PlotPoints, Points};
 
 pub fn show(ui: &mut Ui, state: &mut AppState) {
     let theme = state.theme.clone();
-    let current_time = ui.ctx().input(|i| i.time);
     let lang = state.lang();
     page_header(ui, Tr::tab_data_viz(lang), "viz");
 
-    // ─── 通道管理面板 ────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
@@ -36,7 +34,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 添加/删除通道 ──────────────────────────────────
     settings_card(ui, |ui| {
         ui.collapsing(Tr::viz_channel_config(lang), |ui| {
             // 现有通道的可视化类型修改
@@ -209,7 +206,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
 
     ui.add_space(10.0);
 
-    // ─── 数据统计 ────────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.label(format!(
@@ -224,14 +220,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
                         "Dropped points: {}",
                         state.viz.channel_overflow_events
                     ))
-                    .color(state.anim.animate_color(
-                        "data_viz_1".into(),
-                        theme.status_warn,
-                        theme.status_warn,
-                        0.3,
-                        crate::app::animation::Easing::EaseOut,
-                        current_time,
-                    )),
+                    .color(theme.status_warn),
                 );
             }
             ui.separator();
@@ -254,7 +243,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         return;
     }
 
-    // ─── 更新通道缓冲区 ─────────────────────────────────
     // (Sync RobotState-based channels from state_history)
     while state.viz.channel_buffers.len() < state.viz.data_channels.len() {
         state
@@ -290,7 +278,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         state.report_channel_overflow(dropped_total);
     }
 
-    // ─── 渲染各通道 ─────────────────────────────────────
     // Split channels by viz type for efficient rendering
     let enabled_channels: Vec<(usize, &crate::models::data_channel::DataChannel)> = state
         .viz
@@ -336,7 +323,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     .max(1);
     let section_height = (remaining_height / section_count as f32).max(140.0);
 
-    // ─── Line / Scatter 图表 ─────────────────────────────
     if !line_scatter.is_empty() {
         Plot::new("viz_line_scatter_plot")
             .height(section_height)
@@ -374,7 +360,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(4.0);
     }
 
-    // ─── Bar 图表 ────────────────────────────────────────
     if !bars.is_empty() {
         Plot::new("viz_bar_plot")
             .height(section_height)
@@ -401,7 +386,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(4.0);
     }
 
-    // ─── Gauge 仪表盘 ───────────────────────────────────
     if !gauges.is_empty() {
         ui.horizontal_wrapped(|ui| {
             for &&(idx, ch) in &gauges {
@@ -444,7 +428,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(4.0);
     }
 
-    // ─── Histogram 直方图 ────────────────────────────────
     if !histograms.is_empty() {
         Plot::new("viz_histogram_plot")
             .height(section_height)
@@ -468,7 +451,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
         ui.add_space(4.0);
     }
 
-    // ─── Table 表格 ──────────────────────────────────────
     if !tables.is_empty() {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             egui::ScrollArea::horizontal().show(ui, |ui| {

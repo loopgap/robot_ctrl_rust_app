@@ -383,9 +383,6 @@ mod tests {
         let output = dual.compute_dual(10.0, 1.0);
         assert!(output.is_finite());
     }
-
-    // ── Deep: pid accessor macros ──
-
     #[test]
     fn test_pid_accessor() {
         let engine = ControlEngine::new();
@@ -483,9 +480,6 @@ mod tests {
         engine.mpc_mut().set_setpoint(8.0);
         assert_eq!(engine.mpc().setpoint(), 8.0);
     }
-
-    // ── Deep: NN training pipeline ──
-
     #[test]
     fn test_nn_train_step_insufficient_history() {
         let mut engine = ControlEngine::new();
@@ -572,9 +566,6 @@ mod tests {
         assert_eq!(pid.ki, 0.25);
         assert_eq!(pid.kd, 0.025);
     }
-
-    // ── Deep: different algorithms produce different outputs ──
-
     #[test]
     fn test_different_algorithms_produce_different_outputs() {
         let mut outputs = Vec::new();
@@ -600,9 +591,6 @@ mod tests {
             outputs
         );
     }
-
-    // ── Deep: presets and NN defaults ──
-
     #[test]
     fn test_defaults() {
         let engine = ControlEngine::new();

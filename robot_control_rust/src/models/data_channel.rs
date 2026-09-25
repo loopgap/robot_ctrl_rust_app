@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// ═══════════════════════════════════════════════════════════════
 // 可视化类型
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VizType {
@@ -51,9 +49,7 @@ impl std::fmt::Display for VizType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 数据来源
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataSource {
@@ -108,9 +104,7 @@ impl std::fmt::Display for RobotStateField {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 数据通道
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataChannel {
@@ -181,9 +175,7 @@ impl DataChannel {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 时间序列数据缓冲区
-// ═══════════════════════════════════════════════════════════════
 
 const MAX_DATA_POINTS: usize = 2000;
 
@@ -362,9 +354,7 @@ pub struct DataStatistics {
     pub count: usize,
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 测试
-// ═══════════════════════════════════════════════════════════════
 
 #[cfg(test)]
 mod tests {
@@ -550,5 +540,279 @@ mod tests {
                 field_name: "Speed".into(),
             }
         );
+    }
+    #[test]
+    fn set_max_points_clamps_minimum_to_32() {
+        let mut buf = TimeSeriesBuffer::default();
+        let overflow = buf.set_max_points(5);
+        assert_eq!(buf.max_points, 32);
+        assert_eq!(overflow, 0);
+    }
+
+    #[test]
+    fn set_max_points_drains_overflow() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..100 {
+            buf.push(i as f64);
+        }
+        let overflow = buf.set_max_points(50);
+        assert_eq!(overflow, 50);
+        assert_eq!(buf.data.len(), 50);
+        assert_eq!(buf.dropped_points, 50);
+        // remaining data should be the last 50 values
+        assert_eq!(buf.data[0], 50.0);
+        assert_eq!(buf.data[49], 99.0);
+    }
+
+    #[test]
+    fn set_max_points_no_drain_when_smaller() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..10 {
+            buf.push(i as f64);
+        }
+        let overflow = buf.set_max_points(100);
+        assert_eq!(overflow, 0);
+        assert_eq!(buf.data.len(), 10);
+    }
+    #[test]
+    fn as_plot_points_caps_at_200() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..500 {
+            buf.push(i as f64);
+        }
+        let pts = buf.as_plot_points();
+        assert_eq!(pts.len(), 200);
+        // Should be the last 200 values (300..499)
+        assert_eq!(pts[0], [0.0, 300.0]);
+        assert_eq!(pts[199], [199.0, 499.0]);
+    }
+
+    #[test]
+    fn as_plot_points_fewer_than_200() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..5 {
+            buf.push(i as f64 * 10.0);
+        }
+        let pts = buf.as_plot_points();
+        assert_eq!(pts.len(), 5);
+        assert_eq!(pts[0], [0.0, 0.0]);
+        assert_eq!(pts[4], [4.0, 40.0]);
+    }
+    #[test]
+    fn statistics_accurate_after_drain() {
+        let mut buf = TimeSeriesBuffer {
+            max_points: 5,
+            ..Default::default()
+        };
+        // Push 1..=10, so after drain we keep [6,7,8,9,10]
+        for i in 1..=10 {
+            buf.push(i as f64);
+        }
+        let stats = buf.statistics();
+        assert_eq!(stats.count, 5);
+        assert_eq!(stats.min, 6.0);
+        assert_eq!(stats.max, 10.0);
+        assert_eq!(stats.last, 10.0);
+        assert!((stats.mean - 8.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn statistics_std_dev_nonnegative() {
+        let mut buf = TimeSeriesBuffer::default();
+        // Add values that could cause floating point issues
+        for i in 0..100 {
+            buf.push((i as f64) * 0.000001);
+        }
+        let stats = buf.statistics();
+        assert!(stats.std_dev >= 0.0);
+    }
+
+    #[test]
+    fn clear_resets_incremental_stats() {
+        let mut buf = TimeSeriesBuffer::default();
+        buf.push(100.0);
+        buf.push(-50.0);
+        let before = buf.statistics();
+        assert_eq!(before.count, 2);
+
+        buf.clear();
+        let after = buf.statistics();
+        assert_eq!(after.count, 0);
+        assert_eq!(after.min, 0.0); // default
+        assert_eq!(after.max, 0.0); // default
+    }
+    #[test]
+    fn histogram_with_two_distinct_values() {
+        let mut buf = TimeSeriesBuffer::default();
+        for _ in 0..50 {
+            buf.push(0.0);
+        }
+        for _ in 0..50 {
+            buf.push(100.0);
+        }
+        let hist = buf.histogram(10);
+        assert_eq!(hist.len(), 10);
+        let total: usize = hist.iter().map(|(_, c)| c).sum();
+        assert_eq!(total, 100);
+    }
+
+    #[test]
+    fn histogram_with_one_bin() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..20 {
+            buf.push(i as f64);
+        }
+        let hist = buf.histogram(1);
+        assert_eq!(hist.len(), 1);
+        assert_eq!(hist[0].1, 20);
+    }
+    #[test]
+    fn last_n_more_than_available() {
+        let mut buf = TimeSeriesBuffer::default();
+        buf.push(1.0);
+        buf.push(2.0);
+        let slice = buf.last_n(100);
+        assert_eq!(slice, &[1.0, 2.0]);
+    }
+
+    #[test]
+    fn last_n_zero() {
+        let mut buf = TimeSeriesBuffer::default();
+        buf.push(1.0);
+        let slice = buf.last_n(0);
+        assert!(slice.is_empty());
+    }
+    #[test]
+    fn push_batch_drain_multiple() {
+        let mut buf = TimeSeriesBuffer {
+            max_points: 3,
+            ..Default::default()
+        };
+        // Push 10 items at once via repeated push_with_overflow
+        let mut total_dropped = 0usize;
+        for i in 0..10 {
+            total_dropped += buf.push_with_overflow(i as f64);
+        }
+        assert_eq!(buf.data.len(), 3);
+        assert_eq!(total_dropped, 7);
+        assert_eq!(buf.dropped_points, 7);
+        assert_eq!(buf.data, vec![7.0, 8.0, 9.0]);
+    }
+    #[test]
+    fn viz_type_all_icons_distinct() {
+        let types = VizType::all();
+        let icons: Vec<&str> = types.iter().map(|v| v.icon()).collect();
+        let unique: std::collections::HashSet<&str> = icons.iter().copied().collect();
+        assert_eq!(icons.len(), unique.len());
+    }
+
+    #[test]
+    fn viz_type_all_display_distinct() {
+        let types = VizType::all();
+        let displays: Vec<String> = types.iter().map(|v| format!("{}", v)).collect();
+        let unique: std::collections::HashSet<String> = displays.iter().cloned().collect();
+        assert_eq!(displays.len(), unique.len());
+    }
+    #[test]
+    fn data_channel_roundtrip_serde() {
+        let ch = DataChannel {
+            name: "Speed".into(),
+            source: DataSource::RobotState(RobotStateField::Velocity),
+            viz_type: VizType::Scatter,
+            color: [100, 200, 50],
+            enabled: true,
+            min_val: 0.0,
+            max_val: 1000.0,
+            unit: "rpm".into(),
+        };
+        let json = serde_json::to_string(&ch).unwrap();
+        let restored: DataChannel = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.name, "Speed");
+        assert_eq!(restored.viz_type, VizType::Scatter);
+        assert_eq!(restored.color, [100, 200, 50]);
+        assert!(restored.enabled);
+        assert!((restored.min_val - 0.0).abs() < f64::EPSILON);
+        assert!((restored.max_val - 1000.0).abs() < f64::EPSILON);
+        assert_eq!(restored.unit, "rpm");
+    }
+
+    #[test]
+    fn data_channel_packet_field_serde() {
+        let src = DataSource::PacketField {
+            template_name: "Motor".into(),
+            field_name: "RPM".into(),
+        };
+        let json = serde_json::to_string(&src).unwrap();
+        let restored: DataSource = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored, src);
+    }
+
+    #[test]
+    fn robot_state_field_display_roundtrip() {
+        for field in RobotStateField::all() {
+            let display = format!("{}", field);
+            assert!(!display.is_empty());
+        }
+    }
+    #[test]
+    fn default_channels_cover_all_robot_state_fields() {
+        let chs = DataChannel::default_channels();
+        let fields: Vec<String> = chs
+            .iter()
+            .filter_map(|c| match &c.source {
+                DataSource::RobotState(f) => Some(format!("{}", f)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(fields.len(), 6);
+        assert!(fields.iter().any(|f| f == "Position"));
+        assert!(fields.iter().any(|f| f == "Velocity"));
+        assert!(fields.iter().any(|f| f == "Current"));
+        assert!(fields.iter().any(|f| f == "Temperature"));
+        assert!(fields.iter().any(|f| f == "Error"));
+        assert!(fields.iter().any(|f| f.contains("PID")));
+    }
+    #[test]
+    fn time_series_buffer_default_capacity() {
+        let buf = TimeSeriesBuffer::default();
+        assert_eq!(buf.max_points, 2000);
+        assert_eq!(buf.dropped_points, 0);
+    }
+
+    #[test]
+    fn time_series_buffer_statistics_after_many_pushes() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..1000 {
+            buf.push(i as f64);
+        }
+        let stats = buf.statistics();
+        assert_eq!(stats.count, 1000);
+        assert_eq!(stats.min, 0.0);
+        assert_eq!(stats.max, 999.0);
+        assert!(stats.std_dev > 0.0);
+    }
+
+    #[test]
+    fn data_channel_new_defaults() {
+        let ch = DataChannel::new(
+            "Test",
+            DataSource::RobotState(RobotStateField::Position),
+            VizType::Line,
+            [0, 0, 0],
+        );
+        assert!(ch.enabled);
+        assert!(ch.unit.is_empty());
+        assert_eq!(ch.min_val, f64::NEG_INFINITY);
+        assert_eq!(ch.max_val, f64::INFINITY);
+    }
+
+    #[test]
+    fn time_series_buffer_as_plot_points_exact_200() {
+        let mut buf = TimeSeriesBuffer::default();
+        for i in 0..200 {
+            buf.push(i as f64);
+        }
+        let pts = buf.as_plot_points();
+        assert_eq!(pts.len(), 200);
     }
 }

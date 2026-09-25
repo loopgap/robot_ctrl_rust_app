@@ -1549,9 +1549,6 @@ mod tests {
         let json = result.to_json().unwrap();
         assert!(json.contains("final_speed"));
     }
-
-    // ── Deep: guard_numeric ──
-
     #[test]
     fn guard_numeric_normal_value() {
         assert_eq!(guard_numeric(2.5, 0.0), 2.5);
@@ -1591,9 +1588,6 @@ mod tests {
     fn guard_numeric_min_f64() {
         assert_eq!(guard_numeric(f64::MIN, 0.0), f64::MIN);
     }
-
-    // ── Deep: guard_positive ──
-
     #[test]
     fn guard_positive_normal_value() {
         assert_eq!(guard_positive(5.0, 0.0, 0.0), 5.0);
@@ -1629,9 +1623,6 @@ mod tests {
     fn guard_positive_custom_min() {
         assert_eq!(guard_positive(0.001, 0.01, 0.01), 0.01);
     }
-
-    // ── Deep: guard_range ──
-
     #[test]
     fn guard_range_in_range() {
         assert_eq!(guard_range(5.0, 0.0, 10.0, 0.0), 5.0);
@@ -1674,9 +1665,6 @@ mod tests {
     fn guard_range_negative_range() {
         assert_eq!(guard_range(0.0, -10.0, -1.0, 0.0), -1.0);
     }
-
-    // ── Deep: safe_divide ──
-
     #[test]
     fn safe_divide_normal() {
         assert_eq!(safe_divide(10.0, 2.0, 0.0), 5.0);
@@ -1732,9 +1720,6 @@ mod tests {
         // Just below EPS triggers fallback
         assert_eq!(safe_divide(1.0, NUMERIC_EPS * 0.5, 0.0), 0.0);
     }
-
-    // ── Deep: EnergyAudit ──
-
     #[test]
     fn energy_audit_balanced() {
         let audit = EnergyAudit {
@@ -1772,9 +1757,6 @@ mod tests {
         let pct = audit.imbalance_pct();
         assert!(pct.is_finite());
     }
-
-    // ── Deep: Constants ──
-
     #[test]
     fn constants_are_sensible() {
         const {
@@ -1787,9 +1769,6 @@ mod tests {
             assert!(MAX_TOTAL_STEPS > 0);
         }
     }
-
-    // ── Deep: SimulationConfig validation (every rejection path) ──
-
     #[test]
     fn config_default_is_valid() {
         let config = SimulationConfig::default();
@@ -1976,9 +1955,6 @@ mod tests {
         };
         assert!(config.total_steps().is_err());
     }
-
-    // ── Deep: SimulationMetrics default ──
-
     #[test]
     fn simulation_metrics_default() {
         let m = SimulationMetrics::default();
@@ -1989,9 +1965,6 @@ mod tests {
         assert!(!m.cancelled);
         assert_eq!(m.steps_executed, 0);
     }
-
-    // ── Deep: EnergyAudit imbalance with negative input ──
-
     #[test]
     fn energy_audit_negative_input() {
         let audit = EnergyAudit {

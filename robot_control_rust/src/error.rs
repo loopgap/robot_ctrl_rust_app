@@ -63,9 +63,6 @@ pub type AppResult<T> = Result<T, AppError>;
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ── Display formatting for all variants ──
-
     #[test]
     fn test_display_serial() {
         let e = AppError::Serial("port busy".into());
@@ -112,9 +109,6 @@ mod tests {
         let e = AppError::Other("unknown".into());
         assert_eq!(e.to_string(), "unknown");
     }
-
-    // ── From<String> conversion ──
-
     #[test]
     fn test_from_string() {
         let e: AppError = "test error".to_string().into();
@@ -132,9 +126,6 @@ mod tests {
             _ => panic!("expected Other variant"),
         }
     }
-
-    // ── From<std::io::Error> conversion ──
-
     #[test]
     fn test_from_io_error() {
         let io_err = std::io::Error::new(std::io::ErrorKind::TimedOut, "timed out");
@@ -154,9 +145,6 @@ mod tests {
         assert!(e.to_string().contains("I/O error"));
         assert!(e.to_string().contains("pipe broke"));
     }
-
-    // ── From<serde_json::Error> conversion ──
-
     #[test]
     fn test_from_json_error() {
         let json_err = serde_json::from_str::<serde_json::Value>("not json").unwrap_err();
@@ -167,9 +155,6 @@ mod tests {
         }
         assert!(e.to_string().contains("JSON error"));
     }
-
-    // ── Debug trait ──
-
     #[test]
     fn test_debug_format() {
         let e = AppError::Network("test".into());
@@ -177,9 +162,6 @@ mod tests {
         assert!(debug.contains("Network"));
         assert!(debug.contains("test"));
     }
-
-    // ── AppResult type alias ──
-
     #[test]
     fn test_app_result_ok() {
         fn make_ok() -> AppResult<i32> {
@@ -196,9 +178,6 @@ mod tests {
         assert!(make_err().is_err());
         assert!(make_err().unwrap_err().to_string().contains("1000ms"));
     }
-
-    // ── Error source chain ──
-
     #[test]
     fn test_io_error_source_chain() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
@@ -214,9 +193,6 @@ mod tests {
         let source = std::error::Error::source(&e);
         assert!(source.is_none());
     }
-
-    // ── Edge cases ──
-
     #[test]
     fn test_from_empty_string() {
         let e: AppError = "".to_string().into();

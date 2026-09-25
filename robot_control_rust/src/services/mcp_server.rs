@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // MCP 服务器实现 - 使用官方 rmcp SDK
-// ═══════════════════════════════════════════════════════════════
 
 use rmcp::{
     handler::server::wrapper::Parameters, model::*, tool, tool_handler, tool_router,
@@ -378,5 +376,56 @@ mod tests {
         let server = RobotMcpServer::new(state);
         let info = server.get_info();
         assert!(info.capabilities.tools.is_some());
+    }
+    #[tokio::test]
+    async fn mcp_shared_state_all_defaults() {
+        let s = McpSharedState::default();
+        assert_eq!(s.kp, 1.0);
+        assert_eq!(s.ki, 0.1);
+        assert_eq!(s.kd, 0.01);
+        assert_eq!(s.setpoint, 0.0);
+        assert!(s.state_history.is_empty());
+        assert_eq!(s.request_count, 0);
+    }
+
+    #[tokio::test]
+    async fn mcp_shared_state_modifiable() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        {
+            let mut s = state.lock().await;
+            s.kp = 5.0;
+            s.request_count = 42;
+        }
+        let s = state.lock().await;
+        assert_eq!(s.kp, 5.0);
+        assert_eq!(s.request_count, 42);
+    }
+    #[tokio::test]
+    async fn mcp_shared_state_pid_modifiable() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        {
+            let mut s = state.lock().await;
+            s.kp = 10.0;
+            s.ki = 0.5;
+            s.kd = 0.05;
+            s.setpoint = 200.0;
+        }
+        let s = state.lock().await;
+        assert_eq!(s.kp, 10.0);
+        assert_eq!(s.ki, 0.5);
+        assert_eq!(s.kd, 0.05);
+        assert_eq!(s.setpoint, 200.0);
+    }
+
+    #[tokio::test]
+    async fn mcp_shared_state_history_modifiable() {
+        let state = Arc::new(Mutex::new(McpSharedState::default()));
+        {
+            let mut s = state.lock().await;
+            s.state_history.push(crate::models::RobotState::default());
+            s.state_history.push(crate::models::RobotState::default());
+        }
+        let s = state.lock().await;
+        assert_eq!(s.state_history.len(), 2);
     }
 }

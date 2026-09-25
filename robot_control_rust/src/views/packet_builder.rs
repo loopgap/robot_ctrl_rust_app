@@ -10,7 +10,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     let lang = state.lang();
     page_header(ui, Tr::tab_packet_builder(lang), "packet");
 
-    // ─── Builder / Parser 双标签 ─────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
@@ -21,12 +20,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
             for (idx, label) in &tab_labels {
                 let selected = state.ui.packet_builder_tab == *idx;
                 let btn = egui::Button::new(RichText::new(label).size(14.0).color(if selected {
-                    Color32::WHITE
+                    theme.text_primary
                 } else {
-                    Color32::GRAY
+                    theme.text_muted
                 }))
                 .fill(if selected {
-                    theme.bg_medium
+                    theme.bg_card
                 } else {
                     Color32::TRANSPARENT
                 })
@@ -52,275 +51,283 @@ pub fn show(ui: &mut Ui, state: &mut AppState) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // Builder 标签页
-// ═══════════════════════════════════════════════════════════════
 
 fn show_builder(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::AppTheme) {
     let lang = state.lang();
 
-    // ─── 模板选择 ────────────────────────────────────────
-    settings_card(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 10.0;
-            ui.label(RichText::new(format!("{}:", Tr::template(lang))).strong());
-            let names: Vec<String> = state
-                .protocol
-                .packet_templates
-                .iter()
-                .map(|t| t.name.clone())
-                .collect();
-            egui::ComboBox::from_id_salt("pkt_template")
-                .selected_text(if state.ui.packet_template_idx < names.len() {
-                    &names[state.ui.packet_template_idx]
-                } else {
-                    Tr::select(lang)
-                })
-                .width(220.0)
-                .show_ui(ui, |ui| {
-                    for (i, name) in names.iter().enumerate() {
-                        ui.selectable_value(&mut state.ui.packet_template_idx, i, name);
+    ScrollArea::vertical()
+        .id_salt("packet_builder_form_scroll")
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            settings_card(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 10.0;
+                    ui.label(RichText::new(format!("{}:", Tr::template(lang))).strong());
+                    let names: Vec<String> = state
+                        .protocol
+                        .packet_templates
+                        .iter()
+                        .map(|t| t.name.clone())
+                        .collect();
+                    egui::ComboBox::from_id_salt("pkt_template")
+                        .selected_text(if state.ui.packet_template_idx < names.len() {
+                            &names[state.ui.packet_template_idx]
+                        } else {
+                            Tr::select(lang)
+                        })
+                        .width(220.0)
+                        .show_ui(ui, |ui| {
+                            for (i, name) in names.iter().enumerate() {
+                                ui.selectable_value(&mut state.ui.packet_template_idx, i, name);
+                            }
+                        });
+
+                    if ui.button(Tr::new_template(lang)).clicked() {
+                        state
+                            .protocol
+                            .packet_templates
+                            .push(PacketTemplate::default());
+                        state.ui.packet_template_idx = state.protocol.packet_templates.len() - 1;
+                    }
+
+                    if state.protocol.packet_templates.len() > 1
+                        && ui.button(Tr::delete(lang)).clicked()
+                        && state.ui.packet_template_idx < state.protocol.packet_templates.len()
+                    {
+                        state
+                            .protocol
+                            .packet_templates
+                            .remove(state.ui.packet_template_idx);
+                        if state.ui.packet_template_idx >= state.protocol.packet_templates.len() {
+                            state.ui.packet_template_idx =
+                                state.protocol.packet_templates.len().saturating_sub(1);
+                        }
                     }
                 });
-
-            if ui.button(Tr::new_template(lang)).clicked() {
-                state
-                    .protocol
-                    .packet_templates
-                    .push(PacketTemplate::default());
-                state.ui.packet_template_idx = state.protocol.packet_templates.len() - 1;
-            }
-
-            if state.protocol.packet_templates.len() > 1
-                && ui.button(Tr::delete(lang)).clicked()
-                && state.ui.packet_template_idx < state.protocol.packet_templates.len()
-            {
-                state
-                    .protocol
-                    .packet_templates
-                    .remove(state.ui.packet_template_idx);
-                if state.ui.packet_template_idx >= state.protocol.packet_templates.len() {
-                    state.ui.packet_template_idx =
-                        state.protocol.packet_templates.len().saturating_sub(1);
-                }
-            }
-        });
-    });
-
-    let idx = state.ui.packet_template_idx;
-    if idx >= state.protocol.packet_templates.len() {
-        return;
-    }
-
-    ui.add_space(10.0);
-
-    // ─── 模板配置 ────────────────────────────────────────
-    settings_card(ui, |ui| {
-        egui::Grid::new("pkt_config_grid")
-            .num_columns(4)
-            .spacing([16.0, 8.0])
-            .show(ui, |ui| {
-                ui.label(format!("{}:", Tr::name(lang)));
-                ui.text_edit_singleline(&mut state.protocol.packet_templates[idx].name);
-                ui.label(format!("{}:", Tr::description(lang)));
-                ui.text_edit_singleline(&mut state.protocol.packet_templates[idx].description);
-                ui.end_row();
-
-                ui.label(format!("{}:", Tr::header_hex(lang)));
-                ui.add(
-                    egui::TextEdit::singleline(
-                        &mut state.protocol.packet_templates[idx].header_hex,
-                    )
-                    .desired_width(120.0),
-                );
-                ui.label(format!("{}:", Tr::tail_hex(lang)));
-                ui.add(
-                    egui::TextEdit::singleline(&mut state.protocol.packet_templates[idx].tail_hex)
-                        .desired_width(120.0),
-                );
-                ui.end_row();
-
-                ui.label(format!("{}:", Tr::checksum(lang)));
-                let current_cs = state.protocol.packet_templates[idx].checksum_type;
-                egui::ComboBox::from_id_salt("checksum_combo")
-                    .selected_text(format!("{}", current_cs))
-                    .width(150.0)
-                    .show_ui(ui, |ui| {
-                        for &cs in ChecksumType::all() {
-                            ui.selectable_value(
-                                &mut state.protocol.packet_templates[idx].checksum_type,
-                                cs,
-                                format!("{}", cs),
-                            );
-                        }
-                    });
-                ui.checkbox(
-                    &mut state.protocol.packet_templates[idx].include_length,
-                    Tr::include_length(lang),
-                );
-                ui.end_row();
             });
-    });
 
-    ui.add_space(10.0);
-
-    // ─── 字段列表 ────────────────────────────────────────
-    settings_card(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(Tr::fields(lang)).size(15.0).strong());
-            ui.add_space(12.0);
-            if ui.button(Tr::add_field(lang)).clicked() {
-                state.protocol.packet_templates[idx]
-                    .fields
-                    .push(PacketField::default());
+            let idx = state.ui.packet_template_idx;
+            if idx >= state.protocol.packet_templates.len() {
+                return;
             }
-        });
-        ui.add_space(8.0);
 
-        let mut remove_idx: Option<usize> = None;
+            ui.add_space(10.0);
 
-        ScrollArea::vertical()
-            .max_height(220.0)
-            .id_salt("builder_fields_scroll")
-            .show(ui, |ui| {
-                let fields_len = state.protocol.packet_templates[idx].fields.len();
-                for fi in 0..fields_len {
-                    egui::Frame::new()
-                        .fill(theme.bg_card)
-                        .corner_radius(6.0)
-                        .inner_margin(10.0)
-                        .outer_margin(egui::Margin::symmetric(0, 3))
-                        .show(ui, |ui| {
-                            ui.horizontal_wrapped(|ui| {
-                                ui.spacing_mut().item_spacing.x = 8.0;
-                                ui.checkbox(
-                                    &mut state.protocol.packet_templates[idx].fields[fi].enabled,
-                                    "",
-                                );
-                                ui.add(
-                                    egui::TextEdit::singleline(
-                                        &mut state.protocol.packet_templates[idx].fields[fi].name,
-                                    )
-                                    .desired_width(90.0),
-                                );
+            settings_card(ui, |ui| {
+                egui::Grid::new("pkt_config_grid")
+                    .num_columns(4)
+                    .spacing([16.0, 8.0])
+                    .show(ui, |ui| {
+                        ui.label(format!("{}:", Tr::name(lang)));
+                        ui.text_edit_singleline(&mut state.protocol.packet_templates[idx].name);
+                        ui.label(format!("{}:", Tr::description(lang)));
+                        ui.text_edit_singleline(
+                            &mut state.protocol.packet_templates[idx].description,
+                        );
+                        ui.end_row();
 
-                                let ft = state.protocol.packet_templates[idx].fields[fi].field_type;
-                                egui::ComboBox::from_id_salt(format!("ft_{}", fi))
-                                    .selected_text(format!("{}", ft))
-                                    .width(90.0)
-                                    .show_ui(ui, |ui| {
-                                        for &t in FieldType::all() {
-                                            ui.selectable_value(
-                                                &mut state.protocol.packet_templates[idx].fields
-                                                    [fi]
-                                                    .field_type,
-                                                t,
-                                                format!("{}", t),
-                                            );
-                                        }
-                                    });
+                        ui.label(format!("{}:", Tr::header_hex(lang)));
+                        ui.add(
+                            egui::TextEdit::singleline(
+                                &mut state.protocol.packet_templates[idx].header_hex,
+                            )
+                            .desired_width(120.0),
+                        );
+                        ui.label(format!("{}:", Tr::tail_hex(lang)));
+                        ui.add(
+                            egui::TextEdit::singleline(
+                                &mut state.protocol.packet_templates[idx].tail_hex,
+                            )
+                            .desired_width(120.0),
+                        );
+                        ui.end_row();
 
-                                let en = state.protocol.packet_templates[idx].fields[fi].endianness;
-                                egui::ComboBox::from_id_salt(format!("en_{}", fi))
-                                    .selected_text(format!("{}", en))
-                                    .width(55.0)
-                                    .show_ui(ui, |ui| {
-                                        ui.selectable_value(
-                                            &mut state.protocol.packet_templates[idx].fields[fi]
-                                                .endianness,
-                                            Endianness::Little,
-                                            "LE",
-                                        );
-                                        ui.selectable_value(
-                                            &mut state.protocol.packet_templates[idx].fields[fi]
-                                                .endianness,
-                                            Endianness::Big,
-                                            "BE",
-                                        );
-                                    });
-
-                                ui.add(
-                                    egui::TextEdit::singleline(
-                                        &mut state.protocol.packet_templates[idx].fields[fi]
-                                            .value_str,
-                                    )
-                                    .desired_width(110.0),
-                                );
-
-                                if ui.button(Tr::remove_btn(lang)).clicked() {
-                                    remove_idx = Some(fi);
+                        ui.label(format!("{}:", Tr::checksum(lang)));
+                        let current_cs = state.protocol.packet_templates[idx].checksum_type;
+                        egui::ComboBox::from_id_salt("checksum_combo")
+                            .selected_text(format!("{}", current_cs))
+                            .width(150.0)
+                            .show_ui(ui, |ui| {
+                                for &cs in ChecksumType::all() {
+                                    ui.selectable_value(
+                                        &mut state.protocol.packet_templates[idx].checksum_type,
+                                        cs,
+                                        format!("{}", cs),
+                                    );
                                 }
                             });
-                        });
+                        ui.checkbox(
+                            &mut state.protocol.packet_templates[idx].include_length,
+                            Tr::include_length(lang),
+                        );
+                        ui.end_row();
+                    });
+            });
+
+            ui.add_space(10.0);
+
+            settings_card(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(RichText::new(Tr::fields(lang)).size(15.0).strong());
+                    ui.add_space(12.0);
+                    if ui.button(Tr::add_field(lang)).clicked() {
+                        state.protocol.packet_templates[idx]
+                            .fields
+                            .push(PacketField::default());
+                    }
+                });
+                ui.add_space(8.0);
+
+                let mut remove_idx: Option<usize> = None;
+
+                ScrollArea::vertical()
+                    .max_height(220.0)
+                    .id_salt("builder_fields_scroll")
+                    .show(ui, |ui| {
+                        let fields_len = state.protocol.packet_templates[idx].fields.len();
+                        for fi in 0..fields_len {
+                            egui::Frame::new()
+                                .fill(theme.bg_card)
+                                .corner_radius(6.0)
+                                .inner_margin(10.0)
+                                .outer_margin(egui::Margin::symmetric(0, 3))
+                                .show(ui, |ui| {
+                                    ui.horizontal_wrapped(|ui| {
+                                        ui.spacing_mut().item_spacing.x = 8.0;
+                                        ui.checkbox(
+                                            &mut state.protocol.packet_templates[idx].fields[fi]
+                                                .enabled,
+                                            "",
+                                        );
+                                        ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut state.protocol.packet_templates[idx].fields
+                                                    [fi]
+                                                    .name,
+                                            )
+                                            .desired_width(90.0),
+                                        );
+
+                                        let ft = state.protocol.packet_templates[idx].fields[fi]
+                                            .field_type;
+                                        egui::ComboBox::from_id_salt(format!("ft_{}", fi))
+                                            .selected_text(format!("{}", ft))
+                                            .width(90.0)
+                                            .show_ui(ui, |ui| {
+                                                for &t in FieldType::all() {
+                                                    ui.selectable_value(
+                                                        &mut state.protocol.packet_templates[idx]
+                                                            .fields[fi]
+                                                            .field_type,
+                                                        t,
+                                                        format!("{}", t),
+                                                    );
+                                                }
+                                            });
+
+                                        let en = state.protocol.packet_templates[idx].fields[fi]
+                                            .endianness;
+                                        egui::ComboBox::from_id_salt(format!("en_{}", fi))
+                                            .selected_text(format!("{}", en))
+                                            .width(55.0)
+                                            .show_ui(ui, |ui| {
+                                                ui.selectable_value(
+                                                    &mut state.protocol.packet_templates[idx]
+                                                        .fields[fi]
+                                                        .endianness,
+                                                    Endianness::Little,
+                                                    "LE",
+                                                );
+                                                ui.selectable_value(
+                                                    &mut state.protocol.packet_templates[idx]
+                                                        .fields[fi]
+                                                        .endianness,
+                                                    Endianness::Big,
+                                                    "BE",
+                                                );
+                                            });
+
+                                        ui.add(
+                                            egui::TextEdit::singleline(
+                                                &mut state.protocol.packet_templates[idx].fields
+                                                    [fi]
+                                                    .value_str,
+                                            )
+                                            .desired_width(110.0),
+                                        );
+
+                                        if ui.button(Tr::remove_btn(lang)).clicked() {
+                                            remove_idx = Some(fi);
+                                        }
+                                    });
+                                });
+                        }
+                    });
+
+                if let Some(ri) = remove_idx {
+                    if state.protocol.packet_templates[idx].fields.len() > 1 {
+                        state.protocol.packet_templates[idx].fields.remove(ri);
+                    }
                 }
             });
 
-        if let Some(ri) = remove_idx {
-            if state.protocol.packet_templates[idx].fields.len() > 1 {
-                state.protocol.packet_templates[idx].fields.remove(ri);
-            }
-        }
-    });
+            ui.add_space(10.0);
 
-    ui.add_space(10.0);
+            let built = state.protocol.packet_templates[idx].build();
+            let hex_str = bytes_to_hex(&built);
+            settings_card(ui, |ui| {
+                ui.label(RichText::new(Tr::packet_preview(lang)).size(15.0).strong());
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new(&hex_str)
+                        .size(14.0)
+                        .monospace()
+                        .color(theme.accent_green),
+                );
+                ui.add_space(4.0);
+                ui.label(
+                    RichText::new(format!("{} bytes", built.len()))
+                        .size(11.5)
+                        .color(Color32::GRAY),
+                );
+            });
 
-    // ─── 构建预览 ────────────────────────────────────────
-    let built = state.protocol.packet_templates[idx].build();
-    let hex_str = bytes_to_hex(&built);
-    settings_card(ui, |ui| {
-        ui.label(RichText::new(Tr::packet_preview(lang)).size(15.0).strong());
-        ui.add_space(8.0);
-        ui.label(
-            RichText::new(&hex_str)
-                .size(14.0)
-                .monospace()
-                .color(theme.accent_green),
-        );
-        ui.add_space(4.0);
-        ui.label(
-            RichText::new(format!("{} bytes", built.len()))
-                .size(11.5)
-                .color(Color32::GRAY),
-        );
-    });
+            ui.add_space(10.0);
 
-    ui.add_space(10.0);
+            settings_card(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 12.0;
 
-    // ─── 操作按钮 ────────────────────────────────────────
-    settings_card(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 12.0;
+                    if ui
+                        .button(RichText::new(Tr::send_packet(lang)).size(14.0))
+                        .clicked()
+                    {
+                        let data =
+                            state.protocol.packet_templates[state.ui.packet_template_idx].build();
+                        match state.send_data(&data) {
+                            Ok(()) => state.status_message = Tr::sent_bytes(data.len(), lang),
+                            Err(e) => state.status_message = Tr::send_error(&e.to_string(), lang),
+                        }
+                    }
 
-            if ui
-                .button(RichText::new(Tr::send_packet(lang)).size(14.0))
-                .clicked()
-            {
-                let data = state.protocol.packet_templates[state.ui.packet_template_idx].build();
-                match state.send_data(&data) {
-                    Ok(()) => state.status_message = Tr::sent_bytes(data.len(), lang),
-                    Err(e) => state.status_message = Tr::send_error(&e.to_string(), lang),
-                }
-            }
-
-            if ui
-                .button(RichText::new(Tr::copy_hex(lang)).size(13.0))
-                .clicked()
-            {
-                ui.ctx().copy_text(hex_str.clone());
-                state.status_message = Tr::copied(lang).into();
-            }
+                    if ui
+                        .button(RichText::new(Tr::copy_hex(lang)).size(13.0))
+                        .clicked()
+                    {
+                        ui.ctx().copy_text(hex_str.clone());
+                        state.status_message = Tr::copied(lang).into();
+                    }
+                });
+            });
         });
-    });
 }
 
-// ═══════════════════════════════════════════════════════════════
 // Parser 标签页
-// ═══════════════════════════════════════════════════════════════
 
 fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::AppTheme) {
     let lang = state.lang();
 
-    // ─── 解析模板选择 ─────────────────────────────────────
     settings_card(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
@@ -349,7 +356,6 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
 
         ui.add_space(8.0);
 
-        // ─── HEX 数据输入区 ──────────────────────────────────
         ui.label(RichText::new(Tr::parser_input(lang)).size(15.0).strong());
         ui.add_space(4.0);
 
@@ -369,7 +375,6 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
 
         ui.add_space(8.0);
 
-        // ─── 解析按钮 ────────────────────────────────────────
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 12.0;
 
@@ -410,7 +415,6 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
 
     ui.add_space(10.0);
 
-    // ─── 解析结果展示 ─────────────────────────────────────
     if state.protocol.parsed_packets.is_empty() {
         crate::views::ui_kit::empty_state(
             ui,
@@ -424,8 +428,14 @@ fn show_parser(ui: &mut Ui, state: &mut AppState, theme: &crate::views::ui_kit::
 
     let mut quick_add_field: Option<(String, String)> = None;
 
+    let max_h = if ui.available_height().is_finite() {
+        (ui.available_height() - 8.0).max(120.0)
+    } else {
+        400.0
+    };
+
     ScrollArea::vertical()
-        .max_height(ui.available_height() - 8.0)
+        .max_height(max_h)
         .id_salt("parsed_packets_scroll")
         .show(ui, |ui| {
             // Show most recent first

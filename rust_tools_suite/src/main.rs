@@ -25,6 +25,8 @@ mod guide;
 #[cfg(feature = "gui")]
 mod i18n;
 #[cfg(feature = "gui")]
+mod icons;
+#[cfg(feature = "gui")]
 mod settings;
 #[cfg(feature = "gui")]
 mod theme;
@@ -108,12 +110,20 @@ fn main() {
 
 #[cfg(feature = "gui")]
 fn run_gui() -> eframe::Result<()> {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_inner_size([1320.0, 860.0])
+        .with_min_inner_size([980.0, 640.0])
+        .with_title("Rust Tools Suite");
+
+    if let Ok(icon) = eframe::icon_data::from_png_bytes(include_bytes!(
+        "../../assets/branding/rust_tools_suite_app_256.png"
+    )) {
+        viewport = viewport.with_icon(icon);
+    }
+
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Glow,
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1320.0, 860.0])
-            .with_min_inner_size([980.0, 640.0])
-            .with_title("Rust Tools Suite"),
+        viewport,
         ..Default::default()
     };
 

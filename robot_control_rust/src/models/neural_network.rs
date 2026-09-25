@@ -465,4 +465,214 @@ mod tests {
             assert!((a - b).abs() < 1e-15, "Forward should be deterministic");
         }
     }
+    #[test]
+    fn extract_features_single_value() {
+        let features = NeuralNetwork::extract_features(&[42.0]);
+        assert_eq!(features.len(), 6);
+        // mean = 42.0, normalized = 0.42
+        assert!((features[0] - 0.42).abs() < 0.01);
+        // std_dev = 0
+        assert!(features[1].abs() < 0.01);
+        // no sign changes
+        assert_eq!(features[2], 0.0);
+        // no overshoot (all positive)
+        assert_eq!(features[3], 0.0);
+    }
+
+    #[test]
+    fn extract_features_converging_errors() {
+        // Errors converging to zero: 100, 50, 25, 12.5, ...
+        let errors: Vec<f64> = (0..20).map(|i| 100.0 * 0.5_f64.powi(i)).collect();
+        let features = NeuralNetwork::extract_features(&errors);
+        assert_eq!(features.len(), 6);
+        // positive mean
+        assert!(features[0] > 0.0);
+        // steady state (last 10%) should be very small
+        assert!(
+            features[4] < 0.01,
+            "Steady state of converging errors should be near zero"
+        );
+        // rise time should be early (first 10% or so)
+        assert!(
+            features[5] < 0.3,
+            "Rise time should be early for converging signal"
+        );
+    }
+
+    #[test]
+    fn extract_features_overshoot_detected() {
+        // Step response with overshoot: positive then negative errors
+        let errors: Vec<f64> = (0..100)
+            .map(|i| {
+                if i < 20 {
+                    10.0 - i as f64 * 0.5
+                } else {
+                    -2.0 * (-(i as f64 - 20.0) * 0.1).exp()
+                }
+            })
+            .collect();
+        let features = NeuralNetwork::extract_features(&errors);
+        // overshoot > 0 (negative errors exist)
+        assert!(
+            features[3] > 0.0,
+            "Should detect overshoot from negative errors"
+        );
+    }
+
+    #[test]
+    fn extract_features_large_values_clamped() {
+        // Very large errors should still produce clamped features
+        let errors = vec![10000.0; 10];
+        let features = NeuralNetwork::extract_features(&errors);
+        for (i, &f) in features.iter().enumerate() {
+            assert!(
+                (-1.0..=1.0).contains(&f),
+                "Feature[{}]={} should be clamped",
+                i,
+                f
+            );
+        }
+    }
+
+    #[test]
+    fn extract_features_rise_time_full() {
+        // Errors never drop below 10% of initial
+        let errors = vec![100.0; 100];
+        let features = NeuralNetwork::extract_features(&errors);
+        // rise_time = 1.0 (never reaches 10% threshold)
+        assert!(
+            (features[5] - 1.0).abs() < 0.01,
+            "Rise time should be 1.0 when never converging"
+        );
+    }
+    #[test]
+    fn activation_all_variants_compile() {
+        let variants = [
+            Activation::ReLU,
+            Activation::Sigmoid,
+            Activation::Tanh,
+            Activation::Linear,
+        ];
+        assert_eq!(variants.len(), 4);
+    }
+
+    #[test]
+    fn activation_sigmoid_range() {
+        // sigmoid output should always be in (0, 1)
+        for x in [-100.0, -10.0, -1.0, 0.0, 1.0, 10.0, 100.0] {
+            let s = Activation::Sigmoid.apply(x);
+            assert!((0.0..=1.0).contains(&s), "sigmoid({})={}", x, s);
+        }
+    }
+
+    #[test]
+    fn activation_tanh_range() {
+        for x in [-100.0, -10.0, 0.0, 10.0, 100.0] {
+            let t = Activation::Tanh.apply(x);
+            assert!((-1.0..=1.0).contains(&t), "tanh({})={}", x, t);
+        }
+    }
+
+    #[test]
+    fn activation_relu_derivative_at_zero() {
+        // ReLU derivative at 0 should be 0
+        assert_eq!(Activation::ReLU.derivative(0.0), 0.0);
+    }
+    #[test]
+    fn layer_sigmoid_output_bounded() {
+        let mut layer = Layer::new(4, 3, Activation::Sigmoid);
+        let input = vec![10.0, -10.0, 5.0, -5.0];
+        let output = layer.forward(&input);
+        for &v in &output {
+            assert!(
+                (0.0..=1.0).contains(&v),
+                "Sigmoid output {} should be in [0,1]",
+                v
+            );
+        }
+    }
+
+    #[test]
+    fn layer_tanh_output_bounded() {
+        let mut layer = Layer::new(4, 3, Activation::Tanh);
+        let input = vec![10.0, -10.0, 5.0, -5.0];
+        let output = layer.forward(&input);
+        for &v in &output {
+            assert!(
+                (-1.0..=1.0).contains(&v),
+                "Tanh output {} should be in [-1,1]",
+                v
+            );
+        }
+    }
+
+    #[test]
+    fn layer_linear_preserves_scale() {
+        let mut layer = Layer::new(2, 1, Activation::Linear);
+        // With zero biases (default), output = w0*x0 + w1*x1
+        let input = vec![1.0, 1.0];
+        let output = layer.forward(&input);
+        assert_eq!(output.len(), 1);
+        // Should be a finite number
+        assert!(output[0].is_finite());
+    }
+    #[test]
+    fn nn_forward_with_extracted_features() {
+        let mut nn = NeuralNetwork::pid_tuner();
+        let errors = vec![10.0, 8.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1, 0.05, 0.01];
+        let features = NeuralNetwork::extract_features(&errors);
+        let output = nn.forward(&features);
+        assert_eq!(output.len(), 3);
+        for &v in &output {
+            assert!((0.0..=1.0).contains(&v), "Output {} should be in [0,1]", v);
+        }
+    }
+
+    #[test]
+    fn nn_forward_after_training_changes_output() {
+        let mut nn = NeuralNetwork::pid_tuner();
+        let errors = vec![5.0, 3.0, 1.0, 0.5, 0.2, 0.1];
+        let features = NeuralNetwork::extract_features(&errors);
+        let before = nn.forward(&features);
+        // Train many steps
+        let target = vec![0.3, 0.2, 0.1];
+        for _ in 0..200 {
+            nn.train_step(&features, &target);
+        }
+        let after = nn.forward(&features);
+        // After training, output should have changed
+        let changed = before
+            .iter()
+            .zip(after.iter())
+            .any(|(a, b)| (a - b).abs() > 1e-6);
+        assert!(changed, "Output should change after training");
+    }
+    #[test]
+    fn train_step_returns_nonnegative_loss() {
+        let mut nn = NeuralNetwork::pid_tuner();
+        let input = vec![0.1; 6];
+        let target = vec![0.5; 3];
+        let loss = nn.train_step(&input, &target);
+        assert!(loss >= 0.0, "Loss should be non-negative: {}", loss);
+    }
+
+    #[test]
+    fn training_epochs_increment() {
+        let mut nn = NeuralNetwork::pid_tuner();
+        assert_eq!(nn.training_epochs, 0);
+        let input = vec![0.1; 6];
+        let target = vec![0.5; 3];
+        nn.train_step(&input, &target);
+        assert_eq!(nn.training_epochs, 1);
+        nn.train_step(&input, &target);
+        assert_eq!(nn.training_epochs, 2);
+    }
+    #[test]
+    fn nn_serde_roundtrip() {
+        let nn = NeuralNetwork::pid_tuner();
+        let json = serde_json::to_string(&nn).unwrap();
+        let restored: NeuralNetwork = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.layers.len(), nn.layers.len());
+        assert_eq!(restored.learning_rate, nn.learning_rate);
+    }
 }

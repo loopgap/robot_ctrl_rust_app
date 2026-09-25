@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::file_ops::{open_text_file, save_text_file};
 use crate::i18n::Language;
+use crate::icons::{draw_tool_icon, ToolIconKind};
 use crate::settings::{load_preferences, save_preferences, AppPreferences};
 use crate::theme::{apply_theme, ACCENT_COLOR};
 use crate::tools::at32_boot_entry::At32BootEntryTool;
@@ -22,7 +23,6 @@ use crate::workflow::{render_loop_panel, LoopStep};
 const DOCS_FALLBACK_URL: &str =
     "https://github.com/loopgap/robot_ctrl_rust_app/blob/main/docs/src/README.md";
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1180.0;
-const TAB_BUTTONS_MIN_WIDTH: f32 = 1240.0;
 const MIN_UI_SCALE_PERCENT: u32 = 100;
 const MAX_UI_SCALE_PERCENT: u32 = 220;
 const DEFAULT_UI_SCALE_PERCENT: u32 = 150;
@@ -158,6 +158,23 @@ impl ActiveTool {
             #[cfg(feature = "jwt")]
             Self::JwtInspector => language.tr("JWT 解析", "JWT Inspector"),
             Self::RegexWorkbench => language.tr("Regex 巡检", "Regex Workbench"),
+        }
+    }
+
+    pub fn icon_kind(self) -> ToolIconKind {
+        match self {
+            Self::At32BootEntry => ToolIconKind::At32Boot,
+            Self::Checksum => ToolIconKind::Checksum,
+            Self::Json => ToolIconKind::Json,
+            Self::Log => ToolIconKind::Log,
+            Self::UrlCodec => ToolIconKind::UrlCodec,
+            Self::TimeConverter => ToolIconKind::TimeConverter,
+            Self::Base64 => ToolIconKind::Base64,
+            Self::UuidBatch => ToolIconKind::UuidBatch,
+            Self::CsvCleaner => ToolIconKind::CsvCleaner,
+            #[cfg(feature = "jwt")]
+            Self::JwtInspector => ToolIconKind::JwtInspector,
+            Self::RegexWorkbench => ToolIconKind::RegexWorkbench,
         }
     }
 
@@ -548,27 +565,126 @@ impl ToolSuiteApp {
     }
 
     fn render_tool_selector(&mut self, ui: &mut egui::Ui, available_width: f32) {
-        if available_width >= TAB_BUTTONS_MIN_WIDTH {
-            ui.horizontal_wrapped(|ui| {
-                for tab in ActiveTool::all() {
-                    let selected = self.active == tab;
-                    let button = egui::Button::new(tab.label(self.language))
-                        .selected(selected)
-                        .min_size(egui::vec2(148.0, 34.0));
-                    if ui.add(button).clicked() {
-                        self.active = tab;
-                    }
-                }
-            });
-        } else {
-            egui::ComboBox::from_id_salt("tool_selector")
-                .width(280.0)
-                .selected_text(self.active.label(self.language))
-                .show_ui(ui, |ui| {
-                    for tab in ActiveTool::all() {
-                        ui.selectable_value(&mut self.active, tab, tab.label(self.language));
-                    }
+        if available_width >= 680.0 {
+            egui::ScrollArea::horizontal()
+                .id_salt("tool_selector_scroll")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing = egui::vec2(6.0, 4.0);
+                        for tab in ActiveTool::all() {
+                            let selected = self.active == tab;
+                            let text = tab.label(self.language);
+                            let icon = tab.icon_kind();
+
+                            let item_size = egui::vec2(138.0, 32.0);
+                            let (rect, response) =
+                                ui.allocate_exact_size(item_size, egui::Sense::click());
+                            let hovered = response.hovered();
+                            let painter = ui.painter();
+
+                            let (bg_fill, border_stroke, icon_color, text_color) = if selected {
+                                (
+                                    ACCENT_COLOR.gamma_multiply(0.18),
+                                    egui::Stroke::new(1.0_f32, ACCENT_COLOR.gamma_multiply(0.60)),
+                                    ACCENT_COLOR,
+                                    ui.visuals().strong_text_color(),
+                                )
+                            } else if hovered {
+                                (
+                                    ui.visuals().faint_bg_color,
+                                    egui::Stroke::new(
+                                        1.0_f32,
+                                        ui.visuals().widgets.hovered.bg_stroke.color,
+                                    ),
+                                    ui.visuals().strong_text_color(),
+                                    ui.visuals().text_color(),
+                                )
+                            } else {
+                                (
+                                    egui::Color32::TRANSPARENT,
+                                    egui::Stroke::NONE,
+                                    ui.visuals().weak_text_color(),
+                                    ui.visuals().text_color(),
+                                )
+                            };
+
+                            if bg_fill != egui::Color32::TRANSPARENT {
+                                painter.rect_filled(rect, 6.0, bg_fill);
+                            }
+                            if border_stroke.width > 0.0 {
+                                painter.rect_stroke(
+                                    rect,
+                                    6.0,
+                                    border_stroke,
+                                    egui::StrokeKind::Middle,
+                                );
+                            }
+
+                            if selected {
+                                let pill = egui::Rect::from_min_max(
+                                    egui::pos2(rect.left() + 2.0, rect.top() + 6.0),
+                                    egui::pos2(rect.left() + 4.5, rect.bottom() - 6.0),
+                                );
+                                painter.rect_filled(pill, 1.25, ACCENT_COLOR);
+                            }
+
+                            let icon_rect = egui::Rect::from_min_size(
+                                egui::pos2(rect.left() + 10.0, rect.center().y - 8.0),
+                                egui::vec2(16.0, 16.0),
+                            );
+                            draw_tool_icon(painter, icon_rect, icon, icon_color);
+
+                            let text_pos = egui::pos2(rect.left() + 32.0, rect.center().y);
+                            painter.text(
+                                text_pos,
+                                egui::Align2::LEFT_CENTER,
+                                &text,
+                                egui::FontId::proportional(13.0),
+                                text_color,
+                            );
+
+                            if response.clicked() {
+                                self.active = tab;
+                            }
+                        }
+                    });
                 });
+        } else {
+            ui.horizontal(|ui| {
+                let (icon_rect, _) =
+                    ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
+                draw_tool_icon(
+                    ui.painter(),
+                    icon_rect,
+                    self.active.icon_kind(),
+                    ACCENT_COLOR,
+                );
+                egui::ComboBox::from_id_salt("tool_selector")
+                    .width(available_width.clamp(180.0, 280.0))
+                    .selected_text(self.active.label(self.language))
+                    .show_ui(ui, |ui| {
+                        for tab in ActiveTool::all() {
+                            ui.horizontal(|ui| {
+                                let (icon_r, _) = ui.allocate_exact_size(
+                                    egui::vec2(16.0, 16.0),
+                                    egui::Sense::hover(),
+                                );
+                                let color = if self.active == tab {
+                                    ACCENT_COLOR
+                                } else {
+                                    ui.visuals().text_color()
+                                };
+                                draw_tool_icon(ui.painter(), icon_r, tab.icon_kind(), color);
+                                ui.selectable_value(
+                                    &mut self.active,
+                                    tab,
+                                    tab.label(self.language),
+                                );
+                            });
+                        }
+                    });
+            });
         }
     }
 
@@ -752,6 +868,18 @@ impl ToolSuiteApp {
                 .collapsible(false)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
+                        let (icon_rect, _) =
+                            ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+                        draw_tool_icon(
+                            ui.painter(),
+                            icon_rect,
+                            ToolIconKind::Settings,
+                            ACCENT_COLOR,
+                        );
+                        ui.heading(language.tr("偏好设置", "Preferences"));
+                    });
+                    ui.separator();
+                    ui.horizontal(|ui| {
                         ui.label(language.tr("语言", "Language"));
                         ui.selectable_value(&mut self.language, Language::Zh, "中文");
                         ui.selectable_value(&mut self.language, Language::En, "English");
@@ -799,7 +927,12 @@ impl ToolSuiteApp {
                 .resizable(false)
                 .collapsible(false)
                 .show(ctx, |ui| {
-                    ui.heading(language.tr("Rust Tools Suite", "Rust Tools Suite"));
+                    ui.horizontal(|ui| {
+                        let (icon_rect, _) =
+                            ui.allocate_exact_size(egui::vec2(22.0, 22.0), egui::Sense::hover());
+                        draw_tool_icon(ui.painter(), icon_rect, ToolIconKind::SuiteBrand, ACCENT_COLOR);
+                        ui.heading(language.tr("Rust Tools Suite", "Rust Tools Suite"));
+                    });
                     ui.label(format!(
                         "{}: {}",
                         language.tr("版本", "Version"),
@@ -826,6 +959,18 @@ impl ToolSuiteApp {
                 .resizable(false)
                 .collapsible(false)
                 .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        let (icon_rect, _) =
+                            ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+                        draw_tool_icon(
+                            ui.painter(),
+                            icon_rect,
+                            ToolIconKind::Shortcuts,
+                            ACCENT_COLOR,
+                        );
+                        ui.heading(language.tr("快捷键", "Shortcuts"));
+                    });
+                    ui.separator();
                     let shortcuts = match language {
                         Language::Zh => vec![
                             ("Ctrl+O", "导入输入文件"),
@@ -924,10 +1069,20 @@ impl eframe::App for ToolSuiteApp {
                 self.render_menu_bar(ui, ctx, mode);
                 ui.separator();
                 ui.vertical(|ui| {
-                    ui.heading(
-                        self.language
-                            .tr("Rust Tools Suite · 中文", "Rust Tools Suite · English"),
-                    );
+                    ui.horizontal(|ui| {
+                        let (icon_rect, _) =
+                            ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+                        draw_tool_icon(
+                            ui.painter(),
+                            icon_rect,
+                            ToolIconKind::SuiteBrand,
+                            ACCENT_COLOR,
+                        );
+                        ui.heading(
+                            self.language
+                                .tr("Rust Tools Suite · 中文", "Rust Tools Suite · English"),
+                        );
+                    });
                     ui.colored_label(
                         ACCENT_COLOR,
                         self.language.tr(
@@ -967,6 +1122,14 @@ impl eframe::App for ToolSuiteApp {
 
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
+                let (icon_rect, _) =
+                    ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::hover());
+                draw_tool_icon(
+                    ui.painter(),
+                    icon_rect,
+                    self.active.icon_kind(),
+                    ACCENT_COLOR,
+                );
                 ui.label(format!(
                     "{}: {}",
                     self.language.tr("当前工具", "Active Tool"),
@@ -1003,7 +1166,8 @@ impl eframe::App for ToolSuiteApp {
 
 #[cfg(test)]
 mod tests {
-    use super::{responsive_mode, ResponsiveMode, WIDE_LAYOUT_MIN_WIDTH};
+    use super::{responsive_mode, ActiveTool, ResponsiveMode, WIDE_LAYOUT_MIN_WIDTH};
+    use crate::icons::ToolIconKind;
 
     #[test]
     fn test_responsive_mode_breakpoints() {
@@ -1012,5 +1176,13 @@ mod tests {
             ResponsiveMode::Compact
         );
         assert_eq!(responsive_mode(WIDE_LAYOUT_MIN_WIDTH), ResponsiveMode::Wide);
+    }
+
+    #[test]
+    fn test_active_tool_icon_kinds() {
+        for tool in ActiveTool::all() {
+            let icon = tool.icon_kind();
+            assert_ne!(icon, ToolIconKind::Generic);
+        }
     }
 }

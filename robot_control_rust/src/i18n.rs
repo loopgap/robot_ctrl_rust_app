@@ -1,9 +1,7 @@
 // Auto-generated macro-based i18n module
 // Reduced from ~2970 lines using declarative macros
 
-// ═══════════════════════════════════════════════════════════════
 // 国际化 (i18n) - 中英双语支持
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Language {
@@ -575,9 +573,6 @@ impl Tr {
         "PDO / Heartbeat / EMCY",
         "PDO / Heartbeat / EMCY 工具"
     );
-
-    // ── 动态格式化翻译 ─────────────────────────────────────
-
     tr_fmt!(found_ports(n: usize), "Found {} ports", "发现 {} 个端口");
     tr_fmt!(sent_bytes(n: usize), "Sent {} bytes", "已发送 {} 字节");
     tr_fmt!(send_error(e: &str), "Send error: {}", "发送失败: {}");
@@ -671,6 +666,288 @@ mod tests {
                 let val = f(*lang);
                 assert!(!val.is_empty(), "{} returned empty for {:?}", name, lang);
             }
+        }
+    }
+    #[test]
+    fn language_toggle_is_involution() {
+        // toggle(toggle(x)) == x
+        assert_eq!(Language::English.toggle().toggle(), Language::English);
+        assert_eq!(Language::Chinese.toggle().toggle(), Language::Chinese);
+    }
+
+    #[test]
+    fn language_label_nonempty_and_unique() {
+        assert_ne!(Language::English.label(), Language::Chinese.label());
+        assert!(!Language::English.label().is_empty());
+        assert!(!Language::Chinese.label().is_empty());
+    }
+
+    #[test]
+    fn language_serde_roundtrip() {
+        for lang in &[Language::English, Language::Chinese] {
+            let json = serde_json::to_string(lang).unwrap();
+            let restored: Language = serde_json::from_str(&json).unwrap();
+            assert_eq!(*lang, restored);
+        }
+    }
+    #[test]
+    fn basic_actions_nonempty_both_languages() {
+        let actions: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::connect, "connect"),
+            (Tr::disconnect, "disconnect"),
+            (Tr::send, "send"),
+            (Tr::clear, "clear"),
+            (Tr::refresh, "refresh"),
+            (Tr::save, "save"),
+            (Tr::reset, "reset"),
+            (Tr::start, "start"),
+            (Tr::stop, "stop"),
+            (Tr::error_label, "error"),
+            (Tr::connected, "connected"),
+            (Tr::disconnected, "disconnected"),
+        ];
+        for (f, name) in actions {
+            for lang in &[Language::English, Language::Chinese] {
+                let val = f(*lang);
+                assert!(!val.is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn all_tabs_distinct_english() {
+        let tabs = [
+            Tr::tab_dashboard(Language::English),
+            Tr::tab_connections(Language::English),
+            Tr::tab_terminal(Language::English),
+            Tr::tab_protocol_analysis(Language::English),
+            Tr::tab_packet_builder(Language::English),
+            Tr::tab_topology(Language::English),
+            Tr::tab_pid_control(Language::English),
+            Tr::tab_nn_tuning(Language::English),
+            Tr::tab_data_viz(Language::English),
+            Tr::tab_simulation_lab(Language::English),
+            Tr::tab_modbus(Language::English),
+            Tr::tab_canopen(Language::English),
+        ];
+        let unique: std::collections::HashSet<&str> = tabs.iter().copied().collect();
+        assert_eq!(tabs.len(), unique.len(), "duplicate tab names in English");
+    }
+    #[test]
+    fn connection_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::serial_config, "serial_config"),
+            (Tr::tcp_config, "tcp_config"),
+            (Tr::udp_config, "udp_config"),
+            (Tr::can_config, "can_config"),
+            (Tr::port, "port"),
+            (Tr::baud_rate, "baud_rate"),
+            (Tr::data_bits, "data_bits"),
+            (Tr::stop_bits, "stop_bits"),
+            (Tr::parity, "parity"),
+            (Tr::flow_control, "flow_control"),
+            (Tr::mode, "mode"),
+            (Tr::host, "host"),
+            (Tr::local_port, "local_port"),
+            (Tr::remote_host, "remote_host"),
+            (Tr::remote_port, "remote_port"),
+            (Tr::bitrate, "bitrate"),
+            (Tr::enable_can_fd, "enable_can_fd"),
+            (Tr::data_bitrate, "data_bitrate"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn simulation_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::simulation_scenario, "scenario"),
+            (Tr::simulation_duration, "duration"),
+            (Tr::simulation_step_us, "step"),
+            (Tr::simulation_speed_ref, "speed_ref"),
+            (Tr::simulation_load_torque, "load_torque"),
+            (Tr::simulation_run, "run"),
+            (Tr::simulation_cancel, "cancel"),
+            (Tr::simulation_progress, "progress"),
+            (Tr::simulation_status, "status"),
+            (Tr::simulation_results, "results"),
+            (Tr::simulation_scan, "scan"),
+            (Tr::simulation_no_result, "no_result"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn control_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::presets, "presets"),
+            (Tr::chassis_type, "chassis_type"),
+            (Tr::geometry_params, "geometry_params"),
+            (Tr::wheel_radius, "wheel_radius"),
+            (Tr::wheel_base, "wheel_base"),
+            (Tr::track_width, "track_width"),
+            (Tr::max_linear_vel, "max_linear_vel"),
+            (Tr::max_angular_vel, "max_angular_vel"),
+            (Tr::motors_joints, "motors_joints"),
+            (Tr::add_motor, "add_motor"),
+            (Tr::topology_viz, "topology_viz"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn nn_llm_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::network_arch, "network_arch"),
+            (Tr::learning_rate, "learning_rate"),
+            (Tr::train_step, "train_step"),
+            (Tr::train_x10_btn, "train_x10"),
+            (Tr::train_x100_btn, "train_x100"),
+            (Tr::auto_train, "auto_train"),
+            (Tr::training_loss, "training_loss"),
+            (Tr::suggested_params, "suggested_params"),
+            (Tr::predict, "predict"),
+            (Tr::apply_suggested, "apply_suggested"),
+            (Tr::llm_api_tuning, "llm_api"),
+            (Tr::api_url_label, "api_url"),
+            (Tr::model_label, "model"),
+            (Tr::api_key_label, "api_key"),
+            (Tr::llm_suggest_btn, "llm_suggest"),
+            (Tr::apply_llm_suggestion, "apply_llm"),
+            (Tr::llm_loading_text, "llm_loading"),
+            (Tr::llm_analysis_label, "llm_analysis"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn canopen_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::canopen_fd_builder, "fd_builder"),
+            (Tr::canopen_log_label, "log"),
+            (Tr::canopen_frame_analyzer, "frame_analyzer"),
+            (Tr::canopen_ecat_sdo_tool, "ecat_sdo"),
+            (Tr::canopen_ecat_state_machine, "ecat_state"),
+            (Tr::canopen_pdo_mapper, "pdo_mapper"),
+            (Tr::canopen_pdo_decoder, "pdo_decoder"),
+            (Tr::canopen_nmt_control, "nmt"),
+            (Tr::canopen_sdo_client, "sdo"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn reconnect_translations_nonempty() {
+        let keys: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::reconnect_after_drop, "reconnect_after_drop"),
+            (Tr::interval_ms_label, "interval_ms"),
+            (Tr::background_retry_off, "background_retry_off"),
+            (Tr::retry_arms_hint, "retry_arms"),
+            (Tr::retry_idle_hint, "retry_idle"),
+            (Tr::resume_retry, "resume"),
+            (Tr::stop_retry, "stop_retry"),
+            (Tr::retry_now, "retry_now"),
+        ];
+        for (f, name) in keys {
+            for lang in &[Language::English, Language::Chinese] {
+                assert!(!f(*lang).is_empty(), "{name} empty for {lang:?}");
+            }
+        }
+    }
+    #[test]
+    fn fmt_found_ports_zero() {
+        let s = Tr::found_ports(0, Language::English);
+        assert!(s.contains('0'));
+    }
+
+    #[test]
+    fn fmt_sent_bytes_large() {
+        let s = Tr::sent_bytes(1_000_000, Language::Chinese);
+        assert!(s.contains("1000000"));
+    }
+
+    #[test]
+    fn fmt_send_error_contains_message() {
+        let s = Tr::send_error("timeout", Language::English);
+        assert!(s.contains("timeout"));
+        let s = Tr::send_error("超时", Language::Chinese);
+        assert!(s.contains("超时"));
+    }
+
+    #[test]
+    fn fmt_applied_preset_contains_name() {
+        let s = Tr::applied_preset("PID-v2", Language::English);
+        assert!(s.contains("PID-v2"));
+        let s = Tr::applied_preset("默认", Language::Chinese);
+        assert!(s.contains("默认"));
+    }
+
+    #[test]
+    fn fmt_parse_success_contains_fields() {
+        let s = Tr::parse_success("Motor", 5, Language::English);
+        assert!(s.contains("Motor"));
+        assert!(s.contains("5"));
+    }
+
+    #[test]
+    fn fmt_logs_exported_path() {
+        let s = Tr::logs_exported("/tmp/log.csv", Language::English);
+        assert!(s.contains("/tmp/log.csv"));
+    }
+
+    #[test]
+    fn fmt_logs_export_failed_error() {
+        let s = Tr::logs_export_failed("permission denied", Language::Chinese);
+        assert!(s.contains("permission denied"));
+    }
+
+    #[test]
+    fn fmt_ui_scale_set_value() {
+        let s = Tr::ui_scale_set(200, Language::English);
+        assert!(s.contains("200"));
+        let s = Tr::ui_scale_set(100, Language::Chinese);
+        assert!(s.contains("100"));
+    }
+    #[test]
+    fn en_zh_distinct_for_core_keys() {
+        // Most translations should differ between EN and ZH
+        // Some technical keys may be the same (e.g. "HEX"), so we only check a curated set
+        let pairs: &[(fn(Language) -> &'static str, &str)] = &[
+            (Tr::connect, "connect"),
+            (Tr::disconnect, "disconnect"),
+            (Tr::tab_dashboard, "dashboard"),
+            (Tr::tab_connections, "connections"),
+            (Tr::serial_config, "serial"),
+            (Tr::tcp_config, "tcp"),
+            (Tr::can_config, "can"),
+            (Tr::baud_rate, "baud"),
+            (Tr::data_bits, "data_bits"),
+            (Tr::wheel_radius, "wheel"),
+            (Tr::chassis_type, "chassis"),
+            (Tr::simulation_run, "sim_run"),
+            (Tr::suggested_params, "suggested"),
+            (Tr::network_arch, "network"),
+        ];
+        for (f, name) in pairs {
+            assert_ne!(
+                f(Language::English),
+                f(Language::Chinese),
+                "{name}: EN == ZH"
+            );
         }
     }
 }

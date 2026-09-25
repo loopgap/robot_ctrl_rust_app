@@ -837,4 +837,27 @@ mod tests {
         let elapsed = start.elapsed();
         assert!(elapsed.as_millis() < 1, "Cleanup took {:?}", elapsed);
     }
+    #[test]
+    fn animate_position_returns_target_when_complete() {
+        let mut mgr = AnimationManager::new();
+        let target = Pos2::new(100.0, 200.0);
+        let current = Pos2::new(0.0, 0.0);
+        // First call starts animation
+        let _ = mgr.animate_position("pos1".into(), target, current, 0.001, Easing::Linear, 0.0);
+        // After duration, should return target
+        let result =
+            mgr.animate_position("pos1".into(), target, current, 0.001, Easing::Linear, 1.0);
+        assert!((result.x - target.x).abs() < 0.01);
+        assert!((result.y - target.y).abs() < 0.01);
+    }
+
+    #[test]
+    fn animate_position_interpolates() {
+        let mut mgr = AnimationManager::new();
+        let target = Pos2::new(100.0, 200.0);
+        let current = Pos2::new(0.0, 0.0);
+        let result = mgr.animate_position("pos2".into(), target, current, 1.0, Easing::Linear, 0.0);
+        // At t=0, should be at or near current
+        assert!(result.x >= -1.0 && result.x <= 101.0);
+    }
 }

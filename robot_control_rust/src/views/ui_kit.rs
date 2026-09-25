@@ -1,8 +1,6 @@
 use egui::{self, Color32, FontFamily, FontId, RichText, TextStyle, Ui};
 
-// ═══════════════════════════════════════════════════════════
 // Design Token System
-// ═══════════════════════════════════════════════════════════
 
 /// Spacing tokens based on 4px/8px grid system.
 /// Provides 9 levels of consistent spacing across the UI.
@@ -243,39 +241,31 @@ impl FontTokens {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct AppTheme {
-    // ── Backgrounds ──────────────────────────────────────
     pub bg_dark: Color32,
     pub bg_medium: Color32,
     pub bg_card: Color32,
     pub bg_input: Color32,
-    // ── Text hierarchy ───────────────────────────────────
     pub text_primary: Color32,
     pub text_secondary: Color32,
     pub text_muted: Color32,
     pub text_label: Color32,
-    // ── Status ───────────────────────────────────────────
     pub status_ok: Color32,
     pub status_error: Color32,
     pub status_warn: Color32,
     pub status_info: Color32,
-    // ── Accents ──────────────────────────────────────────
     pub accent_blue: Color32,
     pub accent_green: Color32,
     pub accent_purple: Color32,
     pub accent_orange: Color32,
     pub accent_cyan: Color32,
     pub accent_gold: Color32,
-    // ── Borders ──────────────────────────────────────────
     pub border: Color32,
     pub border_active: Color32,
-    // ── Direction (TX/RX/Info) ───────────────────────────
     pub tx_color: Color32,
     pub rx_color: Color32,
     pub info_color: Color32,
-    // ── Connection status ────────────────────────────────
     pub connected_color: Color32,
     pub disconnected_color: Color32,
-    // ── Semantic data colors ─────────────────────────────
     /// Labels for structured data fields (table headers, type annotations)
     pub data_label: Color32,
     /// Numeric or value display for structured data
@@ -287,73 +277,73 @@ pub struct AppTheme {
 }
 
 impl AppTheme {
-    /// Dark theme — deep navy palette, WCAG AA compliant text.
+    /// Dark theme — deep slate-navy palette, WCAG AA compliant text.
     pub fn dark() -> Self {
         Self {
-            bg_dark: Color32::from_rgb(22, 28, 38),
-            bg_medium: Color32::from_rgb(30, 35, 42),
-            bg_card: Color32::from_rgba_premultiplied(50, 50, 60, 180),
-            bg_input: Color32::from_rgb(25, 50, 80),
-            text_primary: Color32::from_rgb(220, 220, 230),
-            text_secondary: Color32::from_rgb(200, 210, 220),
-            text_muted: Color32::from_rgb(152, 162, 172),
-            text_label: Color32::from_rgb(170, 180, 200),
-            status_ok: Color32::from_rgb(46, 160, 67),
-            status_error: Color32::from_rgb(255, 100, 100),
-            status_warn: Color32::from_rgb(255, 180, 120),
-            status_info: Color32::from_rgb(100, 200, 255),
-            accent_blue: Color32::from_rgb(88, 166, 255),
-            accent_green: Color32::from_rgb(0, 255, 160),
-            accent_purple: Color32::from_rgb(200, 150, 255),
-            accent_orange: Color32::from_rgb(255, 165, 0),
-            accent_cyan: Color32::from_rgb(0, 200, 180),
-            accent_gold: Color32::from_rgb(255, 200, 100),
-            border: Color32::from_rgb(50, 60, 75),
-            border_active: Color32::from_rgb(88, 166, 255),
-            tx_color: Color32::from_rgb(120, 200, 255),
-            rx_color: Color32::from_rgb(130, 230, 160),
-            info_color: Color32::from_rgb(220, 220, 140),
-            connected_color: Color32::from_rgb(46, 160, 67),
-            disconnected_color: Color32::from_rgb(128, 128, 128),
-            data_label: Color32::from_rgb(180, 180, 255),
-            data_value: Color32::from_rgb(255, 200, 100),
-            data_positive: Color32::from_rgb(120, 220, 120),
-            data_negative: Color32::from_rgb(220, 100, 100),
+            bg_dark: Color32::from_rgb(15, 23, 42),
+            bg_medium: Color32::from_rgb(24, 34, 53),
+            bg_card: Color32::from_rgb(30, 41, 59),
+            bg_input: Color32::from_rgb(19, 29, 45),
+            text_primary: Color32::from_rgb(241, 245, 249),
+            text_secondary: Color32::from_rgb(203, 213, 225),
+            text_muted: Color32::from_rgb(148, 163, 184),
+            text_label: Color32::from_rgb(175, 192, 215),
+            status_ok: Color32::from_rgb(34, 197, 94),
+            status_error: Color32::from_rgb(248, 113, 113),
+            status_warn: Color32::from_rgb(251, 191, 36),
+            status_info: Color32::from_rgb(56, 189, 248),
+            accent_blue: Color32::from_rgb(59, 130, 246),
+            accent_green: Color32::from_rgb(16, 185, 129),
+            accent_purple: Color32::from_rgb(168, 85, 247),
+            accent_orange: Color32::from_rgb(249, 115, 22),
+            accent_cyan: Color32::from_rgb(6, 182, 212),
+            accent_gold: Color32::from_rgb(234, 179, 8),
+            border: Color32::from_rgb(51, 65, 85),
+            border_active: Color32::from_rgb(56, 189, 248),
+            tx_color: Color32::from_rgb(96, 165, 250),
+            rx_color: Color32::from_rgb(52, 211, 153),
+            info_color: Color32::from_rgb(250, 204, 21),
+            connected_color: Color32::from_rgb(34, 197, 94),
+            disconnected_color: Color32::from_rgb(100, 116, 139),
+            data_label: Color32::from_rgb(165, 180, 252),
+            data_value: Color32::from_rgb(253, 186, 116),
+            data_positive: Color32::from_rgb(74, 222, 128),
+            data_negative: Color32::from_rgb(248, 113, 113),
         }
     }
 
-    /// Light theme — soft warm palette, WCAG AA compliant text.
+    /// Light theme — clean crisp slate palette, WCAG AA compliant text.
     pub fn light() -> Self {
         Self {
-            bg_dark: Color32::from_rgb(240, 240, 245),
-            bg_medium: Color32::from_rgb(230, 230, 235),
-            bg_card: Color32::from_rgba_premultiplied(255, 255, 255, 230),
-            bg_input: Color32::from_rgb(245, 248, 255),
-            text_primary: Color32::from_rgb(30, 30, 40),
-            text_secondary: Color32::from_rgb(60, 60, 70),
-            text_muted: Color32::from_rgb(96, 96, 106),
-            text_label: Color32::from_rgb(80, 80, 90),
-            status_ok: Color32::from_rgb(40, 160, 60),
-            status_error: Color32::from_rgb(220, 60, 60),
-            status_warn: Color32::from_rgb(200, 140, 40),
-            status_info: Color32::from_rgb(50, 130, 220),
-            accent_blue: Color32::from_rgb(50, 120, 220),
-            accent_green: Color32::from_rgb(0, 180, 120),
-            accent_purple: Color32::from_rgb(150, 100, 220),
-            accent_orange: Color32::from_rgb(220, 130, 0),
-            accent_cyan: Color32::from_rgb(0, 150, 136),
-            accent_gold: Color32::from_rgb(180, 130, 0),
-            border: Color32::from_rgb(200, 200, 210),
-            border_active: Color32::from_rgb(50, 120, 220),
-            tx_color: Color32::from_rgb(50, 120, 200),
-            rx_color: Color32::from_rgb(40, 150, 80),
-            info_color: Color32::from_rgb(180, 160, 50),
-            connected_color: Color32::from_rgb(40, 160, 60),
-            disconnected_color: Color32::from_rgb(160, 160, 160),
-            data_label: Color32::from_rgb(100, 100, 180),
-            data_value: Color32::from_rgb(180, 120, 0),
-            data_positive: Color32::from_rgb(30, 140, 50),
-            data_negative: Color32::from_rgb(200, 50, 50),
+            bg_dark: Color32::from_rgb(248, 250, 252),
+            bg_medium: Color32::from_rgb(241, 245, 249),
+            bg_card: Color32::from_rgb(255, 255, 255),
+            bg_input: Color32::from_rgb(248, 250, 252),
+            text_primary: Color32::from_rgb(15, 23, 42),
+            text_secondary: Color32::from_rgb(51, 65, 85),
+            text_muted: Color32::from_rgb(100, 116, 139),
+            text_label: Color32::from_rgb(71, 85, 105),
+            status_ok: Color32::from_rgb(22, 163, 74),
+            status_error: Color32::from_rgb(220, 38, 38),
+            status_warn: Color32::from_rgb(217, 119, 6),
+            status_info: Color32::from_rgb(2, 132, 199),
+            accent_blue: Color32::from_rgb(37, 99, 235),
+            accent_green: Color32::from_rgb(5, 150, 105),
+            accent_purple: Color32::from_rgb(147, 51, 234),
+            accent_orange: Color32::from_rgb(234, 88, 12),
+            accent_cyan: Color32::from_rgb(8, 145, 178),
+            accent_gold: Color32::from_rgb(202, 138, 4),
+            border: Color32::from_rgb(226, 232, 240),
+            border_active: Color32::from_rgb(37, 99, 235),
+            tx_color: Color32::from_rgb(37, 99, 235),
+            rx_color: Color32::from_rgb(22, 163, 74),
+            info_color: Color32::from_rgb(202, 138, 4),
+            connected_color: Color32::from_rgb(22, 163, 74),
+            disconnected_color: Color32::from_rgb(148, 163, 184),
+            data_label: Color32::from_rgb(99, 102, 241),
+            data_value: Color32::from_rgb(217, 119, 6),
+            data_positive: Color32::from_rgb(22, 163, 74),
+            data_negative: Color32::from_rgb(220, 38, 38),
         }
     }
 
@@ -389,7 +379,7 @@ impl AppTheme {
 }
 
 /// Relative luminance (0.0–1.0) per WCAG definition.
-fn luminance(c: Color32) -> f32 {
+pub fn luminance(c: Color32) -> f32 {
     fn lin(v: u8) -> f32 {
         let s = v as f32 / 255.0;
         if s <= 0.04045 {
@@ -411,9 +401,7 @@ pub fn contrast_ratio(c1: Color32, c2: Color32) -> f32 {
     (lighter + 0.05) / (darker + 0.05)
 }
 
-// ═══════════════════════════════════════════════════════════
 // Reusable UI Components (available for view integration)
-// ═══════════════════════════════════════════════════════════
 #[allow(dead_code, clippy::too_many_arguments)]
 /// Animated status badge with smooth color transition.
 pub fn status_badge(
@@ -576,6 +564,92 @@ pub fn empty_state(ui: &mut Ui, icon: &str, title: &str, subtitle: &str, theme: 
                 .color(theme.text_muted),
         );
         ui.add_space(sp.xxl);
+    });
+}
+
+/// Skeleton rectangular placeholder with physical shimmer wave animation for smooth data loading states.
+#[allow(dead_code)]
+pub fn skeleton_rect(
+    ui: &mut Ui,
+    size: egui::Vec2,
+    corner_radius: f32,
+    theme: &AppTheme,
+    current_time: f64,
+) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let painter = ui.painter();
+
+    // Background placeholder fill
+    painter.rect_filled(rect, corner_radius, theme.bg_input);
+
+    // Smooth moving shimmer band
+    let wave_speed = 1.25; // 1.25s per sweep
+    let phase = ((current_time * wave_speed) % 1.0) as f32;
+    let band_center = rect.left() + rect.width() * phase;
+    let band_width = (rect.width() * 0.45).clamp(30.0, 160.0);
+
+    let band_left = (band_center - band_width * 0.5).max(rect.left());
+    let band_right = (band_center + band_width * 0.5).min(rect.right());
+    if band_right > band_left {
+        let shimmer_rect = egui::Rect::from_min_max(
+            egui::pos2(band_left, rect.top()),
+            egui::pos2(band_right, rect.bottom()),
+        );
+        let dist = (band_center - (band_left + band_right) * 0.5).abs();
+        let factor = (1.0 - (dist / (band_width * 0.5 + 1.0))).clamp(0.0, 1.0);
+        let alpha = (28.0 * factor) as u8;
+        let is_dark = luminance(theme.bg_dark) < 0.5;
+        let shimmer_color = if is_dark {
+            Color32::from_rgba_premultiplied(255, 255, 255, alpha)
+        } else {
+            Color32::from_rgba_premultiplied(0, 0, 0, (alpha / 2).max(1))
+        };
+        painter.rect_filled(shimmer_rect, corner_radius, shimmer_color);
+    }
+
+    // Subtle border
+    painter.rect_stroke(
+        rect,
+        corner_radius,
+        egui::Stroke::new(1.0_f32, theme.border),
+        egui::StrokeKind::Middle,
+    );
+    ui.ctx().request_repaint();
+    response
+}
+
+/// Skeleton lines placeholder mimicking text or multi-row record loading.
+#[allow(dead_code)]
+pub fn skeleton_lines(ui: &mut Ui, lines: usize, theme: &AppTheme, current_time: f64) {
+    let avail_w = ui.available_width();
+    let line_height = 14.0;
+    let gap = 8.0;
+    for i in 0..lines {
+        let width_factor = match i % 3 {
+            0 => 0.95,
+            1 => 0.75,
+            _ => 0.55,
+        };
+        let w = (avail_w * width_factor).max(60.0);
+        skeleton_rect(ui, egui::vec2(w, line_height), 4.0, theme, current_time);
+        if i + 1 < lines {
+            ui.add_space(gap);
+        }
+    }
+}
+
+/// Skeleton card container placeholder for dashboard panels or settings cards.
+#[allow(dead_code)]
+pub fn skeleton_card(ui: &mut Ui, height: f32, theme: &AppTheme, current_time: f64) {
+    let avail_w = ui.available_width();
+    settings_card(ui, |ui| {
+        skeleton_rect(
+            ui,
+            egui::vec2(avail_w.max(120.0), height),
+            6.0,
+            theme,
+            current_time,
+        );
     });
 }
 
@@ -809,363 +883,388 @@ pub fn settings_card(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
 }
 
 pub fn draw_icon(painter: &egui::Painter, rect: egui::Rect, icon: IconKind, color: Color32) {
-    let c = rect.center();
-    let s = rect.width().min(rect.height());
-    let stroke = egui::Stroke::new(1.5_f32, color);
+    let s = rect.width().min(rect.height()).max(8.0);
+    let ox = rect.center().x - s * 0.5;
+    let oy = rect.center().y - s * 0.5;
+    let scale = s / 24.0;
+    let pt = |x: f32, y: f32| -> egui::Pos2 { egui::pos2(ox + x * scale, oy + y * scale) };
+
+    let stroke = egui::Stroke::new((1.6 * scale).clamp(1.2, 2.4), color);
+    let thin_stroke = egui::Stroke::new((1.1 * scale).clamp(0.9, 1.8), color);
+
     match icon {
-        IconKind::Dashboard => draw_bars(painter, rect, color),
+        IconKind::Dashboard => {
+            // Speedometer gauge arc + needle + tick marks
+            let center = pt(12.0, 12.0);
+            let r = 8.5 * scale;
+            let mut pts = Vec::with_capacity(16);
+            for i in 0..=12 {
+                let angle =
+                    std::f32::consts::PI * 0.75 + (i as f32 / 12.0) * std::f32::consts::PI * 1.5;
+                pts.push(egui::pos2(
+                    center.x + angle.cos() * r,
+                    center.y + angle.sin() * r,
+                ));
+            }
+            for i in 0..pts.len() - 1 {
+                painter.line_segment([pts[i], pts[i + 1]], stroke);
+            }
+            painter.line_segment([center, pt(15.5, 8.5)], stroke);
+            painter.circle_filled(center, 1.8 * scale, color);
+            painter.line_segment([pt(5.5, 12.0), pt(7.2, 12.0)], thin_stroke);
+            painter.line_segment([pt(12.0, 5.5), pt(12.0, 7.2)], thin_stroke);
+            painter.line_segment([pt(16.8, 12.0), pt(18.5, 12.0)], thin_stroke);
+        }
         IconKind::Connections => {
-            painter.circle_stroke(egui::pos2(c.x - s * 0.16, c.y), s * 0.10, stroke);
-            painter.circle_stroke(egui::pos2(c.x + s * 0.16, c.y), s * 0.10, stroke);
-            painter.line_segment(
-                [
-                    egui::pos2(c.x - s * 0.06, c.y),
-                    egui::pos2(c.x + s * 0.06, c.y),
-                ],
-                stroke,
-            );
+            // Dual socket & plug with data link
+            let l_port = egui::Rect::from_min_max(pt(3.0, 8.0), pt(9.0, 16.0));
+            let r_plug = egui::Rect::from_min_max(pt(15.0, 6.0), pt(21.0, 18.0));
+            painter.rect_stroke(l_port, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(r_plug, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(9.0, 10.5), pt(15.0, 10.5)], stroke);
+            painter.line_segment([pt(9.0, 13.5), pt(15.0, 13.5)], stroke);
+            painter.circle_filled(pt(6.0, 12.0), 1.2 * scale, color);
+            painter.circle_filled(pt(18.0, 12.0), 1.5 * scale, color);
         }
         IconKind::Terminal => {
-            let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.58, s * 0.42));
-            painter.rect_stroke(r, 2.0, stroke, egui::StrokeKind::Middle);
-            painter.line_segment(
-                [
-                    egui::pos2(r.left() + 2.0, c.y),
-                    egui::pos2(r.right() - 2.0, c.y),
-                ],
-                egui::Stroke::new(1.0_f32, color),
-            );
+            // Terminal frame with prompt > and cursor _
+            let term = egui::Rect::from_min_max(pt(3.0, 4.0), pt(21.0, 20.0));
+            painter.rect_stroke(term, 2.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(3.0, 8.0), pt(21.0, 8.0)], thin_stroke);
+            painter.line_segment([pt(7.0, 11.0), pt(10.0, 13.5)], stroke);
+            painter.line_segment([pt(10.0, 13.5), pt(7.0, 16.0)], stroke);
+            painter.line_segment([pt(12.5, 16.0), pt(16.5, 16.0)], stroke);
         }
-        IconKind::Packet => draw_panel(painter, c, s, stroke, true),
+        IconKind::Packet => {
+            // Segmented protocol packet frame
+            let pkt = egui::Rect::from_min_max(pt(3.0, 4.0), pt(21.0, 20.0));
+            painter.rect_stroke(pkt, 2.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(3.0, 9.0), pt(21.0, 9.0)], stroke);
+            painter.line_segment([pt(9.0, 9.0), pt(9.0, 20.0)], thin_stroke);
+            painter.line_segment([pt(15.0, 9.0), pt(15.0, 20.0)], thin_stroke);
+            painter.circle_filled(pt(6.0, 6.5), 1.1 * scale, color);
+            painter.line_segment([pt(10.0, 6.5), pt(18.0, 6.5)], thin_stroke);
+            painter.line_segment([pt(5.5, 13.0), pt(6.5, 13.0)], thin_stroke);
+            painter.line_segment([pt(11.5, 14.5), pt(12.5, 14.5)], thin_stroke);
+            painter.line_segment([pt(17.5, 14.5), pt(18.5, 14.5)], thin_stroke);
+        }
         IconKind::Topology => {
-            let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.60, s * 0.46));
-            painter.rect_stroke(r, 4.0, stroke, egui::StrokeKind::Middle);
-            painter.circle_filled(egui::pos2(c.x - s * 0.12, c.y - s * 0.07), 1.4, color);
-            painter.circle_filled(egui::pos2(c.x + s * 0.12, c.y - s * 0.07), 1.4, color);
-            painter.line_segment(
-                [
-                    egui::pos2(c.x - s * 0.14, c.y + s * 0.10),
-                    egui::pos2(c.x + s * 0.14, c.y + s * 0.10),
-                ],
-                egui::Stroke::new(1.1_f32, color),
-            );
+            // Master hub with 4 peripheral node circles
+            painter.circle_filled(pt(12.0, 12.0), 2.8 * scale, color);
+            let satellites = [pt(5.0, 6.0), pt(19.0, 6.0), pt(5.0, 18.0), pt(19.0, 18.0)];
+            for sat in satellites {
+                painter.circle_stroke(sat, 2.0 * scale, stroke);
+            }
+            painter.line_segment([pt(6.8, 7.5), pt(9.8, 10.2)], stroke);
+            painter.line_segment([pt(17.2, 7.5), pt(14.2, 10.2)], stroke);
+            painter.line_segment([pt(6.8, 16.5), pt(9.8, 13.8)], stroke);
+            painter.line_segment([pt(17.2, 16.5), pt(14.2, 13.8)], stroke);
         }
         IconKind::Pid => {
-            let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.60, s * 0.42));
-            painter.rect_stroke(r, 2.0, stroke, egui::StrokeKind::Middle);
-            for i in 0..3 {
-                let x = r.left() + r.width() * (0.24 + i as f32 * 0.26);
+            // Step-response damped curve with dashed target setpoint line
+            painter.line_segment([pt(3.0, 4.0), pt(3.0, 20.0)], stroke);
+            painter.line_segment([pt(3.0, 20.0), pt(21.0, 20.0)], stroke);
+            for i in 0..7 {
                 painter.line_segment(
                     [
-                        egui::pos2(x, r.top() + 2.0),
-                        egui::pos2(x, r.bottom() - 2.0),
+                        pt(3.0 + i as f32 * 2.5, 11.0),
+                        pt(4.5 + i as f32 * 2.5, 11.0),
                     ],
-                    egui::Stroke::new(1.0_f32, color),
+                    thin_stroke,
                 );
             }
+            let pts = [
+                pt(3.0, 19.5),
+                pt(5.5, 14.0),
+                pt(8.5, 7.0),
+                pt(11.5, 13.5),
+                pt(14.5, 9.5),
+                pt(17.5, 11.5),
+                pt(21.0, 11.0),
+            ];
+            for i in 0..pts.len() - 1 {
+                painter.line_segment([pts[i], pts[i + 1]], stroke);
+            }
         }
-        IconKind::Neural => draw_neural(painter, c, s, color),
-        IconKind::Visualization | IconKind::Line => draw_line_chart(painter, c, s, stroke),
-        IconKind::Simulation => draw_simulation(painter, c, s, color, stroke),
-        IconKind::Modbus => draw_modbus(painter, c, s, color, stroke),
-        IconKind::Canopen => draw_canopen(painter, c, s, color),
-        IconKind::Scatter => draw_scatter(painter, c, s, color),
-        IconKind::Bar => draw_bars(painter, rect, color),
-        IconKind::Gauge => draw_gauge(painter, c, s, color, stroke),
-        IconKind::Histogram => draw_histogram(painter, rect, color),
-        IconKind::Table => draw_table(painter, c, s, stroke),
-        IconKind::Differential => draw_vehicle(painter, c, s, color, stroke, false),
-        IconKind::Mecanum => draw_mecanum(painter, c, s, color, stroke),
-        IconKind::Omni3 => draw_omni(painter, c, s, color, 3),
-        IconKind::Omni4 => draw_omni(painter, c, s, color, 4),
-        IconKind::Ackermann => draw_vehicle(painter, c, s, color, stroke, true),
-        IconKind::Tracked => draw_tracked(painter, c, s, color, stroke),
-        IconKind::Scara => draw_arm(painter, c, s, color, stroke, 2),
-        IconKind::SixDofArm => draw_arm(painter, c, s, color, stroke, 3),
-        IconKind::DeltaRobot => draw_delta(painter, c, s, color, stroke),
+        IconKind::Neural => {
+            // Neural network layer nodes with synapse weights
+            let l1 = [pt(5.0, 6.0), pt(5.0, 12.0), pt(5.0, 18.0)];
+            let l2 = [pt(12.0, 8.5), pt(12.0, 15.5)];
+            let l3 = pt(19.0, 12.0);
+            for n1 in l1 {
+                for n2 in l2 {
+                    painter.line_segment([n1, n2], thin_stroke);
+                }
+            }
+            for n2 in l2 {
+                painter.line_segment([n2, l3], thin_stroke);
+            }
+            for n1 in l1 {
+                painter.circle_stroke(n1, 1.8 * scale, stroke);
+            }
+            for n2 in l2 {
+                painter.circle_filled(n2, 1.8 * scale, color);
+            }
+            painter.circle_stroke(l3, 1.8 * scale, stroke);
+        }
+        IconKind::Visualization | IconKind::Line => {
+            // Cartesian axes with trend curve
+            painter.line_segment([pt(3.0, 4.0), pt(3.0, 20.0)], stroke);
+            painter.line_segment([pt(3.0, 20.0), pt(21.0, 20.0)], stroke);
+            let curve = [
+                pt(4.0, 16.0),
+                pt(8.5, 10.0),
+                pt(12.5, 14.0),
+                pt(17.0, 6.0),
+                pt(20.5, 10.0),
+            ];
+            for i in 0..curve.len() - 1 {
+                painter.line_segment([curve[i], curve[i + 1]], stroke);
+            }
+            painter.circle_filled(curve[1], 1.5 * scale, color);
+            painter.circle_filled(curve[2], 1.5 * scale, color);
+            painter.circle_filled(curve[3], 1.5 * scale, color);
+        }
+        IconKind::Simulation => {
+            // Central rotor with magnetic orbits
+            painter.circle_filled(pt(12.0, 12.0), 2.5 * scale, color);
+            let r_x = 8.5 * scale;
+            let r_y = 3.8 * scale;
+            for rot in [-0.52_f32, 0.52_f32] {
+                let mut pts = Vec::with_capacity(16);
+                for i in 0..=12 {
+                    let a = (i as f32 / 12.0) * std::f32::consts::TAU;
+                    let x0 = a.cos() * r_x;
+                    let y0 = a.sin() * r_y;
+                    let x1 = x0 * rot.cos() - y0 * rot.sin();
+                    let y1 = x0 * rot.sin() + y0 * rot.cos();
+                    pts.push(egui::pos2(
+                        ox + (12.0 + x1 / scale) * scale,
+                        oy + (12.0 + y1 / scale) * scale,
+                    ));
+                }
+                for i in 0..pts.len() - 1 {
+                    painter.line_segment([pts[i], pts[i + 1]], stroke);
+                }
+            }
+        }
+        IconKind::Modbus => {
+            // Stacked register blocks with bidirectional data transfer arrows
+            let top_b = egui::Rect::from_min_max(pt(4.0, 4.0), pt(20.0, 10.5));
+            let bot_b = egui::Rect::from_min_max(pt(4.0, 13.5), pt(20.0, 20.0));
+            painter.rect_stroke(top_b, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(bot_b, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(8.0, 7.25), pt(16.0, 7.25)], thin_stroke);
+            painter.line_segment([pt(8.0, 16.75), pt(16.0, 16.75)], thin_stroke);
+            // Down arrow
+            painter.line_segment([pt(10.0, 10.5), pt(10.0, 13.5)], stroke);
+            painter.line_segment([pt(8.5, 12.0), pt(10.0, 13.5)], thin_stroke);
+            painter.line_segment([pt(11.5, 12.0), pt(10.0, 13.5)], thin_stroke);
+            // Up arrow
+            painter.line_segment([pt(14.0, 13.5), pt(14.0, 10.5)], stroke);
+            painter.line_segment([pt(12.5, 12.0), pt(14.0, 10.5)], thin_stroke);
+            painter.line_segment([pt(15.5, 12.0), pt(14.0, 10.5)], thin_stroke);
+        }
+        IconKind::Canopen => {
+            // CAN transceivers linked on differential bus
+            let n1 = egui::Rect::from_min_max(pt(3.0, 6.0), pt(9.0, 11.0));
+            let n2 = egui::Rect::from_min_max(pt(15.0, 6.0), pt(21.0, 11.0));
+            let n3 = egui::Rect::from_min_max(pt(9.0, 13.0), pt(15.0, 18.0));
+            painter.rect_stroke(n1, 1.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(n2, 1.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(n3, 1.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(6.0, 11.0), pt(6.0, 16.0)], stroke);
+            painter.line_segment([pt(6.0, 16.0), pt(9.0, 16.0)], stroke);
+            painter.line_segment([pt(18.0, 11.0), pt(18.0, 16.0)], stroke);
+            painter.line_segment([pt(18.0, 16.0), pt(15.0, 16.0)], stroke);
+            painter.line_segment([pt(12.0, 13.0), pt(12.0, 9.5)], stroke);
+        }
+        IconKind::Scatter => {
+            painter.line_segment([pt(3.0, 4.0), pt(3.0, 20.0)], stroke);
+            painter.line_segment([pt(3.0, 20.0), pt(21.0, 20.0)], stroke);
+            for (x, y) in [(7.0, 15.0), (10.5, 9.0), (14.5, 13.0), (18.0, 7.5)] {
+                painter.circle_filled(pt(x, y), 1.8 * scale, color);
+            }
+        }
+        IconKind::Bar => {
+            painter.line_segment([pt(3.0, 20.0), pt(21.0, 20.0)], stroke);
+            let bars = [(5.5, 14.0), (10.0, 8.5), (14.5, 12.0), (19.0, 6.0)];
+            for (x, y) in bars {
+                let r = egui::Rect::from_min_max(pt(x - 1.5, y), pt(x + 1.5, 20.0));
+                painter.rect_filled(r, 1.0 * scale, color);
+            }
+        }
+        IconKind::Gauge => {
+            painter.circle_stroke(pt(12.0, 13.0), 7.5 * scale, stroke);
+            painter.line_segment([pt(12.0, 13.0), pt(16.5, 8.5)], stroke);
+            painter.circle_filled(pt(12.0, 13.0), 1.8 * scale, color);
+        }
+        IconKind::Histogram => {
+            painter.line_segment([pt(3.0, 20.0), pt(21.0, 20.0)], stroke);
+            let bars = [
+                (4.5, 16.0),
+                (7.5, 12.0),
+                (10.5, 7.0),
+                (13.5, 9.5),
+                (16.5, 14.0),
+                (19.5, 17.5),
+            ];
+            for (x, y) in bars {
+                let r = egui::Rect::from_min_max(pt(x - 1.2, y), pt(x + 1.2, 20.0));
+                painter.rect_filled(r, 0.8 * scale, color);
+            }
+        }
+        IconKind::Table => {
+            let tbl = egui::Rect::from_min_max(pt(3.0, 4.0), pt(21.0, 20.0));
+            painter.rect_stroke(tbl, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(3.0, 9.0), pt(21.0, 9.0)], stroke);
+            painter.line_segment([pt(3.0, 14.5), pt(21.0, 14.5)], thin_stroke);
+            painter.line_segment([pt(9.0, 4.0), pt(9.0, 20.0)], thin_stroke);
+            painter.line_segment([pt(15.0, 4.0), pt(15.0, 20.0)], thin_stroke);
+        }
+        IconKind::Differential => {
+            let body = egui::Rect::from_min_max(pt(6.5, 5.0), pt(17.5, 19.0));
+            painter.rect_stroke(body, 2.5 * scale, stroke, egui::StrokeKind::Middle);
+            let l_wheel = egui::Rect::from_min_max(pt(3.0, 10.0), pt(6.0, 17.0));
+            let r_wheel = egui::Rect::from_min_max(pt(18.0, 10.0), pt(21.0, 17.0));
+            painter.rect_filled(l_wheel, 1.2 * scale, color);
+            painter.rect_filled(r_wheel, 1.2 * scale, color);
+            painter.circle_filled(pt(12.0, 7.5), 1.8 * scale, color);
+        }
+        IconKind::Mecanum => {
+            let body = egui::Rect::from_min_max(pt(6.5, 5.0), pt(17.5, 19.0));
+            painter.rect_stroke(body, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            let w1 = egui::Rect::from_min_max(pt(3.0, 5.5), pt(6.0, 10.5));
+            let w2 = egui::Rect::from_min_max(pt(18.0, 5.5), pt(21.0, 10.5));
+            let w3 = egui::Rect::from_min_max(pt(3.0, 13.5), pt(6.0, 18.5));
+            let w4 = egui::Rect::from_min_max(pt(18.0, 13.5), pt(21.0, 18.5));
+            for w in [w1, w2, w3, w4] {
+                painter.rect_stroke(w, 1.0 * scale, stroke, egui::StrokeKind::Middle);
+            }
+            painter.line_segment([pt(3.5, 6.5), pt(5.5, 9.5)], thin_stroke);
+            painter.line_segment([pt(18.5, 6.5), pt(20.5, 9.5)], thin_stroke);
+            painter.line_segment([pt(3.5, 17.5), pt(5.5, 14.5)], thin_stroke);
+            painter.line_segment([pt(18.5, 17.5), pt(20.5, 14.5)], thin_stroke);
+        }
+        IconKind::Omni3 => {
+            painter.line_segment([pt(12.0, 4.0), pt(4.0, 18.0)], stroke);
+            painter.line_segment([pt(4.0, 18.0), pt(20.0, 18.0)], stroke);
+            painter.line_segment([pt(20.0, 18.0), pt(12.0, 4.0)], stroke);
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(10.5, 2.0), pt(13.5, 6.0)),
+                1.0 * scale,
+                color,
+            );
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(2.5, 16.0), pt(5.5, 20.0)),
+                1.0 * scale,
+                color,
+            );
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(18.5, 16.0), pt(21.5, 20.0)),
+                1.0 * scale,
+                color,
+            );
+            painter.circle_filled(pt(12.0, 13.0), 1.8 * scale, color);
+        }
+        IconKind::Omni4 => {
+            let body = egui::Rect::from_min_max(pt(8.0, 8.0), pt(16.0, 16.0));
+            painter.rect_stroke(body, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(10.5, 3.0), pt(13.5, 7.5)),
+                1.0 * scale,
+                color,
+            );
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(10.5, 16.5), pt(13.5, 21.0)),
+                1.0 * scale,
+                color,
+            );
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(3.0, 10.5), pt(7.5, 13.5)),
+                1.0 * scale,
+                color,
+            );
+            painter.rect_filled(
+                egui::Rect::from_min_max(pt(16.5, 10.5), pt(21.0, 13.5)),
+                1.0 * scale,
+                color,
+            );
+            painter.circle_filled(pt(12.0, 12.0), 1.5 * scale, color);
+        }
+        IconKind::Ackermann => {
+            let body = egui::Rect::from_min_max(pt(7.0, 5.0), pt(17.0, 19.0));
+            painter.rect_stroke(body, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            // Angled front wheels
+            painter.line_segment([pt(5.0, 4.5), pt(3.5, 9.5)], stroke);
+            painter.line_segment([pt(19.0, 4.5), pt(17.5, 9.5)], stroke);
+            painter.line_segment([pt(4.25, 7.0), pt(18.25, 7.0)], thin_stroke);
+            // Rear wheels
+            let lr = egui::Rect::from_min_max(pt(3.0, 14.0), pt(6.0, 19.0));
+            let rr = egui::Rect::from_min_max(pt(18.0, 14.0), pt(21.0, 19.0));
+            painter.rect_filled(lr, 1.0 * scale, color);
+            painter.rect_filled(rr, 1.0 * scale, color);
+            painter.line_segment([pt(4.5, 16.5), pt(19.5, 16.5)], thin_stroke);
+        }
+        IconKind::Tracked => {
+            let l_track = egui::Rect::from_min_max(pt(2.5, 4.0), pt(7.5, 20.0));
+            let r_track = egui::Rect::from_min_max(pt(16.5, 4.0), pt(21.5, 20.0));
+            let body = egui::Rect::from_min_max(pt(7.5, 7.0), pt(16.5, 17.0));
+            painter.rect_stroke(l_track, 2.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(r_track, 2.5 * scale, stroke, egui::StrokeKind::Middle);
+            painter.rect_stroke(body, 2.0 * scale, stroke, egui::StrokeKind::Middle);
+            for y in [7.0, 12.0, 17.0] {
+                painter.circle_filled(pt(5.0, y), 1.0 * scale, color);
+                painter.circle_filled(pt(19.0, y), 1.0 * scale, color);
+            }
+        }
+        IconKind::Scara => {
+            let base = egui::Rect::from_min_max(pt(4.0, 17.0), pt(10.0, 21.0));
+            painter.rect_stroke(base, 1.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.circle_filled(pt(7.0, 15.0), 2.0 * scale, color);
+            painter.line_segment([pt(7.0, 15.0), pt(13.0, 10.0)], stroke);
+            painter.circle_filled(pt(13.0, 10.0), 2.0 * scale, color);
+            painter.line_segment([pt(13.0, 10.0), pt(18.0, 12.0)], stroke);
+            painter.circle_stroke(pt(18.0, 12.0), 1.5 * scale, stroke);
+            painter.line_segment([pt(18.0, 13.5), pt(18.0, 19.5)], stroke);
+            painter.line_segment([pt(16.5, 19.5), pt(19.5, 19.5)], stroke);
+        }
+        IconKind::SixDofArm => {
+            let base = egui::Rect::from_min_max(pt(4.0, 18.0), pt(12.0, 21.0));
+            painter.rect_stroke(base, 1.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.circle_filled(pt(8.0, 17.0), 2.0 * scale, color);
+            painter.line_segment([pt(8.0, 17.0), pt(10.0, 11.0)], stroke);
+            painter.circle_filled(pt(10.0, 11.0), 1.8 * scale, color);
+            painter.line_segment([pt(10.0, 11.0), pt(15.0, 8.0)], stroke);
+            painter.circle_filled(pt(15.0, 8.0), 1.6 * scale, color);
+            painter.line_segment([pt(15.0, 8.0), pt(18.0, 10.0)], stroke);
+            painter.circle_stroke(pt(18.0, 10.0), 1.4 * scale, stroke);
+            // Gripper
+            painter.line_segment([pt(18.0, 10.0), pt(20.0, 12.0)], thin_stroke);
+            painter.line_segment([pt(19.0, 13.0), pt(21.0, 12.0)], stroke);
+            painter.line_segment([pt(21.0, 14.0), pt(20.0, 12.0)], stroke);
+        }
+        IconKind::DeltaRobot => {
+            painter.line_segment([pt(5.0, 5.0), pt(19.0, 5.0)], stroke);
+            painter.circle_filled(pt(6.0, 5.0), 1.4 * scale, color);
+            painter.circle_filled(pt(12.0, 5.0), 1.4 * scale, color);
+            painter.circle_filled(pt(18.0, 5.0), 1.4 * scale, color);
+            painter.line_segment([pt(6.0, 6.5), pt(9.5, 12.0)], stroke);
+            painter.line_segment([pt(9.5, 12.0), pt(8.5, 17.0)], stroke);
+            painter.line_segment([pt(12.0, 6.5), pt(11.0, 12.0)], stroke);
+            painter.line_segment([pt(11.0, 12.0), pt(12.0, 17.0)], stroke);
+            painter.line_segment([pt(18.0, 6.5), pt(14.5, 12.0)], stroke);
+            painter.line_segment([pt(14.5, 12.0), pt(15.5, 17.0)], stroke);
+            painter.line_segment([pt(8.5, 17.0), pt(15.5, 17.0)], stroke);
+            painter.line_segment([pt(12.0, 17.0), pt(12.0, 20.0)], stroke);
+        }
         IconKind::Custom | IconKind::Generic => {
-            painter.rect_stroke(rect.shrink(1.0), 3.0, stroke, egui::StrokeKind::Middle);
-            painter.line_segment(
-                [
-                    egui::pos2(c.x - s * 0.18, c.y),
-                    egui::pos2(c.x + s * 0.18, c.y),
-                ],
-                stroke,
-            );
+            let r = egui::Rect::from_min_max(pt(4.0, 4.0), pt(20.0, 20.0));
+            painter.rect_stroke(r, 3.0 * scale, stroke, egui::StrokeKind::Middle);
+            painter.line_segment([pt(8.0, 12.0), pt(16.0, 12.0)], thin_stroke);
+            painter.line_segment([pt(12.0, 8.0), pt(12.0, 16.0)], thin_stroke);
+            painter.circle_filled(pt(12.0, 12.0), 1.6 * scale, color);
         }
-    }
-}
-
-fn draw_panel(painter: &egui::Painter, c: egui::Pos2, s: f32, stroke: egui::Stroke, header: bool) {
-    let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.60, s * 0.46));
-    painter.rect_stroke(r, 2.0, stroke, egui::StrokeKind::Middle);
-    if header {
-        painter.line_segment(
-            [
-                egui::pos2(r.left(), r.top() + s * 0.13),
-                egui::pos2(r.right(), r.top() + s * 0.13),
-            ],
-            stroke,
-        );
-    }
-}
-
-fn draw_bars(painter: &egui::Painter, rect: egui::Rect, color: Color32) {
-    let s = rect.width().min(rect.height());
-    for i in 0..3 {
-        let w = s * 0.12;
-        let x = rect.left() + s * (0.18 + i as f32 * 0.22);
-        let h = s * (0.28 + i as f32 * 0.18);
-        let r = egui::Rect::from_min_size(egui::pos2(x, rect.bottom() - h), egui::vec2(w, h));
-        painter.rect_filled(r, 1.0, color);
-    }
-}
-
-fn draw_line_chart(painter: &egui::Painter, c: egui::Pos2, s: f32, stroke: egui::Stroke) {
-    let p0 = egui::pos2(c.x - s * 0.28, c.y + s * 0.16);
-    let p1 = egui::pos2(c.x - s * 0.08, c.y - s * 0.02);
-    let p2 = egui::pos2(c.x + s * 0.06, c.y + s * 0.08);
-    let p3 = egui::pos2(c.x + s * 0.24, c.y - s * 0.18);
-    painter.line_segment([p0, p1], stroke);
-    painter.line_segment([p1, p2], stroke);
-    painter.line_segment([p2, p3], stroke);
-}
-
-fn draw_neural(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) {
-    let n1 = egui::pos2(c.x - s * 0.20, c.y - s * 0.05);
-    let n2 = egui::pos2(c.x - s * 0.20, c.y + s * 0.18);
-    let n3 = egui::pos2(c.x + s * 0.02, c.y - s * 0.20);
-    let n4 = egui::pos2(c.x + s * 0.20, c.y + s * 0.02);
-    painter.line_segment([n1, n3], egui::Stroke::new(1.0_f32, color));
-    painter.line_segment([n2, n3], egui::Stroke::new(1.0_f32, color));
-    painter.line_segment([n3, n4], egui::Stroke::new(1.0_f32, color));
-    for p in [n1, n2, n3, n4] {
-        painter.circle_filled(p, 1.7, color);
-    }
-}
-
-fn draw_simulation(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    painter.circle_stroke(c, s * 0.18, stroke);
-    painter.circle_filled(c, 1.8, color);
-    for i in 0..3 {
-        let angle = i as f32 * std::f32::consts::TAU / 3.0;
-        let end = egui::pos2(c.x + angle.cos() * s * 0.18, c.y + angle.sin() * s * 0.18);
-        painter.line_segment([c, end], egui::Stroke::new(1.0_f32, color));
-    }
-    draw_line_chart(
-        painter,
-        egui::pos2(c.x, c.y + s * 0.04),
-        s * 0.72,
-        egui::Stroke::new(1.0_f32, color),
-    );
-}
-
-fn draw_modbus(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.60, s * 0.42));
-    painter.rect_stroke(r, 2.0, stroke, egui::StrokeKind::Middle);
-    painter.line_segment(
-        [
-            egui::pos2(r.left(), r.center().y),
-            egui::pos2(r.right(), r.center().y),
-        ],
-        egui::Stroke::new(1.0_f32, color),
-    );
-    painter.line_segment(
-        [
-            egui::pos2(r.left() + s * 0.22, r.top()),
-            egui::pos2(r.left() + s * 0.22, r.bottom()),
-        ],
-        egui::Stroke::new(1.0_f32, color),
-    );
-}
-
-fn draw_canopen(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) {
-    let p1 = egui::pos2(c.x - s * 0.20, c.y);
-    let p2 = egui::pos2(c.x, c.y - s * 0.18);
-    let p3 = egui::pos2(c.x + s * 0.20, c.y);
-    let p4 = egui::pos2(c.x, c.y + s * 0.18);
-    for pair in [[p1, p2], [p2, p3], [p3, p4], [p4, p1]] {
-        painter.line_segment(pair, egui::Stroke::new(1.1_f32, color));
-    }
-    for p in [p1, p2, p3, p4] {
-        painter.circle_filled(p, 1.6, color);
-    }
-}
-
-fn draw_scatter(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32) {
-    for (x, y) in [(-0.22, 0.14), (-0.06, -0.12), (0.10, 0.04), (0.24, -0.18)] {
-        painter.circle_filled(egui::pos2(c.x + s * x, c.y + s * y), 1.8, color);
-    }
-}
-
-fn draw_gauge(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    painter.circle_stroke(egui::pos2(c.x, c.y + s * 0.08), s * 0.24, stroke);
-    painter.line_segment(
-        [
-            egui::pos2(c.x, c.y + s * 0.08),
-            egui::pos2(c.x + s * 0.16, c.y - s * 0.08),
-        ],
-        egui::Stroke::new(1.2_f32, color),
-    );
-}
-
-fn draw_histogram(painter: &egui::Painter, rect: egui::Rect, color: Color32) {
-    let s = rect.width().min(rect.height());
-    for i in 0..5 {
-        let w = s * 0.08;
-        let x = rect.left() + s * (0.14 + i as f32 * 0.13);
-        let h = s * (0.18 + ((i + 2) % 3) as f32 * 0.10);
-        painter.rect_filled(
-            egui::Rect::from_min_size(egui::pos2(x, rect.bottom() - h), egui::vec2(w, h)),
-            0.8,
-            color,
-        );
-    }
-}
-
-fn draw_table(painter: &egui::Painter, c: egui::Pos2, s: f32, stroke: egui::Stroke) {
-    let r = egui::Rect::from_center_size(c, egui::vec2(s * 0.58, s * 0.44));
-    painter.rect_stroke(r, 1.0, stroke, egui::StrokeKind::Middle);
-    for frac in [0.33, 0.66] {
-        let x = r.left() + r.width() * frac;
-        painter.line_segment([egui::pos2(x, r.top()), egui::pos2(x, r.bottom())], stroke);
-        let y = r.top() + r.height() * frac;
-        painter.line_segment([egui::pos2(r.left(), y), egui::pos2(r.right(), y)], stroke);
-    }
-}
-
-fn draw_vehicle(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-    steer: bool,
-) {
-    let body = egui::Rect::from_center_size(c, egui::vec2(s * 0.50, s * 0.30));
-    painter.rect_stroke(body, 3.0, stroke, egui::StrokeKind::Middle);
-    for x in [body.left(), body.right()] {
-        for y in [body.top(), body.bottom()] {
-            let p1 = egui::pos2(x, y);
-            let p2 = if steer && x > c.x {
-                egui::pos2(x + s * 0.05, y - s * 0.04)
-            } else {
-                egui::pos2(x, y)
-            };
-            painter.circle_filled(p2, 1.8, color);
-            painter.line_segment([p1, p2], egui::Stroke::new(0.8_f32, color));
-        }
-    }
-}
-
-fn draw_mecanum(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    draw_vehicle(painter, c, s, color, stroke, false);
-    for x in [-0.24, 0.24] {
-        for y in [-0.16, 0.16] {
-            let p = egui::pos2(c.x + s * x, c.y + s * y);
-            painter.line_segment(
-                [
-                    egui::pos2(p.x - s * 0.04, p.y + s * 0.04),
-                    egui::pos2(p.x + s * 0.04, p.y - s * 0.04),
-                ],
-                egui::Stroke::new(1.0_f32, color),
-            );
-        }
-    }
-}
-
-fn draw_omni(painter: &egui::Painter, c: egui::Pos2, s: f32, color: Color32, count: usize) {
-    let radius = s * 0.20;
-    for i in 0..count {
-        let angle = i as f32 * std::f32::consts::TAU / count as f32;
-        let p = egui::pos2(c.x + angle.cos() * radius, c.y + angle.sin() * radius);
-        painter.circle_filled(p, 2.0, color);
-        painter.line_segment([c, p], egui::Stroke::new(1.0_f32, color));
-    }
-    painter.circle_stroke(c, s * 0.06, egui::Stroke::new(1.0_f32, color));
-}
-
-fn draw_tracked(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    for y in [-0.14, 0.14] {
-        let r = egui::Rect::from_center_size(
-            egui::pos2(c.x, c.y + s * y),
-            egui::vec2(s * 0.56, s * 0.12),
-        );
-        painter.rect_stroke(r, 6.0, stroke, egui::StrokeKind::Middle);
-        painter.circle_filled(egui::pos2(r.left() + s * 0.08, r.center().y), 1.2, color);
-        painter.circle_filled(egui::pos2(r.right() - s * 0.08, r.center().y), 1.2, color);
-    }
-}
-
-fn draw_arm(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-    joints: usize,
-) {
-    let mut points = vec![egui::pos2(c.x - s * 0.24, c.y + s * 0.18)];
-    points.push(egui::pos2(c.x - s * 0.08, c.y - s * 0.06));
-    points.push(egui::pos2(c.x + s * 0.12, c.y - s * 0.16));
-    if joints > 2 {
-        points.push(egui::pos2(c.x + s * 0.24, c.y + s * 0.08));
-    }
-    for pair in points.windows(2) {
-        painter.line_segment([pair[0], pair[1]], stroke);
-    }
-    for p in points {
-        painter.circle_filled(p, 1.8, color);
-    }
-}
-
-fn draw_delta(
-    painter: &egui::Painter,
-    c: egui::Pos2,
-    s: f32,
-    color: Color32,
-    stroke: egui::Stroke,
-) {
-    let top = egui::pos2(c.x, c.y - s * 0.22);
-    let left = egui::pos2(c.x - s * 0.22, c.y + s * 0.12);
-    let right = egui::pos2(c.x + s * 0.22, c.y + s * 0.12);
-    for pair in [[top, left], [top, right], [left, right]] {
-        painter.line_segment(pair, stroke);
-    }
-    painter.circle_filled(c, 1.8, color);
-    for p in [top, left, right] {
-        painter.circle_filled(p, 1.6, color);
-        painter.line_segment([p, c], egui::Stroke::new(0.8_f32, color));
     }
 }
 
@@ -1230,5 +1329,344 @@ mod tests {
             ch as u32,
             0x1F300..=0x1FAFF | 0x2600..=0x27BF
         )
+    }
+    #[test]
+    fn spacing_tokens_standard_grid() {
+        let sp = SpacingTokens::standard();
+        assert_eq!(sp.xs, 4.0);
+        assert_eq!(sp.sm, 8.0);
+        assert_eq!(sp.md, 12.0);
+        assert_eq!(sp.lg, 16.0);
+        assert_eq!(sp.xl, 20.0);
+        assert_eq!(sp.xxl, 24.0);
+        assert_eq!(sp.xxxl, 32.0);
+        assert_eq!(sp.xxxxl, 40.0);
+        assert_eq!(sp.xxxxxl, 48.0);
+    }
+
+    #[test]
+    fn spacing_tokens_compact_smaller_than_standard() {
+        let s = SpacingTokens::standard();
+        let c = SpacingTokens::compact();
+        assert!(c.xs < s.xs);
+        assert!(c.sm < s.sm);
+        assert!(c.lg < s.lg);
+        assert!(c.xxxxxl < s.xxxxxl);
+    }
+
+    #[test]
+    fn spacing_tokens_relaxed_larger_than_standard() {
+        let s = SpacingTokens::standard();
+        let r = SpacingTokens::relaxed();
+        assert!(r.xs > s.xs);
+        assert!(r.sm > s.sm);
+        assert!(r.lg > s.lg);
+        assert!(r.xxxxxl > s.xxxxxl);
+    }
+
+    #[test]
+    fn spacing_tokens_monotonic_ordering() {
+        for sp in [
+            SpacingTokens::standard(),
+            SpacingTokens::compact(),
+            SpacingTokens::relaxed(),
+        ] {
+            assert!(sp.xs <= sp.sm);
+            assert!(sp.sm <= sp.md);
+            assert!(sp.md <= sp.lg);
+            assert!(sp.lg <= sp.xl);
+            assert!(sp.xl <= sp.xxl);
+            assert!(sp.xxl <= sp.xxxl);
+            assert!(sp.xxxl <= sp.xxxxl);
+            assert!(sp.xxxxl <= sp.xxxxxl);
+        }
+    }
+    #[test]
+    fn responsive_breakpoint_compact_below_640() {
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(0.0),
+            ResponsiveBreakpoint::Compact
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(320.0),
+            ResponsiveBreakpoint::Compact
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(639.9),
+            ResponsiveBreakpoint::Compact
+        );
+    }
+
+    #[test]
+    fn responsive_breakpoint_medium_640_to_1024() {
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(640.0),
+            ResponsiveBreakpoint::Medium
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(800.0),
+            ResponsiveBreakpoint::Medium
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(1023.9),
+            ResponsiveBreakpoint::Medium
+        );
+    }
+
+    #[test]
+    fn responsive_breakpoint_wide_above_1024() {
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(1024.0),
+            ResponsiveBreakpoint::Wide
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(1920.0),
+            ResponsiveBreakpoint::Wide
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::from_width(4000.0),
+            ResponsiveBreakpoint::Wide
+        );
+    }
+
+    #[test]
+    fn responsive_breakpoint_spacing_matches_tokens() {
+        assert_eq!(
+            ResponsiveBreakpoint::Compact.spacing().xs,
+            SpacingTokens::compact().xs
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::Medium.spacing().xs,
+            SpacingTokens::standard().xs
+        );
+        assert_eq!(
+            ResponsiveBreakpoint::Wide.spacing().xs,
+            SpacingTokens::relaxed().xs
+        );
+    }
+
+    #[test]
+    fn responsive_breakpoint_interact_size_y_values() {
+        assert_eq!(ResponsiveBreakpoint::Compact.interact_size_y(), 32.0);
+        assert_eq!(ResponsiveBreakpoint::Medium.interact_size_y(), 36.0);
+        assert_eq!(ResponsiveBreakpoint::Wide.interact_size_y(), 38.0);
+    }
+
+    #[test]
+    fn responsive_breakpoint_two_column_only_wide() {
+        assert!(!ResponsiveBreakpoint::Compact.use_two_column());
+        assert!(!ResponsiveBreakpoint::Medium.use_two_column());
+        assert!(ResponsiveBreakpoint::Wide.use_two_column());
+    }
+    #[test]
+    fn duration_tokens_standard_ordering() {
+        let d = DurationTokens::standard();
+        assert!(d.instant < d.fast);
+        assert!(d.fast < d.normal);
+        assert!(d.normal < d.slow);
+        assert!(d.slow < d.slower);
+    }
+
+    #[test]
+    fn duration_tokens_standard_values() {
+        let d = DurationTokens::standard();
+        assert!((d.instant - 0.10).abs() < f32::EPSILON);
+        assert!((d.fast - 0.15).abs() < f32::EPSILON);
+        assert!((d.normal - 0.20).abs() < f32::EPSILON);
+        assert!((d.slow - 0.30).abs() < f32::EPSILON);
+        assert!((d.slower - 0.50).abs() < f32::EPSILON);
+    }
+    #[test]
+    fn app_theme_dark_and_light_not_identical() {
+        let dark = AppTheme::dark();
+        let light = AppTheme::light();
+        assert_ne!(dark.bg_dark, light.bg_dark);
+        assert_ne!(dark.text_primary, light.text_primary);
+        assert_ne!(dark.status_ok, light.status_ok);
+    }
+
+    #[test]
+    fn app_theme_high_contrast_dark_text_brighter() {
+        let dark = AppTheme::dark();
+        let hc = dark.high_contrast();
+        // high-contrast dark theme pushes text toward white
+        assert!(hc.text_primary.r() >= dark.text_primary.r());
+        assert!(hc.text_primary.g() >= dark.text_primary.g());
+        assert!(hc.text_primary.b() >= dark.text_primary.b());
+    }
+
+    #[test]
+    fn app_theme_high_contrast_light_text_darker() {
+        let light = AppTheme::light();
+        let hc = light.high_contrast();
+        // high-contrast light theme pushes text toward black
+        assert!(hc.text_primary.r() <= light.text_primary.r());
+        assert!(hc.text_primary.g() <= light.text_primary.g());
+        assert!(hc.text_primary.b() <= light.text_primary.b());
+    }
+    #[test]
+    fn luminance_pure_black_is_zero() {
+        let l = luminance(Color32::from_rgb(0, 0, 0));
+        assert!(l.abs() < 0.001);
+    }
+
+    #[test]
+    fn luminance_pure_white_is_one() {
+        let l = luminance(Color32::from_rgb(255, 255, 255));
+        assert!((l - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn luminance_monotonic_green_dominant() {
+        // green has highest luminance coefficient
+        let l_r = luminance(Color32::from_rgb(255, 0, 0));
+        let l_g = luminance(Color32::from_rgb(0, 255, 0));
+        let l_b = luminance(Color32::from_rgb(0, 0, 255));
+        assert!(l_g > l_r);
+        assert!(l_g > l_b);
+    }
+
+    #[test]
+    fn contrast_ratio_same_color_is_one() {
+        let c = Color32::from_rgb(128, 128, 128);
+        let ratio = contrast_ratio(c, c);
+        assert!((ratio - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn contrast_ratio_black_white_is_21() {
+        let ratio = contrast_ratio(Color32::from_rgb(0, 0, 0), Color32::from_rgb(255, 255, 255));
+        assert!((ratio - 21.0).abs() < 0.5);
+    }
+
+    #[test]
+    fn contrast_ratio_symmetric() {
+        let a = Color32::from_rgb(100, 100, 100);
+        let b = Color32::from_rgb(200, 200, 200);
+        assert!((contrast_ratio(a, b) - contrast_ratio(b, a)).abs() < 0.001);
+    }
+    #[test]
+    fn font_tokens_default_sizes_ordered() {
+        let ft = FontTokens::default_tokens();
+        // display > heading > subheading > body > button > caption
+        assert!(ft.display.size > ft.heading.size);
+        assert!(ft.heading.size > ft.subheading.size);
+        assert!(ft.subheading.size > ft.body.size);
+        assert!(ft.body.size > ft.button.size);
+        assert!(ft.button.size > ft.caption.size);
+    }
+
+    #[test]
+    fn font_tokens_mono_is_monospace() {
+        let ft = FontTokens::default_tokens();
+        assert_eq!(ft.mono.family, FontFamily::Monospace);
+    }
+
+    #[test]
+    fn font_tokens_proportional_for_text() {
+        let ft = FontTokens::default_tokens();
+        assert_eq!(ft.body.family, FontFamily::Proportional);
+        assert_eq!(ft.heading.family, FontFamily::Proportional);
+        assert_eq!(ft.display.family, FontFamily::Proportional);
+    }
+
+    #[test]
+    fn font_tokens_hero_larger_than_display() {
+        let ft = FontTokens::default_tokens();
+        assert!(ft.hero_value.size > ft.display.size);
+    }
+    #[test]
+    fn icon_kind_all_keys_round_trip() {
+        let all_keys = [
+            "dashboard",
+            "connections",
+            "terminal",
+            "packet",
+            "topology",
+            "pid",
+            "nn",
+            "viz",
+            "simulation",
+            "modbus",
+            "canopen",
+            "line",
+            "scatter",
+            "bar",
+            "gauge",
+            "histogram",
+            "table",
+            "differential",
+            "mecanum",
+            "omni3",
+            "omni4",
+            "ackermann",
+            "tracked",
+            "scara",
+            "six_dof_arm",
+            "delta_robot",
+            "custom",
+        ];
+        for key in &all_keys {
+            let icon = IconKind::from_key(key);
+            assert_eq!(icon.key(), *key, "key '{}' round-trip failed", key);
+        }
+    }
+
+    #[test]
+    fn icon_kind_unknown_keys_map_to_generic() {
+        for bad in &["", "unknown", "TYPO", "123", "line_"] {
+            assert_eq!(
+                IconKind::from_key(bad),
+                IconKind::Generic,
+                "key '{}' should be Generic",
+                bad
+            );
+        }
+    }
+    #[test]
+    fn button_variant_variants_exist() {
+        // Verify all variants compile and are distinct
+        assert!(matches!(ButtonVariant::Primary, ButtonVariant::Primary));
+        assert!(matches!(ButtonVariant::Secondary, ButtonVariant::Secondary));
+        assert!(matches!(ButtonVariant::Danger, ButtonVariant::Danger));
+    }
+    #[test]
+    fn easing_tokens_return_valid_easings() {
+        assert_eq!(
+            EasingTokens::standard(),
+            crate::app::animation::Easing::EaseOutCubic
+        );
+        assert_eq!(
+            EasingTokens::emphasized(),
+            crate::app::animation::Easing::Bezier(0.05, 0.7, 0.1, 1.0)
+        );
+        assert_eq!(
+            EasingTokens::smooth(),
+            crate::app::animation::Easing::EaseInOutCubic
+        );
+    }
+    #[test]
+    fn dark_theme_backgrounds_darker_than_light() {
+        let dark = AppTheme::dark();
+        let light = AppTheme::light();
+        assert!(luminance(dark.bg_dark) < luminance(light.bg_dark));
+        assert!(luminance(dark.bg_medium) < luminance(light.bg_medium));
+    }
+
+    #[test]
+    fn theme_status_colors_distinct() {
+        for theme in [AppTheme::dark(), AppTheme::light()] {
+            assert_ne!(theme.status_ok, theme.status_error);
+            assert_ne!(theme.status_ok, theme.status_warn);
+            assert_ne!(theme.status_error, theme.status_warn);
+            assert_ne!(theme.status_info, theme.status_error);
+        }
+    }
+
+    #[test]
+    fn theme_connected_disconnected_distinct() {
+        for theme in [AppTheme::dark(), AppTheme::light()] {
+            assert_ne!(theme.connected_color, theme.disconnected_color);
+        }
     }
 }

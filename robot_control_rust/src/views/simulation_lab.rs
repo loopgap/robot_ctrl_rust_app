@@ -179,6 +179,9 @@ fn show_metrics(
                 plot_ui.line(Line::new(speed_points).name("omega_m"));
                 plot_ui.line(Line::new(ref_points).name("speed_ref"));
             });
+    } else if sim.running {
+        let time = ui.ctx().input(|i| i.time);
+        crate::views::ui_kit::skeleton_card(ui, 200.0, theme, time);
     } else {
         crate::views::ui_kit::empty_state(
             ui,
@@ -320,9 +323,6 @@ mod tests {
         assert_eq!(yes_no(true), "yes");
         assert_eq!(yes_no(false), "no");
     }
-
-    // ── Deep: preview_text edge cases ──
-
     #[test]
     fn preview_text_empty_input() {
         assert_eq!(preview_text("", 10), "");

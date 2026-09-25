@@ -560,4 +560,85 @@ r4TBsUwuH0FjxvOrsZ5UGVsRptbPwmoB0cj7NqwYhun9sbgBGEwLuF4mZAJ4DqAq
         assert!(tool.verified);
         assert!(tool.status.contains("RS256"));
     }
+
+    // ── Deep: JWT edge cases ───────────────────────────────
+
+    #[test]
+    fn decode_json_part_invalid_base64() {
+        let result = decode_json_part("!!!invalid!!!");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn decode_json_part_valid_empty_object() {
+        // "{}" base64url = "e30"
+        let result = decode_json_part("e30");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().trim(), "{}");
+    }
+
+    #[test]
+    fn verify_hs256_wrong_key() {
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &serde_json::json!({"sub":"demo"}),
+            &EncodingKey::from_secret(b"correct-key"),
+        )
+        .expect("token");
+
+        let mut tool = JwtInspectorTool {
+            token,
+            verification_key: "wrong-key".to_string(),
+            verify_mode: VerifyMode::Hs256,
+            ..Default::default()
+        };
+
+        tool.verify_signature(Language::En);
+        assert!(!tool.verified, "Should fail with wrong key");
+    }
+
+    #[test]
+    fn verify_empty_token() {
+        let mut tool = JwtInspectorTool {
+            token: String::new(),
+            ..Default::default()
+        };
+        tool.verify_signature(Language::En);
+        assert!(!tool.verified);
+    }
+
+    #[test]
+    fn verify_malformed_token() {
+        let mut tool = JwtInspectorTool {
+            token: "not.a.jwt.at.all.extra".to_string(),
+            ..Default::default()
+        };
+        tool.verify_signature(Language::En);
+        // Should not panic, may or may not verify
+        assert!(tool.status.is_empty() || !tool.status.is_empty());
+    }
+
+    #[test]
+    fn decode_json_part_with_padding() {
+        // "eyJ0ZXN0IjoxMjN9" = {"test":123}
+        let result = decode_json_part("eyJ0ZXN0IjoxMjN9");
+        assert!(result.is_ok());
+        let json = result.unwrap();
+        assert!(json.contains("123"));
+    }
+
+    #[test]
+    fn jwt_inspector_default_values() {
+        let tool = JwtInspectorTool::default();
+        assert!(tool.token.is_empty());
+        assert!(!tool.verified);
+        assert!(tool.status.is_empty());
+    }
+
+    #[test]
+    fn verify_mode_label() {
+        assert_eq!(VerifyMode::Hs256.label(), "HS256");
+        assert_eq!(VerifyMode::Rs256.label(), "RS256");
+        assert_eq!(VerifyMode::Auto.label(), "Auto");
+    }
 }

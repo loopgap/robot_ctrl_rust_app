@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
 // 底盘运动学 (Chassis Kinematics)
-// ═══════════════════════════════════════════════════════════════
 //
 // 为各种机器人底盘提供正/逆运动学解算与控制代码示例
 // - 差速驱动 (Differential Drive)
@@ -12,9 +10,7 @@
 //
 // 所有计算纯 Rust，跨平台，无外部依赖
 
-// ═══════════════════════════════════════════════════════════════
 // 底盘控制代码示例
-// ═══════════════════════════════════════════════════════════════
 
 /// 各底盘类型的代码模板
 pub struct ChassisCodeExamples;
@@ -491,9 +487,6 @@ mod tests {
             assert_ne!(en, zh, "EN and ZH examples for {} should differ", key);
         }
     }
-
-    // ── Deep: case-insensitive lookup ──
-
     #[test]
     fn test_case_sensitive_lookup() {
         // The lookup is case-sensitive; "differential" != "Differential"
@@ -501,9 +494,6 @@ mod tests {
         let proper = ChassisCodeExamples::get_example("Differential", "en");
         assert_ne!(lower, proper, "lookup should be case-sensitive");
     }
-
-    // ── Deep: ZH examples also contain code signatures ──
-
     #[test]
     fn test_zh_examples_contain_code() {
         for key in ChassisCodeExamples::all_chassis_keys() {
@@ -515,18 +505,12 @@ mod tests {
             );
         }
     }
-
-    // ── Deep: all chassis keys are non-empty strings ──
-
     #[test]
     fn test_chassis_keys_non_empty() {
         for key in ChassisCodeExamples::all_chassis_keys() {
             assert!(!key.is_empty(), "chassis key should not be empty");
         }
     }
-
-    // ── Deep: examples are substantial (>50 chars) ──
-
     #[test]
     fn test_examples_are_substantial() {
         for key in ChassisCodeExamples::all_chassis_keys() {
@@ -538,5 +522,227 @@ mod tests {
                 en.len()
             );
         }
+    }
+
+    // 严格补全：边界测试
+
+    #[test]
+    fn all_chassis_keys_non_empty() {
+        let keys = ChassisCodeExamples::all_chassis_keys();
+        assert!(!keys.is_empty());
+        for key in keys {
+            assert!(!key.is_empty());
+        }
+    }
+
+    #[test]
+    fn all_chassis_keys_unique() {
+        let keys = ChassisCodeExamples::all_chassis_keys();
+        let unique: std::collections::HashSet<&&str> = keys.iter().collect();
+        assert_eq!(keys.len(), unique.len());
+    }
+
+    #[test]
+    fn get_example_empty_chassis_returns_generic() {
+        assert_eq!(ChassisCodeExamples::get_example("", "en"), GENERIC_EXAMPLE);
+    }
+
+    #[test]
+    fn get_example_empty_lang_returns_generic() {
+        assert_eq!(
+            ChassisCodeExamples::get_example("Differential", ""),
+            GENERIC_EXAMPLE
+        );
+    }
+
+    #[test]
+    fn zh_examples_contain_chinese_chars() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let zh = ChassisCodeExamples::get_example(key, "zh");
+            assert!(
+                zh.chars().any(|c| c as u32 > 0x4E00),
+                "ZH example for {} should contain Chinese characters",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn en_examples_substantial_length() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let en = ChassisCodeExamples::get_example(key, "en");
+            assert!(
+                en.len() > 100,
+                "EN example for {} should be >100 chars (got {})",
+                key,
+                en.len()
+            );
+        }
+    }
+
+    #[test]
+    fn generic_example_not_empty() {
+        assert!(!GENERIC_EXAMPLE.is_empty());
+        assert!(GENERIC_EXAMPLE.len() > 10);
+    }
+    #[test]
+    fn all_en_examples_have_function_signature() {
+        for name in &["DIFF", "MECANUM", "OMNI3", "OMNI4", "ACKERMANN", "TRACKED"] {
+            let key = match *name {
+                "DIFF" => "Differential",
+                "MECANUM" => "Mecanum",
+                "OMNI3" => "Omni3",
+                "OMNI4" => "Omni4",
+                "ACKERMANN" => "Ackermann",
+                "TRACKED" => "Tracked",
+                _ => continue,
+            };
+            let en = ChassisCodeExamples::get_example(key, "en");
+            assert!(en.contains("fn "), "{} EN should have fn", key);
+        }
+    }
+
+    #[test]
+    fn all_zh_examples_have_chinese() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let zh = ChassisCodeExamples::get_example(key, "zh");
+            assert!(
+                zh.chars().any(|c| c as u32 > 0x4E00),
+                "{} ZH should have Chinese",
+                key
+            );
+        }
+    }
+
+    #[test]
+    fn differential_example_has_motor_keywords() {
+        let en = ChassisCodeExamples::get_example("Differential", "en");
+        assert!(
+            en.to_lowercase().contains("motor") || en.to_lowercase().contains("wheel"),
+            "Differential example should mention motor/wheel"
+        );
+    }
+
+    #[test]
+    fn mecanum_example_has_velocity_keywords() {
+        let en = ChassisCodeExamples::get_example("Mecanum", "en");
+        assert!(
+            en.to_lowercase().contains("vx")
+                || en.to_lowercase().contains("velocity")
+                || en.to_lowercase().contains("speed"),
+            "Mecanum example should mention velocity"
+        );
+    }
+
+    #[test]
+    fn ackermann_example_has_steer_keywords() {
+        let en = ChassisCodeExamples::get_example("Ackermann", "en");
+        assert!(
+            en.to_lowercase().contains("steer") || en.to_lowercase().contains("angle"),
+            "Ackermann example should mention steering"
+        );
+    }
+
+    #[test]
+    fn generic_example_is_fallback() {
+        // GENERIC_EXAMPLE should be the fallback for unknown types
+        let unknown = ChassisCodeExamples::get_example("NonExistentType", "en");
+        assert_eq!(unknown, GENERIC_EXAMPLE);
+    }
+
+    #[test]
+    fn get_example_returns_substantial_for_all_keys() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            for lang in &["en", "zh"] {
+                let example = ChassisCodeExamples::get_example(key, lang);
+                assert!(example.len() > 50, "{} {} should be >50 chars", key, lang);
+            }
+        }
+    }
+
+    #[test]
+    fn all_chassis_keys_have_both_languages() {
+        for key in ChassisCodeExamples::all_chassis_keys() {
+            let en = ChassisCodeExamples::get_example(key, "en");
+            let zh = ChassisCodeExamples::get_example(key, "zh");
+            assert_ne!(en, zh, "{} should have different EN and ZH", key);
+            assert!(en.len() > 20, "{} EN too short", key);
+            assert!(zh.len() > 20, "{} ZH too short", key);
+        }
+    }
+
+    // 提标: chassis_kinematics 边界测试 +8
+
+    #[test]
+    fn all_keys_count() {
+        let keys = ChassisCodeExamples::all_chassis_keys();
+        assert!(keys.len() >= 6, "Should have at least 6 chassis types");
+    }
+
+    #[test]
+    fn differential_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Differential", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn mecanum_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Mecanum", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn omni3_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Omni3", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn omni4_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Omni4", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn ackermann_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Ackermann", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn tracked_en_has_code() {
+        let en = ChassisCodeExamples::get_example("Tracked", "en");
+        assert!(
+            en.contains("fn ") || en.contains("let "),
+            "Should have code"
+        );
+    }
+
+    #[test]
+    fn generic_example_is_default_fallback() {
+        let g = GENERIC_EXAMPLE;
+        assert!(!g.is_empty());
+        assert!(g.len() > 20);
+    }
+
+    #[test]
+    fn generic_example_is_fallback_for_any_lang() {
+        let g = ChassisCodeExamples::get_example("Unknown", "xx");
+        assert_eq!(g, GENERIC_EXAMPLE);
     }
 }

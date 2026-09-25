@@ -1,0 +1,110 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="rc-bg" x1="28" y1="20" x2="228" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0E192D"/>
+      <stop offset="50%" stop-color="#0A1222"/>
+      <stop offset="100%" stop-color="#050913"/>
+    </linearGradient>
+
+    <!-- Outer Border Glow Gradient -->
+    <linearGradient id="rc-border" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.85"/>
+      <stop offset="35%" stop-color="#0284C7" stop-opacity="0.45"/>
+      <stop offset="70%" stop-color="#1E3A8A" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.6"/>
+    </linearGradient>
+
+    <!-- Primary Cyan-Blue Gradient -->
+    <linearGradient id="rc-cyan" x1="60" y1="60" x2="196" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="40%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+
+    <!-- Accent Neon Cyan Gradient -->
+    <linearGradient id="rc-neon" x1="128" y1="70" x2="128" y2="186" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5F3FC"/>
+      <stop offset="50%" stop-color="#00F0FF"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+
+    <!-- Inner Core Glow -->
+    <radialGradient id="rc-core-glow" cx="128" cy="128" r="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F0FF" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#0284C7" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glass Reflection Highlight -->
+    <linearGradient id="rc-glass" x1="128" y1="18" x2="128" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filter for central elements -->
+    <filter id="rc-shadow" x="30" y="30" width="196" height="196" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#00E5FF" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle Container (16px inset, 52px radius) -->
+  <rect x="18" y="18" width="220" height="220" rx="52" fill="url(#rc-bg)"/>
+  <rect x="18" y="18" width="220" height="220" rx="52" stroke="url(#rc-border)" stroke-width="2.5"/>
+
+  <!-- Top Glass Highlight Overlay -->
+  <path d="M 22 70 C 22 41.28 45.28 18 74 18 L 182 18 C 210.72 18 234 41.28 234 70 C 234 94 186 112 128 112 C 70 112 22 94 22 70 Z" fill="url(#rc-glass)"/>
+
+  <!-- Telemetry Radar / Calibration Grid Rings (subtle background) -->
+  <circle cx="128" cy="128" r="76" stroke="#0284C7" stroke-width="1.2" stroke-opacity="0.16" stroke-dasharray="4 6"/>
+  <circle cx="128" cy="128" r="54" stroke="#00F0FF" stroke-width="1.2" stroke-opacity="0.22"/>
+  <circle cx="128" cy="128" r="32" stroke="#38BDF8" stroke-width="1.0" stroke-opacity="0.20" stroke-dasharray="2 4"/>
+
+  <!-- Central Radial Core Glow -->
+  <circle cx="128" cy="128" r="64" fill="url(#rc-core-glow)"/>
+
+  <!-- Precision Robotic Foreground Device (Group with glow shadow) -->
+  <g filter="url(#rc-shadow)">
+    <!-- Base Mounting Pedestal (Bottom) -->
+    <path d="M 88 188 L 168 188 L 160 198 L 96 198 Z" fill="#0284C7" fill-opacity="0.4"/>
+    <path d="M 96 198 L 160 198 L 154 205 L 102 205 Z" fill="#00E5FF" fill-opacity="0.6"/>
+
+    <!-- Dual Lower Articulated Arms (Joint Beams) -->
+    <path d="M 128 174 L 84 146 L 76 156 L 118 184 Z" fill="url(#rc-cyan)" fill-opacity="0.9"/>
+    <path d="M 128 174 L 172 146 L 180 156 L 138 184 Z" fill="url(#rc-cyan)" fill-opacity="0.9"/>
+
+    <!-- Left & Right Joint Actuator Hubs -->
+    <circle cx="78" cy="150" r="10" fill="#0B132B" stroke="#00F0FF" stroke-width="2.5"/>
+    <circle cx="78" cy="150" r="4" fill="#38BDF8"/>
+    <circle cx="178" cy="150" r="10" fill="#0B132B" stroke="#00F0FF" stroke-width="2.5"/>
+    <circle cx="178" cy="150" r="4" fill="#38BDF8"/>
+
+    <!-- Upper Servo Manipulator Linkages -->
+    <path d="M 78 144 L 88 92 L 100 95 L 86 146 Z" fill="url(#rc-cyan)"/>
+    <path d="M 178 144 L 168 92 L 156 95 L 170 146 Z" fill="url(#rc-cyan)"/>
+
+    <!-- Articulated Gripper End-Effectors (Left & Right Claws) -->
+    <path d="M 88 92 C 88 74 104 60 118 56 L 114 68 C 104 72 96 82 96 92 Z" fill="url(#rc-neon)"/>
+    <path d="M 168 92 C 168 74 152 60 138 56 L 142 68 C 152 72 160 82 160 92 Z" fill="url(#rc-neon)"/>
+
+    <!-- Central Precision Sensor / Trajectory Crosshair Unit -->
+    <!-- Hexagonal Servo Chassis Body -->
+    <polygon points="128,96 156,112 156,144 128,160 100,144 100,112" fill="#071326" stroke="#00F0FF" stroke-width="2.6" stroke-linejoin="round"/>
+
+    <!-- Central Laser / Gyro Core -->
+    <circle cx="128" cy="128" r="16" fill="#0B2545" stroke="#38BDF8" stroke-width="2"/>
+    <circle cx="128" cy="128" r="8" fill="#A5F3FC"/>
+    <circle cx="128" cy="128" r="3.5" fill="#FFFFFF"/>
+
+    <!-- Sub-Millimeter Optical Crosshair Reticle -->
+    <line x1="128" y1="102" x2="128" y2="114" stroke="#00F0FF" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="128" y1="142" x2="128" y2="154" stroke="#00F0FF" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="106" y1="128" x2="118" y2="128" stroke="#00F0FF" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="138" y1="128" x2="150" y2="128" stroke="#00F0FF" stroke-width="2.2" stroke-linecap="round"/>
+
+    <!-- Dynamic Motion Vector Arcs (Closed Loop Feedback indicator) -->
+    <path d="M 64 116 C 58 132 60 150 70 166" stroke="#00F0FF" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 192 116 C 198 132 196 150 186 166" stroke="#00F0FF" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 112 48 C 122 45 134 45 144 48" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+</svg>

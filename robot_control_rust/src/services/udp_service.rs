@@ -399,9 +399,6 @@ mod tests {
         service.disconnect();
         assert_eq!(service.status, ConnectionStatus::HardwareFault);
     }
-
-    // ── Deep: Industrial safety — default addresses ──
-
     #[test]
     fn test_default_values_industrial() {
         let service = UdpService::default();
@@ -415,9 +412,6 @@ mod tests {
         // Ports should be different
         assert_ne!(service.local_port, service.remote_port);
     }
-
-    // ── Deep: Multiple close calls are safe ──
-
     #[test]
     fn test_multiple_close_calls_safe() {
         let mut service = UdpService::default();
@@ -426,9 +420,6 @@ mod tests {
         service.close();
         assert_eq!(service.status, ConnectionStatus::Disconnected);
     }
-
-    // ── Deep: Stats reset preserves status ──
-
     #[test]
     fn test_reset_stats_preserves_status() {
         let mut service = UdpService {
@@ -440,9 +431,6 @@ mod tests {
         assert_eq!(service.bytes_sent, 0);
         assert_eq!(service.status, ConnectionStatus::Connected);
     }
-
-    // ── Deep: try_read_raw returns empty on disconnected ──
-
     #[test]
     fn test_try_read_raw_returns_empty_when_disconnected() {
         let mut service = UdpService::default();
@@ -450,9 +438,6 @@ mod tests {
         let data = service.try_read_raw();
         assert!(data.is_empty());
     }
-
-    // ── Deep: scratch buffer exists ──
-
     #[test]
     fn test_scratch_buffer_initialized() {
         let service = UdpService::default();
@@ -461,9 +446,6 @@ mod tests {
             "scratch buffer should be pre-allocated"
         );
     }
-
-    // ── Deep: is_connected checks status + socket ──
-
     #[test]
     fn test_is_connected_requires_status_and_socket() {
         let service = UdpService::default();
@@ -484,5 +466,62 @@ mod tests {
         };
         service.worker_errored.store(true, Ordering::Release);
         assert!(!service.is_connected(), "worker error blocks connection");
+    }
+
+    // 提标: udp_service 补全
+
+    #[test]
+    fn udp_service_default_state() {
+        let s = UdpService::default();
+        assert_eq!(s.status, ConnectionStatus::Disconnected);
+        assert!(!s.is_connected());
+    }
+
+    #[test]
+    fn udp_service_send_when_disconnected() {
+        let mut s = UdpService::default();
+        let result = s.send_data(b"hello");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn udp_service_try_read_empty_when_disconnected() {
+        let mut s = UdpService::default();
+        let data = s.try_read_raw();
+        assert!(data.is_empty());
+    }
+
+    #[test]
+    fn udp_service_bytes_counters_default() {
+        let s = UdpService::default();
+        assert_eq!(s.bytes_sent, 0);
+        assert_eq!(s.bytes_received, 0);
+    }
+
+    #[test]
+    fn udp_service_worker_error_propagation() {
+        let mut s = UdpService::default();
+        s.worker_errored.store(true, Ordering::Release);
+        let _ = s.send_data(b"test");
+        assert_eq!(s.status, ConnectionStatus::HardwareFault);
+    }
+    #[test]
+    fn udp_service_local_port_default() {
+        let s = UdpService::default();
+        assert!(s.local_port > 0);
+    }
+
+    #[test]
+    fn udp_service_status_format() {
+        let s = UdpService::default();
+        let display = format!("{}", s.status);
+        assert!(!display.is_empty());
+    }
+
+    #[test]
+    fn udp_service_disconnect_when_disconnected() {
+        let mut s = UdpService::default();
+        s.disconnect();
+        assert_eq!(s.status, ConnectionStatus::Disconnected);
     }
 }

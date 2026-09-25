@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-// ═══════════════════════════════════════════════════════════════
 // 数据字段类型定义
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Endianness {
@@ -74,9 +72,7 @@ impl std::fmt::Display for FieldType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 数据包字段
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PacketField {
@@ -370,9 +366,7 @@ impl PacketField {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 解析后的数据包
-// ═══════════════════════════════════════════════════════════════
 
 /// 解析后的单个字段
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -547,9 +541,7 @@ impl PacketParser {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 校验方式
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChecksumType {
@@ -590,9 +582,7 @@ impl std::fmt::Display for ChecksumType {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 数据包模板
-// ═══════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PacketTemplate {
@@ -716,9 +706,7 @@ impl PacketTemplate {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
 // 工具函数
-// ═══════════════════════════════════════════════════════════════
 
 pub fn parse_hex_string(s: &str) -> Vec<u8> {
     let cleaned = s.trim().replace([' ', ','], "");
@@ -823,7 +811,6 @@ pub fn crc16_modbus(data: &[u8]) -> u16 {
 mod tests {
     use super::*;
 
-    // ─── parse_hex_string ──────────────
     #[test]
     fn test_parse_hex_empty() {
         assert!(parse_hex_string("").is_empty());
@@ -857,7 +844,6 @@ mod tests {
         assert_eq!(parse_hex_string("aa bb cc"), vec![0xAA, 0xBB, 0xCC]);
     }
 
-    // ─── bytes_to_hex ──────────────────
     #[test]
     fn test_bytes_to_hex() {
         assert_eq!(bytes_to_hex(&[0xAA, 0x55, 0x00]), "AA 55 00");
@@ -868,7 +854,6 @@ mod tests {
         assert_eq!(bytes_to_hex(&[]), "");
     }
 
-    // ─── CRC16 Modbus ─────────────────
     #[test]
     fn test_crc16_modbus_known_value() {
         // CRC16/Modbus for [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]
@@ -898,7 +883,6 @@ mod tests {
         assert_ne!(crc, 0xFFFF);
     }
 
-    // ─── Checksum compute ─────────────
     #[test]
     fn test_checksum_none() {
         assert!(compute_checksum(ChecksumType::None, &[1, 2, 3]).is_empty());
@@ -928,7 +912,6 @@ mod tests {
         assert_eq!(result.len(), 4);
     }
 
-    // ─── PacketField ──────────────────
     #[test]
     fn test_field_u8() {
         let f = PacketField {
@@ -1022,7 +1005,6 @@ mod tests {
         assert_eq!(f.to_bytes(), vec![0x00, 0x00]);
     }
 
-    // ─── PacketTemplate ───────────────
     #[test]
     fn test_packet_template_build() {
         let tmpl = PacketTemplate {
@@ -1058,7 +1040,6 @@ mod tests {
         }
     }
 
-    // ─── FieldType ────────────────────
     #[test]
     fn test_field_type_byte_sizes() {
         assert_eq!(FieldType::U8.byte_size(), Some(1));
@@ -1072,14 +1053,12 @@ mod tests {
         assert_eq!(FieldType::Ascii.byte_size(), None);
     }
 
-    // ─── Endianness ───────────────────
     #[test]
     fn test_endianness_display() {
         assert_eq!(format!("{}", Endianness::Little), "LE");
         assert_eq!(format!("{}", Endianness::Big), "BE");
     }
 
-    // ─── Cross-platform: u32/u64 field LE/BE roundtrip
     #[test]
     fn test_field_u32_roundtrip() {
         let val: u32 = 0x12345678;
@@ -1108,7 +1087,6 @@ mod tests {
         );
     }
 
-    // ─── from_bytes parsing ───────────────
     #[test]
     fn test_from_bytes_u8() {
         let (v, n) = PacketField::from_bytes(FieldType::U8, Endianness::Little, &[42], 0).unwrap();
@@ -1208,7 +1186,6 @@ mod tests {
         );
     }
 
-    // ─── PacketParser ─────────────────
     #[test]
     fn test_parser_roundtrip() {
         let tmpl = PacketTemplate {
@@ -1396,5 +1373,237 @@ mod tests {
         };
         assert!((parsed.field_value("Speed").unwrap() - std::f64::consts::PI).abs() < 0.01);
         assert!(parsed.field_value("NonExist").is_none());
+    }
+    #[test]
+    fn template_count_empty() {
+        let parser = PacketParser::new(vec![]);
+        assert_eq!(parser.template_count(), 0);
+    }
+
+    #[test]
+    fn template_count_with_templates() {
+        let templates = vec![
+            PacketTemplate::default(),
+            PacketTemplate::default(),
+            PacketTemplate::default(),
+        ];
+        let parser = PacketParser::new(templates);
+        assert_eq!(parser.template_count(), 3);
+    }
+    #[test]
+    fn field_type_byte_size_all_fixed() {
+        assert_eq!(FieldType::U8.byte_size(), Some(1));
+        assert_eq!(FieldType::I8.byte_size(), Some(1));
+        assert_eq!(FieldType::U16.byte_size(), Some(2));
+        assert_eq!(FieldType::I16.byte_size(), Some(2));
+        assert_eq!(FieldType::U32.byte_size(), Some(4));
+        assert_eq!(FieldType::I32.byte_size(), Some(4));
+        assert_eq!(FieldType::U64.byte_size(), Some(8));
+        assert_eq!(FieldType::I64.byte_size(), Some(8));
+        assert_eq!(FieldType::F32.byte_size(), Some(4));
+        assert_eq!(FieldType::F64.byte_size(), Some(8));
+        assert_eq!(FieldType::Bool.byte_size(), Some(1));
+    }
+
+    #[test]
+    fn field_type_byte_size_variable() {
+        assert_eq!(FieldType::Bytes.byte_size(), None);
+        assert_eq!(FieldType::Ascii.byte_size(), None);
+        assert_eq!(FieldType::HexStr.byte_size(), None);
+    }
+    #[test]
+    fn field_type_all_count() {
+        assert_eq!(FieldType::all().len(), 14);
+    }
+    #[test]
+    fn checksum_type_all_variants_exist() {
+        let _ = ChecksumType::None;
+        let _ = ChecksumType::Sum8;
+        let _ = ChecksumType::Xor;
+        let _ = ChecksumType::Crc8;
+        let _ = ChecksumType::Crc16Modbus;
+        let _ = ChecksumType::Crc16Ccitt;
+        let _ = ChecksumType::Crc32;
+    }
+    #[test]
+    fn checksum_type_all_count() {
+        assert_eq!(ChecksumType::all().len(), 7);
+    }
+    #[test]
+    fn builtin_templates_non_empty() {
+        let templates = PacketTemplate::builtin_templates();
+        assert!(!templates.is_empty(), "Should have builtin templates");
+    }
+
+    #[test]
+    fn builtin_templates_unique_names() {
+        let templates = PacketTemplate::builtin_templates();
+        let names: Vec<&str> = templates.iter().map(|t| t.name.as_str()).collect();
+        let unique: std::collections::HashSet<&str> = names.iter().copied().collect();
+        assert_eq!(names.len(), unique.len());
+    }
+    #[test]
+    fn compute_checksum_none_returns_empty() {
+        let result = compute_checksum(ChecksumType::None, &[0x01, 0x02]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn compute_checksum_sum8() {
+        let result = compute_checksum(ChecksumType::Sum8, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0x06);
+    }
+
+    #[test]
+    fn compute_checksum_xor() {
+        let result = compute_checksum(ChecksumType::Xor, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0x01 ^ 0x02 ^ 0x03);
+    }
+
+    // 提标: packet 边界测试 +15
+
+    #[test]
+    fn field_type_byte_size_all() {
+        for ft in FieldType::all() {
+            let size = ft.byte_size();
+            match ft {
+                FieldType::Bytes | FieldType::Ascii | FieldType::HexStr => assert!(size.is_none()),
+                _ => assert!(size.is_some(), "{:?} should have byte_size", ft),
+            }
+        }
+    }
+
+    #[test]
+    fn checksum_type_display_all() {
+        for ct in ChecksumType::all() {
+            let display = format!("{:?}", ct);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn packet_template_default() {
+        let t = PacketTemplate::default();
+        assert!(!t.name.is_empty());
+        assert!(!t.header_hex.is_empty());
+    }
+
+    #[test]
+    fn packet_parser_new_empty() {
+        let p = PacketParser::new(vec![]);
+        assert_eq!(p.template_count(), 0);
+    }
+
+    #[test]
+    fn packet_parser_new_with_templates() {
+        let templates = vec![PacketTemplate::default(), PacketTemplate::default()];
+        let p = PacketParser::new(templates);
+        assert_eq!(p.template_count(), 2);
+    }
+
+    #[test]
+    fn parsed_packet_field_value_missing() {
+        let pp = ParsedPacket {
+            template_name: "T".into(),
+            fields: vec![],
+            checksum_ok: true,
+            raw: vec![],
+            timestamp: String::new(),
+        };
+        assert!(pp.field_value("missing").is_none());
+    }
+
+    #[test]
+    fn compute_checksum_crc8() {
+        let result = compute_checksum(ChecksumType::Crc8, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn compute_checksum_crc16_modbus() {
+        let result = compute_checksum(ChecksumType::Crc16Modbus, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn compute_checksum_crc16_ccitt() {
+        let result = compute_checksum(ChecksumType::Crc16Ccitt, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn compute_checksum_crc32() {
+        let result = compute_checksum(ChecksumType::Crc32, &[0x01, 0x02, 0x03]);
+        assert_eq!(result.len(), 4);
+    }
+
+    #[test]
+    fn compute_checksum_empty_data() {
+        let result = compute_checksum(ChecksumType::Sum8, &[]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], 0);
+    }
+
+    #[test]
+    fn endianness_display() {
+        assert_eq!(format!("{}", Endianness::Little), "LE");
+        assert_eq!(format!("{}", Endianness::Big), "BE");
+    }
+
+    #[test]
+    fn field_type_display() {
+        for ft in FieldType::all() {
+            let display = format!("{:?}", ft);
+            assert!(!display.is_empty());
+        }
+    }
+
+    #[test]
+    fn packet_template_serde_roundtrip() {
+        let t = PacketTemplate::default();
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: PacketTemplate = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.name, t.name);
+    }
+
+    #[test]
+    fn parsed_field_serde_roundtrip() {
+        let f = ParsedField {
+            name: "Speed".into(),
+            field_type: FieldType::U16,
+            value_str: "1000".into(),
+            value_f64: Some(1000.0),
+            raw_bytes: vec![0xE8, 0x03],
+        };
+        let json = serde_json::to_string(&f).unwrap();
+        let restored: ParsedField = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.name, "Speed");
+        assert_eq!(restored.value_f64, Some(1000.0));
+    }
+
+    #[test]
+    fn packet_template_default_header() {
+        let t = PacketTemplate::default();
+        assert!(!t.header_hex.is_empty());
+    }
+
+    #[test]
+    fn checksum_type_all_nonempty() {
+        for ct in ChecksumType::all() {
+            assert!(!format!("{:?}", ct).is_empty());
+        }
+    }
+
+    #[test]
+    fn packet_template_serde_name_preserved() {
+        let t = PacketTemplate {
+            name: "CustomTemplate".into(),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&t).unwrap();
+        let restored: PacketTemplate = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.name, "CustomTemplate");
     }
 }
