@@ -9,7 +9,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-orange.svg)](https://www.rust-lang.org/)
 [![egui](https://img.shields.io/badge/egui-0.31-blue.svg)](https://github.com/emilk/egui)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
 ---
 
@@ -69,11 +69,11 @@
 | Rust | 2021 Edition |
 | eframe / egui | 0.31 |
 | egui_plot | 0.31 |
-| serialport | 4.7 |
+| serialport | 4.8+ |
 | serde / serde_json | 1.x |
 | chrono | 0.4 |
 | tracing / tracing-subscriber | 0.1 / 0.3 |
-| ureq | 2.x (LLM HTTP) |
+| ureq | 3.x (LLM HTTP) |
 | anyhow / thiserror | 1.x / 2.x |
 
 **零外部 C 依赖**：所有控制算法与协议解析纯标准库实现。
@@ -93,7 +93,7 @@ robot_control_rust/
 │   └── (packaging 已迁移至 scripts/go/rusktask)
 ├── src/
 │   ├── main.rs                        # 入口 + egui 全局样式 + 动效 + 路由
-│   ├── app.rs                         # 状态中心 AppState / UiState
+│   ├── app/                           # 状态中心 AppState / 动效 Animation / 调度器
 │   ├── i18n.rs                        # 国际化
 │   ├── models/
 │   │   ├── mod.rs

@@ -32,6 +32,7 @@
 ```text
 rust_tools_suite/
 ├── Cargo.toml
+├── build.rs
 ├── README.md
 ├── ARCHITECTURE_AND_USAGE.md
 ├── packaging/
@@ -42,6 +43,7 @@ rust_tools_suite/
 │   ├── file_ops.rs
 │   ├── guide.rs
 │   ├── i18n.rs
+│   ├── icons.rs
 │   ├── settings.rs
 │   ├── theme.rs
 │   ├── workflow.rs

@@ -188,6 +188,7 @@ impl RobotMcpServer {
 
 // ========== 服务器处理器 ==========
 
+#[allow(unknown_lints, clippy::unused_async_trait_impl)]
 #[tool_handler]
 impl ServerHandler for RobotMcpServer {
     fn get_info(&self) -> ServerInfo {

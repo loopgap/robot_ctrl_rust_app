@@ -77,17 +77,18 @@ cargo run --release -p rust_tools_suite
 3. 推送分支与 tag，触发 Release 工作流。
 4. 在 Release 页面验证必需资产：`robot_control_suite_*_windows_x64-setup.exe`、`robot_control_suite_*_windows_x64_portable.zip`、`robot_control_suite_*_amd64.deb`、`checksums-sha256.txt`。
 
-## Release v0.1.9 验证清单
+## Release 发布验证清单
 
-当发布标签为 `v0.1.9` 时，至少完成以下核验：
+当发布标签为 `vX.Y.Z` 时，至少完成以下核验：
 
 1. 校验 Tag 归属：发布 tag 必须可追溯到 `origin/develop`。
-2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_v0.1.9.md` 结构校验。
-3. 校验资产完整性：
-  - `robot_control_suite_*_windows_x64-setup.exe`
-  - `robot_control_suite_*_windows_x64_portable.zip`
-  - `robot_control_suite_*_amd64.deb`
-  - `checksums-sha256.txt`
+2. 校验 Release Notes：存在并通过 `release_notes/RELEASE_NOTES_vX.Y.Z.md` 结构校验（通过 `./scripts/go/rusktask release-notes validate --file <path> --mode release`）。
+3. 校验资产完整性（**严禁发布无用源代码包，必须包含编译产物与安装程序**）：
+   - `robot_control_suite_*_windows_x64-setup.exe` (Windows 安装程序)
+   - `robot_control_suite_*_windows_x64_portable.zip` (Windows 免安装便携包)
+   - `robot_control_suite_*_amd64.deb` (Debian/Ubuntu 安装包)
+   - `robot_control_suite_*_macos_universal.tar.gz` (macOS 通用二进制归档包)
+   - `checksums-sha256.txt` (全产物 SHA256 校验和清单)
 4. 下载并对比 SHA256，确保与 `checksums-sha256.txt` 一致。
 
 发布失败可用以下命令回滚：

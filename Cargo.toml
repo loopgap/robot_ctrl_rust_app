@@ -95,6 +95,9 @@ TagSuffix = ""
 # These lints are inherited by all workspace members via
 # [lints] workspace = true in each crate's Cargo.toml.
 # "warn" here means CI (-D warnings) will block the commit.
+[workspace.lints.rust]
+unknown_lints = "allow"
+
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
@@ -165,6 +168,7 @@ explicit_iter_loop = "allow"
 implicit_clone = "allow"
 or_fun_call = "allow"
 unnested_or_patterns = "allow"
+unused_async_trait_impl = "allow"
 # Quality lints — kept as warnings:
 unused_async = "warn"
 redundant_clone = "warn"
