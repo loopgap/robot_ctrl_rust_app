@@ -160,13 +160,19 @@ git tag vX.Y.Z && git push origin develop --tags
 
 ## 8. 历史版本参考
 
-| 版本 | 发布日期 | 工件 |
-|------|----------|------|
-| v0.1.9 | - | windows-setup.exe, windows-portable.zip, linux.deb |
-| v0.2.0 | - | windows-setup.exe, linux.deb |
-| v0.1.8 | - | windows-setup.exe, linux.deb |
-| v0.1.7 | - | windows-setup.exe, linux.deb |
+| 版本 | Tag | Release Notes |
+|------|-----|---------------|
+| v0.2.2 | v0.2.2 | [RELEASE_NOTES_v0.2.2.md](../release_notes/RELEASE_NOTES_v0.2.2.md) |
+| v0.2.1 | v0.2.1 | [RELEASE_NOTES_v0.2.1.md](../release_notes/RELEASE_NOTES_v0.2.1.md) |
+| v0.2.0 | v0.2.0 | [RELEASE_NOTES_v0.2.0.md](../release_notes/RELEASE_NOTES_v0.2.0.md) |
+| v0.1.9 | v0.1.9 | [RELEASE_NOTES_v0.1.9.md](../release_notes/RELEASE_NOTES_v0.1.9.md) |
+| v0.1.8 | v0.1.8 | [RELEASE_NOTES_v0.1.8.md](../release_notes/RELEASE_NOTES_v0.1.8.md) |
+| v0.1.7 | v0.1.7 | [RELEASE_NOTES_v0.1.7.md](../release_notes/RELEASE_NOTES_v0.1.7.md) |
+| v0.1.1 | v0.1.1 | [RELEASE_NOTES_v0.1.1.md](../release_notes/RELEASE_NOTES_v0.1.1.md) |
+| v0.1.0 | v0.1.0 | [RELEASE_NOTES_v0.1.0.md](../release_notes/RELEASE_NOTES_v0.1.0.md) |
+
+> 最新版本及各版本详细变更内容请参阅 [`release_notes/RELEASE_INDEX.md`](../release_notes/RELEASE_INDEX.md)。
 
 ---
 
-*本文档由 Robot Control Suite 团队维护，最后更新: 2026-04-26*
+*本文档由 Robot Control Suite 团队维护，最后更新: 2026-09-26*

@@ -115,8 +115,8 @@ Release 工作流会在发布前执行：
 2. 下载 checksums-sha256.txt 并对 .exe/.zip/.deb 做 SHA256 校验。
 3. 记录发布链接和版本号到变更日志。
 
-## v0.1.9 专项验证
+## 发布前通用验证检查点
 
 1. 发布 Tag 需通过分支祖先校验（可追溯到 `origin/develop`）。
-2. `release_notes/RELEASE_NOTES_v0.1.9.md` 必须存在且通过结构校验。
+2. `release_notes/RELEASE_NOTES_vX.Y.Z.md` 必须存在且通过结构校验。
 3. 校验 `checksums-sha256.txt` 包含 .exe、.zip 与 .deb 三类资产散列值。

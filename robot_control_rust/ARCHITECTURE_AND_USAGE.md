@@ -2,7 +2,7 @@
 
 > 项目路径：`robot_control_rust/`  
 > 目标：跨平台（Windows/macOS/Linux）机器人调试与控制 GUI（eframe/egui）  
-> 更新时间：2026-02-26
+> 更新时间：2026-09-26
 
 ---
 
@@ -109,7 +109,7 @@ robot_control_rust/
 
 ---
 
-## 5. 企业级菜单栏设计（新增）
+## 5. 企业级菜单栏设计
 
 顶部菜单共 5 个一级菜单：
 
@@ -123,7 +123,7 @@ robot_control_rust/
 
 ---
 
-## 6. CANopen 三协议融合（新增）
+## 6. CANopen 三协议融合
 
 ### 6.1 目标
 
@@ -156,7 +156,7 @@ robot_control_rust/
 
 ---
 
-## 7. USB 协议特化分析（新增）
+## 7. USB 协议特化分析
 
 实现位置：`src/views/protocol_analysis.rs`
 
@@ -244,48 +244,19 @@ cargo clippy --all-targets
 
 ## 11. 闭环测试结果（当前基线）
 
-### 11.1 测试矩阵（2026-04-03）
+> 详细测试数据请参阅各版本 `release_notes/RELEASE_NOTES_vX.Y.Z.md`，测试总量随版本增长。
+> 当前稳定版 v0.2.2：1289 tests passed，0 failed，0 clippy warnings。
 
-| 项目 | 命令 | 结果 |
+### 11.1 质量门禁
+
+| 项目 | 命令 | 标准 |
 |------|------|------|
-| 代码格式 | `cargo fmt --check` | ✅ 通过 |
-| Debug 构建 | `cargo build` | ✅ 通过 |
-| Debug 测试 | `cargo test` | ✅ 321 passed |
-| Release 测试 | `cargo test --release` | 按需执行 |
-| 静态分析 | `cargo clippy --all-targets` | ✅ 0 warning |
-
-### 11.2 分模块测试计数
-
-| 模块 | 数量 |
-|------|------|
-| `app::tests` | 13 |
-| `i18n::tests` | 6 |
-| `models::adrc::tests` | 10 |
-| `models::bang_bang::tests` | 9 |
-| `models::canopen::tests` | 14 |
-| `models::cascade_pid::tests` | 9 |
-| `models::chassis_kinematics::tests` | 13 |
-| `models::connection::tests` | 24 |
-| `models::control_algorithm::tests` | 4 |
-| `models::data_channel::tests` | 18 |
-| `models::fuzzy_pid::tests` | 11 |
-| `models::incremental_pid::tests` | 10 |
-| `models::ladrc::tests` | 9 |
-| `models::lqr::tests` | 10 |
-| `models::modbus::tests` | 13 |
-| `models::mpc::tests` | 10 |
-| `models::neural_network::tests` | 16 |
-| `models::packet::tests` | 49 |
-| `models::pid_controller::tests` | 9 |
-| `models::preset::tests` | 5 |
-| `models::robot_state::tests` | 3 |
-| `models::robot_topology::tests` | 12 |
-| `models::smith_predictor::tests` | 11 |
-| `services::can_service::tests` | 15 |
-| `services::llm_service::tests` | 13 |
-| `services::mcp_server::tests` | 4 |
-| `views::protocol_analysis::tests` | 已并入当前测试统计 |
-| **总计** | **321** |
+| 代码格式 | `cargo fmt --check` | 0 errors |
+| Debug 构建 | `cargo build` | 编译通过 |
+| Debug 测试 | `cargo test` | 全部通过 |
+| Release 测试 | `cargo test --release` | 全部通过 |
+| 静态分析 | `cargo clippy --all-targets -- -D warnings` | 0 warning |
+| 安全审计 | `cargo audit` | 0 vulnerabilities |
 
 ---
 

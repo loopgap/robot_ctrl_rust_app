@@ -51,8 +51,8 @@ docs(readme): 更新安装说明
 | 工具 | 用途 | 配置文件 |
 |------|------|----------|
 | `rusktask review` | 代码审查入口 | `review-config.json` |
-| `make.ps1 preflight` | 预检入口 | - |
-| `preflight.sh` | Linux/macOS 预检 | - |
+| `.\\scripts\\windows\\task.ps1 preflight` | 预检入口 | - |
+| `./scripts/ubuntu/task.sh preflight` | Linux/macOS 预检 | - |
 | `rusktask install-hooks` | Git Hooks 安装 | `review-config.json` |
 | `rusktask smart-bump` | 版本智能升级 | - |
 

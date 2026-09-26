@@ -580,30 +580,18 @@ GitHub Actions 工作流 `.github/workflows/platform-validation.yml`：
 
 ## 测试
 
-> 最近闭环验证日期：2026-02-26
-> 
-> 当前结果：`cargo test` = **353 passed, 0 failed**，`cargo clippy --all-targets` = **0 warning**。
+> 当前稳定版 v0.2.2：**1289 tests passed**（100% pass rate），0 clippy warnings，0 security vulnerabilities。  
+> 详见 [`release_notes/RELEASE_NOTES_v0.2.2.md`](../release_notes/RELEASE_NOTES_v0.2.2.md)。
 
 ### 测试矩阵
 
-| 项目 | 命令 | 状态 |
+| 项目 | 命令 | 标准 |
 |------|------|------|
-| 代码格式 | `cargo fmt --check` | ✅ |
-| Debug 构建 | `cargo build` | ✅ |
-| Debug 测试 | `cargo test` | ✅ |
-| Release 测试 | `cargo test --release` | ✅ |
-| 静态分析 | `cargo clippy --all-targets` | ✅ 0 warning |
-
-### 单元测试覆盖（重点模块）
-
-| 模块 | 测试数 | 说明 |
-|------|--------|------|
-| `views::protocol_analysis::tests` | 33 | USB 特化解析、Modbus/CAN/UDP 诊断、事务分析与校验逻辑 |
-| `models::canopen::tests` | 14 | CAN/CAN FD/EtherCAT CoE 构建与解析、DLC 映射、SDO/NMT 回归 |
-| `models::packet::tests` | 49 | 模板构包、字段类型、校验、解析 roundtrip |
-| `models::connection::tests` | 24 | 协议配置与参数边界 |
-| `services::can_service::tests` | 15 | CAN 通道行为与帧服务逻辑 |
-| **总计（所有模块）** | **353** | 全量测试通过 |
+| 代码格式 | `cargo fmt --check` | 0 errors |
+| Debug 构建 | `cargo build` | 编译通过 |
+| Debug 测试 | `cargo test` | 全部通过 |
+| Release 测试 | `cargo test --release` | 全部通过 |
+| 静态分析 | `cargo clippy --all-targets -- -D warnings` | 0 warning |
 
 ---
 

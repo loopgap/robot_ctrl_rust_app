@@ -11,7 +11,7 @@
 Rust Serial 工作区是一个统一的、**极致性能与高度智能化**的 Rust 串行设备工作区，包含：
 
 - **机器人控制主应用** (`robot_control_rust`) - 工业控制、协议调试、可视化与联调能力
-- **桌面工具套件** (`rust_tools_suite`) - 统一 GUI 聚合入口（含 10 款高频工具）
+- **桌面工具套件** (`rust_tools_suite`) - 统一 GUI 聚合入口（含 11 款高频工具）
 
 ## 核心特性
 
@@ -60,7 +60,7 @@ rust_serial/
 │   │   └── views/          # UI 页面组件
 │   └── scripts/            # 打包与预检脚本
 ├── rust_tools_suite/       # 桌面工具套件 (统一 GUI 聚合入口)
-│   └── src/tools/          # 10 款工具实现
+│   └── src/tools/          # 11 款工具实现
 ├── docs/                   # mdBook 文档
 └── scripts/                # 开发脚本与 Git Hooks
 ```
